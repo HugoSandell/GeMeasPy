@@ -1,0 +1,23 @@
+*.pyc
+*.bat
+*.sh
+*.po 
+
+# Git
+.git/
+
+# VS Code
+.vscode/
+
+# log file
+code/logs.txt
+
+# settings files
+code/settings/connection_settings.json
+code/settings/server_backup_settings.json
+
+# global variables
+code/settings/config.py
+
+# data
+data/

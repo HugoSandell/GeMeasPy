@@ -1,0 +1,25 @@
+# X Y ! X=NUMBER_OF_TASKS Y=0,1,2 (USE 0 IF NO EXTERNAL RELLAYS ARE PRESENT)
+2 0
+#
+#
+# Task Identifier/name
+# Task_Name_For_Terrameter
+# Spread file
+# Protocol file
+# settings
+# X, Y, Z spacing
+#
+#
+#
+# Task 1
+Task1
+2X21.xml
+Gradient_2x21.xml
+testing1s.settings
+1 1 1
+# Task 2
+Task1
+2X21.xml
+DipoleDipole2x21.xml
+testing1s.settings
+1 1 1

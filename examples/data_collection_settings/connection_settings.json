@@ -1,0 +1,8 @@
+{
+    "hostname": "XXX.XXX.XXX.XXX",
+    "port": 22,
+    "username": "root",
+    "password": "",
+    "look_for_keys": false
+}
+
