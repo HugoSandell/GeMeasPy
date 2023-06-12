@@ -1,7 +1,7 @@
 # Mermaid
 
 
-## General Acquisiton flowchart (including backup)
+## General Acquisition flowchart (including backup)
 ```mermaid
 flowchart
     main --> instruments
