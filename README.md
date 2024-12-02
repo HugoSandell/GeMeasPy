@@ -1,8 +1,8 @@
-# pyGMON
+# GeMeasPy
 
-## **G**eophysical **MON**itoring
+## **Ge**ophysical **Meas**urements **Py**thon
 
-This pack contains tools for automated geophysical monitoring. The tools were initialy developed through my studies and are published under GNU GPL v.3.
+This pack contains tools for automated geophysical monitoring. The tools were initialy developed through my studies and are published under Apache 2.0
 
 ### Data collection module
 The module uses a computer (Windows or LINUX) to control the Terrameter LS and acquire data. The computer shall have enough space to hold several datasets for redundancy in case the remote connection breaks.
