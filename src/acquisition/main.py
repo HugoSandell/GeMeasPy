@@ -4,7 +4,8 @@ from acquisition.instruments import Terrameter
 from acquisition.utilities import read_monitoring_tasks
 from settings.config import REMOTE_BACKUP
 
-def run(task_file):
+
+def run(task_file) -> None:
 	# read connection and measurement settings
     ls = Terrameter()
     ls.connect()

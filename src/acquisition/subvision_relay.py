@@ -1,6 +1,4 @@
-import os
 import subprocess
-import shlex
 import socket
 import time
 
@@ -9,7 +7,7 @@ from collections import namedtuple
 
 Config = namedtuple('config', ['address', 'port', 'com', 'mux'])
 
-def main():
+def main() -> None:
     delay = 1
     time.sleep(delay)
     sock = connect()
@@ -24,7 +22,7 @@ def main():
     time.sleep(delay)
 
 
-def connect():  # This needs to be a contex manager
+def connect() -> socket.socket:  # This needs to be a contex manager
     # Read the settings.ini file
     config = read_settings()
     # Create a TCP/IP socket
@@ -36,9 +34,9 @@ def connect():  # This needs to be a contex manager
 
 
 
-def read_settings(filename="settings.ini"):
+def read_settings(filename: str = "settings.ini") -> Config:
     with open(filename, 'r') as fin:
-        dump = fin.readline()
+        _ = fin.readline()  # dump line
         address = fin.readline().strip().split('=')[1]
         port = int(fin.readline().strip().split('=')[1])
         com = int(fin.readline().strip().split('=')[1])
@@ -47,14 +45,14 @@ def read_settings(filename="settings.ini"):
     config = Config(address, port, com, mux)
     return config
 
-def start_server():
+def start_server() -> None:
     '''
     The arduino server will listen for connection to the relay switch
     '''
     run_command(r'C:\SubvisionAB\ShiftLEYWin\svShiftLEYwin.exe')
     #os.system(r'C:\SubvisionAB\ShiftLEYWin\svShiftLEYwin.exe')
 
-def run_command(command):
+def run_command(command: str) -> int | None:
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
     while True:
         output = process.stdout.readline()

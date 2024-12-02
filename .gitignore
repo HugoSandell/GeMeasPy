@@ -21,3 +21,9 @@ code/settings/config.py
 
 # data
 data/
+
+# ruff & uv
+.ruff_cache/
+.venv/
+.python-version
+uv.lock

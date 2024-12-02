@@ -3,9 +3,11 @@ import time
 from acquisition import utilities
 from acquisition import terrameter_commands as tc
 
+from connections import SSHConnection
+from typing import TextIO
 
 is_meas_delay = 60
-def main(connection, logfile, task_file):
+def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     # Read Info
     task_list = utilities.read_monitoring_tasks(task_file)
     # TODO: This should start only if there are measurements todo.
