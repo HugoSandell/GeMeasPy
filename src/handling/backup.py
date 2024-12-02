@@ -10,8 +10,10 @@ from settings.config import LOCAL_PATH_TO_DATA, \
                             SERVER_BACKUP_FOLDER, \
                             FILE_TRANSFER_DICTIONARY
 
+from typing import Callable, Any
 
-def timer(some_function):
+
+def timer(some_function: Callable[..., Any]) -> Callable[[], None]:
     def inner_function():
         start = time.time()
         some_function()
@@ -22,8 +24,9 @@ def timer(some_function):
 
 
 @timer
-def main():
+def main() -> None:
 
+    sftp, ssh = None, None
     time_started = time.time()
     settings = read_server_connection_parameters()
 
@@ -49,6 +52,8 @@ def main():
             except paramiko.SSHException:
                 print("Connection Error")
 
+            if sftp is None:
+                raise Exception("No Active Connection")
             N = len(root_path_local) + 1
             print('Starting..')
             for root, dirs, files in os.walk(root_path_local, topdown=True):
@@ -91,13 +96,18 @@ def main():
             with open(file_dictionary_name, 'wb') as p:
                 pickle.dump(file_dictionary, p)
             break
-        except:
-            print('Connectin closed.. Trying again!')
+        except (paramiko.SSHException, IOError, OSError) as e:
+            print(f'Connectin closed.. Trying again! Error: {e}')
             time_running = time.time() - time_started
             if time_running > 60*60*2:
                 # if running for longer than 2 hours
                 break
             continue
+        finally:
+            if sftp is not None:
+                sftp.close()
+            if ssh is not None:
+                ssh.close()
 
 
 if __name__ == "__main__":
