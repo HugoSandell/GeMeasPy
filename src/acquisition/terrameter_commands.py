@@ -1,15 +1,14 @@
-import os
 import datetime
+import os
 import time
-
 from shutil import rmtree
-from acquisition import utilities
-
-from settings.config import LOCAL_PATH_TO_DATA, \
-                            TERRAMETER_PROJECTS_FOLDER
+from typing import Any, TextIO
 
 from connections import SSHConnection
-from typing import TextIO, Any
+
+from acquisition import utilities
+from settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER
+
 
 def start_terrameter_software(connection: SSHConnection, display=0) -> None:
     connection.send_command_terrameter_software("killall terrameter\n")
@@ -68,7 +67,7 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
     if new_measurement:
         measuring_start_time = datetime.datetime.now()
         save_time_stamp(connection, measuring_start_time, task["id"])
-        log_str = "Measurement started at " + utilities.time_stamp_string(measuring_start_time)
+        log_str = "Measurement started at " + utilities.time_stamp_string_from_datetime(measuring_start_time)
         logfile.write(log_str + "\n")
         print(log_str)
         print("Start Measuring")
@@ -77,7 +76,7 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
     else:
         load_settings(connection, task["settings"])
         measurement_resume_time = datetime.datetime.now()
-        log_str = "Measurement resumed at " + utilities.time_stamp_string(measurement_resume_time)
+        log_str = "Measurement resumed at " + utilities.time_stamp_string_from_datetime(measurement_resume_time)
         logfile.write(log_str + "\n")
         print(log_str)
     connection.send_command_terrameter_software('m\n', time_to_sleep=60)
@@ -149,11 +148,11 @@ def read_time_stamp(connection: SSHConnection, task_id: int) -> datetime.datetim
 def task_completed(connection: SSHConnection, task_id: int, logfile: TextIO) -> None:
     measuring_start_time = read_time_stamp(connection, task_id)
     measurement_finish_time = datetime.datetime.now()
-    log_str = "Measurement finished at " + utilities.time_stamp_string(measurement_finish_time)
+    log_str = "Measurement finished at " + utilities.time_stamp_string_from_datetime(measurement_finish_time)
     logfile.write(log_str + "\n")
     print(log_str)
     measurement_duration = measurement_finish_time - measuring_start_time
-    log_str = "Measurement lasted for " + utilities.time_stamp_string(measurement_duration, 0)
+    log_str = "Measurement lasted for " + utilities.time_stamp_string_from_timedelta(measurement_duration)
     logfile.write(log_str + "\n")
     print(log_str)
     command = "rm /monitoring/task_{0:02d}_started".format(task_id)

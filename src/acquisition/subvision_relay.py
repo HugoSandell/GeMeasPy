@@ -1,9 +1,7 @@
-import subprocess
 import socket
+import subprocess
 import time
-
 from collections import namedtuple
-
 
 Config = namedtuple('config', ['address', 'port', 'com', 'mux'])
 
@@ -55,7 +53,10 @@ def start_server() -> None:
 def run_command(command: str) -> int | None:
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
     while True:
-        output = process.stdout.readline()
+        if (stdout := process.stdout) is None:
+            raise Exception('No output from the process')
+        else:
+            output = stdout.readline()
         if output == '' and process.poll() is not None:
             break
         if output:

@@ -1,16 +1,17 @@
 import os
-import time
 import pickle
+import time
+from posixpath import join as unixjoin
+from typing import Any, Callable
+
 import paramiko
 
-from posixpath import join as unixjoin
-
 from acquisition.utilities import read_server_connection_parameters
-from settings.config import LOCAL_PATH_TO_DATA, \
-                            SERVER_BACKUP_FOLDER, \
-                            FILE_TRANSFER_DICTIONARY
-
-from typing import Callable, Any
+from settings.config import (
+    FILE_TRANSFER_DICTIONARY,
+    LOCAL_PATH_TO_DATA,
+    SERVER_BACKUP_FOLDER,
+)
 
 
 def timer(some_function: Callable[..., Any]) -> Callable[[], None]:
@@ -54,10 +55,10 @@ def main() -> None:
 
             if sftp is None:
                 raise Exception("No Active Connection")
-            N = len(root_path_local) + 1
+            n = len(root_path_local) + 1
             print('Starting..')
             for root, dirs, files in os.walk(root_path_local, topdown=True):
-                relative_path = root[N:]
+                relative_path = root[n:]
                 relative_path_unix = relative_path.replace('\\', '/')
                 remote_path = unixjoin(root_remote_path, relative_path_unix)
                 # Create folder if needed

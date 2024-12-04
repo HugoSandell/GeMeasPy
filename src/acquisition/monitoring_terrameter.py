@@ -1,10 +1,10 @@
 import time
-
-from acquisition import utilities
-from acquisition import terrameter_commands as tc
+from typing import TextIO
 
 from connections import SSHConnection
-from typing import TextIO
+
+from acquisition import terrameter_commands as tc
+from acquisition import utilities
 
 is_meas_delay = 60
 def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:

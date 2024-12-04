@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from acquisition import connections, utilities
 from acquisition import monitoring_terrameter as monitoring
-
-from typing import Any
 
 
 class Instrument(ABC):

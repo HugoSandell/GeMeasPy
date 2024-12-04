@@ -1,7 +1,7 @@
 import time
-import paramiko
-
 from typing import Any
+
+import paramiko
 
 
 class SSHConnection():

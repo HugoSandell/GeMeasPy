@@ -1,8 +1,6 @@
 import sys
 
-from acquisition import utilities
-from acquisition import instruments
-
+from acquisition import instruments, utilities
 
 
 def run(task_file: str) -> None:

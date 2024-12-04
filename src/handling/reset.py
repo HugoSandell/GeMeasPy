@@ -1,5 +1,9 @@
 from acquisition.instruments import Terrameter
-from acquisition.terrameter_commands import check_transfer, transfer_project, delete_project
+from acquisition.terrameter_commands import (
+    check_transfer,
+    delete_project,
+    transfer_project,
+)
 
 
 def main() -> None:

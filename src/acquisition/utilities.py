@@ -1,14 +1,12 @@
+import datetime
+import json
 import os
 import sys
 import time
-import datetime
-import json
+from typing import Any, TextIO
 
 from acquisition import subvision_relay
-from settings.config import TERRAMETER_CONNECTION_FILE, \
-                            SERVER_BACKUP_CONNECTION_FILE
-
-from typing import TextIO, Any
+from settings.config import SERVER_BACKUP_CONNECTION_FILE, TERRAMETER_CONNECTION_FILE
 
 
 def progress_bar(wait_time_seconds: int, ticks=20) -> None:
@@ -26,21 +24,22 @@ def progress_bar(wait_time_seconds: int, ticks=20) -> None:
     sys.stdout.flush()
 
 
-def time_stamp_string(time_stamp: datetime.datetime|datetime.timedelta, mode=1) -> str:
-    match mode:
-        case 1:
-            return "{:d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}".format(
-                        time_stamp.year, time_stamp.month, time_stamp.day,
-                        time_stamp.hour, time_stamp.minute, time_stamp.second)
-        case _:
-            return "{:02d}:{:02d}:{:02d}".format(int(time_stamp.total_seconds() / 60 // 60),
-                                                int(time_stamp.total_seconds() / 60 % 60),
-                                                int(time_stamp.total_seconds() % 60))
+def time_stamp_string_from_timedelta(time_stamp: datetime.timedelta) -> str:
+    return "{:02d}:{:02d}:{:02d}".format(int(time_stamp.total_seconds() / 60 // 60),
+                                            int(time_stamp.total_seconds() / 60 % 60),
+                                            int(time_stamp.total_seconds() % 60))
 
 
-def read_ignore_comments(inFile: TextIO) -> str:
+def time_stamp_string_from_datetime(time_stamp: datetime.datetime) -> str:
+    return "{:d}/{:02d}/{:02d} {:02d}:{:02d}:{:02d}".format(
+                time_stamp.year, time_stamp.month, time_stamp.day,
+                time_stamp.hour, time_stamp.minute, time_stamp.second)
+
+
+
+def read_ignore_comments(in_file: TextIO) -> str:
     while True:
-        line = inFile.readline()
+        line = in_file.readline()
         if line.startswith('#'):
             continue
         return line.strip()
