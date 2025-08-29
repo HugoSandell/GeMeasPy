@@ -1,9 +1,12 @@
+import os
+
 from abc import ABC, abstractmethod
 from typing import Any
 
 from acquisition import connections, utilities
 from acquisition import monitoring_terrameter as monitoring
 
+from settings.config import LOG_FOLDER
 
 class Instrument(ABC):
     
@@ -19,14 +22,11 @@ class Instrument(ABC):
     def disconnect(self) -> None:
         pass
 
-
 class Terrameter(Instrument):
-
-
     def __init__(self) -> None:
         self.params = utilities.read_terrameter_connection_parameters()
         self.connection = None
-        self.logfile = open("logs.txt", 'a', 1)
+        self.logfile = open(os.path.join(LOG_FOLDER, "log.txt"), 'a', 1)
         self._write()
 
     def _write(self) -> None:
