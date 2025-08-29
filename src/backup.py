@@ -26,6 +26,8 @@ def timer(some_function: Callable[..., Any]) -> Callable[[], None]:
 
 @timer
 def main() -> None:
+    # set working directory
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
     sftp, ssh = None, None
     time_started = time.time()
@@ -109,7 +111,6 @@ def main() -> None:
                 sftp.close()
             if ssh is not None:
                 ssh.close()
-
 
 if __name__ == "__main__":
     main()

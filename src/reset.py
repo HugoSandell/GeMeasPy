@@ -1,3 +1,4 @@
+import os
 from acquisition.instruments import Terrameter
 from acquisition.terrameter_commands import (
     check_transfer,
@@ -7,6 +8,9 @@ from acquisition.terrameter_commands import (
 
 
 def main() -> None:
+    # set working directory
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
     # read connection and measurement settings
     #connection_parameters = read_terrameter_connection_parameters()
     ls = Terrameter()
