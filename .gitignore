@@ -10,14 +10,14 @@
 .vscode/
 
 # log file
-code/logs.txt
+src/logs.txt
 
 # settings files
-code/settings/connection_settings.json
-code/settings/server_backup_settings.json
+src/settings/connection_settings.json
+src/settings/server_backup_settings.json
 
 # global variables
-code/settings/config.py
+src/settings/config.py
 
 # data
 data/
