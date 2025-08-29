@@ -12,9 +12,10 @@
 # log file
 src/logs.txt
 
-# settings files
+# settings and task list files
 src/settings/connection_settings.json
 src/settings/server_backup_settings.json
+src/settings/monitoring_task_list.txt
 
 # global variables
 src/settings/config.py
