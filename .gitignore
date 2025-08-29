@@ -23,6 +23,9 @@ src/settings/config.py
 # data
 data/
 
+#logs
+logs/
+
 # ruff & uv
 .ruff_cache/
 .venv/
