@@ -26,6 +26,10 @@ class Terrameter(Instrument):
     def __init__(self) -> None:
         self.params = utilities.read_terrameter_connection_parameters()
         self.connection = None
+
+        os.makedirs(os.path.realpath(LOG_FOLDER), exist_ok=True)
+        if not os.path.isdir(LOG_FOLDER):
+            raise Exception("Failed to create directory '" + LOG_FOLDER + "'")
         self.logfile = open(os.path.join(LOG_FOLDER, "log.txt"), 'a', 1)
         self._write()
 
