@@ -24,7 +24,7 @@ class SSHConnection():
             raise Exception("No Active Connection")
         stdin, stdout, stderr = self.ssh.exec_command(command)
         exit_status = stdout.channel.recv_exit_status()  # wait for exit status
-        self.log.write(f"SHELL:{time.time().hex()}>{command}<{exit_status}\n")
+        self.log.write(f"SH:{time.time().hex()}>{command.encode().hex()}<{exit_status}\n")
         time.sleep(time_to_sleep)
         return stdin, stdout, stderr
 
@@ -32,7 +32,7 @@ class SSHConnection():
         if self.channel is None:
             raise Exception("No Active Connection")
         encoded_command = command.encode(encoding="UTF-8")
-        self.log.write(f"TERRA:{time.time().hex()}>{encoded_command.hex()}\n")
+        self.log.write(f"TM:{time.time().hex()}>{encoded_command.hex()}\n")
         self.channel.send(encoded_command)
         time.sleep(time_to_sleep)
             
@@ -42,7 +42,7 @@ class SSHConnection():
         # Receive, decode, log, and return data
         rx_raw = self.channel.recv(chars)
         rx_decoded = rx_raw.decode(encoding="UTF-8", errors='replace')
-        self.log.write(f"TERRA:{time.time().hex()}<{rx_raw.hex()}\n")
+        self.log.write(f"TM:{time.time().hex()}<{rx_raw.hex()}\n")
         return rx_decoded
 
     def _setup(self) -> bool:
