@@ -5,7 +5,7 @@ from acquisition.terrameter_commands import (
     delete_project,
     transfer_project,
 )
-
+from settings.config import TERRAMETER_MONITORING_FOLDER
 
 def main() -> None:
     # set working directory
@@ -18,7 +18,7 @@ def main() -> None:
     if ls.connection is None:
         raise Exception("No Active Connection")
     # Check if there are files to be transfered
-    stdin, stdout, stderr = ls.connection.send_command_shell("more /monitoring/new_day")
+    stdin, stdout, stderr = ls.connection.send_command_shell(f"more {TERRAMETER_MONITORING_FOLDER}/new_day")
     project_name = 'test'#stdout.readline().strip()
     if project_name != '':
         while not check_transfer(ls.connection):
@@ -28,7 +28,7 @@ def main() -> None:
     else:
         print("No files were to transfer")
 
-    ls.connection.send_command_shell("rm /monitoring/*")
+    ls.connection.send_command_shell(f"rm {TERRAMETER_MONITORING_FOLDER}/*")
     ls.connection.send_command_shell("shutdown -r 1")
     ls.disconnect()
 

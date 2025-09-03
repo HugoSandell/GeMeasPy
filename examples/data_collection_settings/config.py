@@ -6,6 +6,8 @@ LOG_FOLDER = r"../logs"
 
 # Path to projects folder on Terrameter
 TERRAMETER_PROJECTS_FOLDER = r"/media/mmcblk0p1/projects"
+# Path to monitoring folder on Terrameter - for tracking long term monitoring tasks
+TERRAMETER_MONITORING_FOLDER = r"/monitoring"
 # Path to data
 LOCAL_PATH_TO_DATA = r"/home/XXXXXXX/Documents/data/TestData"
 
