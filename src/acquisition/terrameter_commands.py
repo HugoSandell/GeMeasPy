@@ -34,7 +34,7 @@ def create_project(connection: SSHConnection) -> None:
     project_name = "{:4d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(
         project_time_stamp.year, project_time_stamp.month, project_time_stamp.day,
 		project_time_stamp.hour, project_time_stamp.minute, project_time_stamp.second)
-    new_project_command = "P {:s}\n".format()
+    new_project_command = f"P {project_name:s}\n"
     command = f"echo {project_name} > {TERRAMETER_MONITORING_FOLDER}/new_day"
     connection.send_command_shell(command)
     print("Create New Project!")
