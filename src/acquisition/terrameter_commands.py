@@ -178,7 +178,7 @@ def remove_control_files(connection: SSHConnection, task_list: list[dict[str, An
     command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     time.sleep(1)
-    project = stdout.readline().strip()
+    project = 'test' #stdout.readline().strip()
     for task in task_list:
         command = "rm /monitoring/task_{0:02d}_completed".format(task["id"])
         connection.send_command_shell(command)
@@ -194,7 +194,7 @@ def transfer_project(connection: SSHConnection) -> None:
     # get project name
     command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
-    project = stdout.readline().strip()
+    project = 'test' #stdout.readline().strip()
     # create 'zetsum' file
     command = "mkdir {}/{}/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project)
     stdin, stdout, stderr = connection.send_command_shell(command)
@@ -212,7 +212,7 @@ def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
     command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
-    project = stdout.readline().strip()
+    project = 'test'#stdout.readline().strip()
     zetsum = "{}/{}/zetsum/zetsum".format(LOCAL_PATH_TO_DATA, project)
     return os.path.isfile(zetsum)
 
