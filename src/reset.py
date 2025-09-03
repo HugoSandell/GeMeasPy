@@ -23,7 +23,7 @@ def main() -> None:
     if project_name != '':
         while not check_transfer(ls.connection):
             transfer_project(ls.connection)
-        print("Files ahve succesfully transferred to the pc!")
+        print("Files have succesfully transferred to the pc!")
         delete_project(ls.connection, project_name)
     else:
         print("No files were to transfer")
