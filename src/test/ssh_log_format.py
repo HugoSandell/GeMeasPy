@@ -15,7 +15,7 @@
 # Possible future work: Create new format that's more compact and easier to parse?
 # E.g. use binary format, tag fields with length prefixes instead of searching for separators, etc.
 
-import time
+import os
 
 TIMESTAMP_LENGTH = 16 # in characters
 
@@ -30,15 +30,27 @@ def parse_ssh_log_file(filepath: str) -> list[dict[str, str|bytes|int]]:
         <exit_status> is an integer exit status (only applicable for shell commands)
     raises
         ValueError if any line is not in the correct format
+        FileNotFoundError if the file does not exist
+        OSError for other file read errors
     """
     log_entries = []
-    with open(filepath, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if line == '':
-                continue
-            log_entry = parse_ssh_log_line(line)
-            log_entries.append(log_entry)
+    
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"File '{filepath}' does not exist")
+
+    try:
+        with open(filepath, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line == '':
+                    continue
+                try:
+                    log_entry = parse_ssh_log_line(line)
+                except ValueError as e:
+                    raise ValueError(f"Error parsing line '{line}': {e}")
+                log_entries.append(log_entry)
+    except OSError as e:
+        raise e
     return log_entries
 
 def parse_ssh_log_line(line: str) -> dict[str, str|bytes|int]:
