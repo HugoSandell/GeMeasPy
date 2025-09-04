@@ -1,37 +1,10 @@
+# TODO: Support multiple clients
+
 import paramiko
 import socket
 import threading
-from cmd import Cmd
-from host_key_store import get_test_host_key
-
-class Shell(Cmd):
-    def __init__(self, stdin=None, stdout=None):
-        super(Shell, self).__init__(completekey='tab', stdin=stdin, stdout=stdout)
-        self.intro = None
-        self.use_rawinput=False
-        self.prompt="root@LS123456789:~# "
-
-    def do_exit(self, arg):
-        """Exit the shell."""
-        return True
-
-    def default(self, line: str):
-        """Handle unrecognized commands."""
-        print('In: ' + line.replace('\r', r'\r').replace('\n', r'\n'))
-        self.print_line_sh(line)
-    
-    def print_sh(self, chars: str):
-        print('Out: ' + chars.replace('\r', r'\r').replace('\n', r'\n'))
-        # make sure stdout is set and not closed
-        if self.stdout and not self.stdout.closed:
-            self.stdout.write(chars)
-            self.stdout.flush()
-
-    def print_line_sh(self, chars: str):
-        self.print_sh(chars + '\r\n')
-
-    def emptyline(self):
-        self.print_sh('\r\n')
+from .shell import SimShell
+from .host_key_store import get_test_host_key
 
 class InstrumentServerSimulator():
     """SSH server for testing. Will be used to emulate Terrameter server"""
@@ -85,7 +58,7 @@ class InstrumentServerSimulator():
             channel = session.accept()
             stdio = channel.makefile('rwU')
 
-            self.client_shell = Shell(stdio, stdio)
+            self.client_shell = SimShell(stdio, stdio)
             self.client_shell.cmdloop()
 
             session.close()
