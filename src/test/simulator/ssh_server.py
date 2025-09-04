@@ -7,13 +7,12 @@ from host_key_store import get_test_host_key
 class Shell(Cmd):
     def __init__(self, stdin=None, stdout=None):
         super(Shell, self).__init__(completekey='tab', stdin=stdin, stdout=stdout)
-        self.intro = 'Test Shell'
+        self.intro = None
         self.use_rawinput=False
-        self.prompt="ssh> "
+        self.prompt="root@LS123456789:~# "
 
     def do_exit(self, arg):
         """Exit the shell."""
-        self.print_line_sh("Exiting shell.")
         return True
 
     def default(self, line: str):
