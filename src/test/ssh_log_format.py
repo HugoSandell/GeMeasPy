@@ -1,4 +1,4 @@
-# Utility for reading ssh log files
+# Utilities for ssh log files
 # Log format (v1):
 # Each line is formatted as:
 # TYPE:TIMESTAMP?DATA(<EXIT_STATUS)
