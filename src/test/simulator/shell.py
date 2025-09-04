@@ -6,6 +6,7 @@ class SimShell(Cmd):
         self.intro = None
         self.use_rawinput=False
         self.prompt="root@LS123456789:~# "
+        self.do_EOF = self.do_exit # Tries to call do_EOF when connection is closed, so redirect to do_exit
 
     def do_exit(self, arg):
         """Exit the shell."""

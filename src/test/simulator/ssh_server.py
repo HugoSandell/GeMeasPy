@@ -1,5 +1,5 @@
 # TODO: Support multiple clients
-
+from typing import *
 import paramiko
 import socket
 import threading
@@ -11,12 +11,11 @@ class InstrumentServerSimulator():
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
         self._is_running = threading.Event()
         self._socket = None
-        self._client_shell = None
         self._listen_thread = None
         self._host_key = host_key
-        
         self._username = username
         self._password = password
+        self._sessions: List[SSHTestServerSession] = []
 
     def start(self, host: str = 'localhost', port: int = 2222):
         if not self._is_running.is_set():
@@ -30,6 +29,7 @@ class InstrumentServerSimulator():
 
             self._socket.settimeout(1.0)
             self._socket.bind((host, port))
+            
 
             self._listen_thread = threading.Thread(target=self._listen)
             self._listen_thread.start()
@@ -37,6 +37,9 @@ class InstrumentServerSimulator():
     def stop(self):
         if self._is_running.is_set():
             self._is_running.clear()
+            for session in self._sessions:
+                session.close()
+            self._sessions.clear()
             if self._listen_thread:
                 self._listen_thread.join()
                 self._listen_thread = None
@@ -44,41 +47,71 @@ class InstrumentServerSimulator():
                 self._socket.close()
                 self._socket = None
     
-    def _connect(self, client):
+    def _connect(self, client: socket.socket):
         try:
-            session = paramiko.Transport(client)
-            session.add_server_key(self._host_key)
+            transport = paramiko.Transport(client)
+            transport.add_server_key(self._host_key)
 
             server = SSHTestServerInterface(username=self._username, password=self._password)
             try:
-                session.start_server(server=server)
+                transport.start_server(server=server)
             except paramiko.SSHException:
                 return
 
-            channel = session.accept()
+            channel = transport.accept(5)
             stdio = channel.makefile('rwU')
 
-            self.client_shell = SimShell(stdio, stdio)
-            self.client_shell.cmdloop()
-
-            session.close()
+            client_shell = SimShell(stdio, stdio)
+            session = SSHTestServerSession(client_shell, transport)
+            session.start()
+            self._sessions.append(session)
         except:
             pass
 
     def _listen(self):
         while self._is_running.is_set():
+            self._sessions = [s for s in self._sessions if s._is_open.is_set()]
             try:
-                self._socket.listen(1)
+                self._socket.listen(2)
                 client, addr = self._socket.accept()
                 self._connect(client)
             except TimeoutError as e:
                 continue
             except Exception as e:
                 print(f"Server error: {e}")
+            # Clean up closed sessions
+        
+            
+class SSHTestServerSession():
+    def __init__(self, client_shell: SimShell, transport: paramiko.Transport):
+        self._is_open = threading.Event()
+        self._client_shell = client_shell
+        self._transport = transport
+        self._thread = threading.Thread(target=self._serve)
+
+    def start(self):
+        if not self._thread.is_alive():
+            self._is_open.set()
+            self._thread.start()
+
+    def _serve(self):
+        self._client_shell.cmdloop()
+        if self._transport.is_active():
+            self._transport.close()
+
+    def close(self):
+        if not self._is_open.is_set():
+            return
+        self._is_open.clear()
+        if self._thread.is_alive():
+            self._client_shell.onecmd("exit")
+            self._thread.join(5.0)
+        if self._transport.is_active():
+            self._transport.close()
 
 class SSHTestServerInterface(paramiko.server.ServerInterface):
     """For paramiko"""
-    def __init__(self, username: str = 'root', password: str = ''):
+    def __init__(self, username: str, password: str):
         self.event = threading.Event()
 
     def check_channel_request(self, kind: str, chanid: int) -> int:
