@@ -14,6 +14,7 @@ class SimShell(Cmd):
     
     def do_EOF(self, arg):
         print('shell.py | EOF received', flush=True)
+        return True
     
     def do_help(self, arg):
         return super().do_help(arg)

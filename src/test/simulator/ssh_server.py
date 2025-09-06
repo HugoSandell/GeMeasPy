@@ -115,6 +115,7 @@ class SSHTestServerChannel():
                  server_interface: SSHTestServerInterface, 
                  paramiko_channel: paramiko.Channel, 
                  exec_command: str | None = None):
+        
         self.is_open = threading.Event()
         self._thread = threading.Thread(target=self._serve)
         self._server_interface = server_interface
@@ -125,58 +126,80 @@ class SSHTestServerChannel():
         if not self._thread.is_alive():
             self.is_open.set()
             self._thread.start()
+            print(f'ssh_server.py | channel {self._paramiko_channel.chanid} opened')
 
+    def close(self):
+        if not self.is_open.is_set():
+            return
+        if self._paramiko_channel.active:
+            try:
+                self._paramiko_channel.close()
+            except EOFError as e:
+                pass
+                
+        self.is_open.clear()
+        print(f'ssh_server.py | channel {self._paramiko_channel.chanid} closed')
+        
     def _serve(self):
             self._server_interface.event.clear()
             if self._exec_command:
+                print(f'ssh_server.py | channel {self._paramiko_channel.chanid} > Executing command: {self._exec_command}')
                 self._paramiko_channel.send(self._exec_command)
                 self._paramiko_channel.send_exit_status(0)
-                self._paramiko_channel.close()
+                print(f'ssh_server.py | channel {self._paramiko_channel.chanid} > Command executed')
             else:
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
                     shell = SimShell(stdin, stdout)
+                    print(f'ssh_server.py | channel {self._paramiko_channel.chanid} > CMDLoop')
                     shell.cmdloop()
+                    print(f'ssh_server.py | channel {self._paramiko_channel.chanid} > CMDLoop done')
                 except socket.error as e:
                     print(f"ssh_server.py | Socket error: {e}")
                 except Exception as e:
                     print(f"ssh_server.py | Session error: {e}")
-
-    def close(self):
-        if not self.is_open.is_set():
-            return
-        if self._thread.is_alive():
-            self._thread.join(5.0)
-        self.is_open.clear()
+            self.close()
 
 
 class SSHTestServerSession():
     def __init__(self, transport: paramiko.Transport, server_interface: SSHTestServerInterface):
-        self._transport = transport
         self.is_open = threading.Event()
         self.server_interface = server_interface
         self.channels: List[SSHTestServerChannel] = []
+        self._transport = transport
+        self._thread = threading.Thread(target = self._serve)
+        self.__close_event = threading.Event()
 
     def open(self):
         self.is_open.set()
+        self._thread.start()
 
     def close(self):
+        self.__close_event.set()
         for channel in self.channels:
             channel.close()
+        if self._thread.is_alive():
+            self._thread.join(1)
         self.channels.clear()
         self._transport.close()
         self.is_open.clear()
 
     def _serve(self):
-        while self._transport.is_alive():
+        while not self.__close_event.is_set() and self._transport.is_alive():
             self.channels = [c for c in self.channels if c.is_open.is_set()]
             event_set = self.server_interface.event.wait(1)
             if event_set:
                 request = self.server_interface.requests.pop()
                 match request:
                     case (paramiko_channel, command):
-                        self.channels.append(SSHTestServerChannel(self.server_interface, paramiko_channel, command))
+                        print('ssh_server.py | opening exec channel')
+                        new_channel = SSHTestServerChannel(self.server_interface, paramiko_channel, command)
+                        new_channel.start()
+                        self.channels.append(new_channel)
                     case (paramiko_channel):
-                        self.channels.append(SSHTestServerChannel(self.server_interface, paramiko_channel))
+                        print('ssh_server.py | opening shell channel')
+                        new_channel = SSHTestServerChannel(self.server_interface, paramiko_channel)
+                        new_channel.start()
+                        self.channels.append(new_channel)
                 self.server_interface.event.clear()
