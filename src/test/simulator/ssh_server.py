@@ -1,10 +1,14 @@
 # TODO: Support multiple clients
+import time
 from typing import *
-import paramiko
 import socket
 import threading
 from .shell import SimShell
 from .host_key_store import get_test_host_key
+import paramiko
+
+type ShellRequest = paramiko.Channel
+type ExecRequest = Tuple[paramiko.Channel, str]
 
 class InstrumentServerSimulator():
     """SSH server for testing. Will be used to emulate Terrameter server"""
@@ -30,7 +34,6 @@ class InstrumentServerSimulator():
             self._socket.settimeout(1.0)
             self._socket.bind((host, port))
             
-
             self._listen_thread = threading.Thread(target=self._listen)
             self._listen_thread.start()
     
@@ -55,64 +58,34 @@ class InstrumentServerSimulator():
             server = SSHTestServerInterface(username=self._username, password=self._password)
             try:
                 transport.start_server(server=server)
-            except paramiko.SSHException:
+            except paramiko.SSHException as e:
+                print(f"ssh_server.py | Failed to start SSH server: {str(e)}", flush=True)
                 return
 
-            channel = transport.accept(5)
-            stdio = channel.makefile('rwU')
-
-            client_shell = SimShell(stdio, stdio)
-            session = SSHTestServerSession(client_shell, transport)
-            session.start()
+            session = SSHTestServerSession(transport, server)
+            session.open()
             self._sessions.append(session)
-        except:
-            pass
+            print(f'ssh_server.py | Number of sessions: {str(len(self._sessions))}', flush=True)
+        except Exception as e:
+            print(f"ssh_server.py | Failed to connect to {client.getpeername()}: {e}", flush=True)
 
     def _listen(self):
         while self._is_running.is_set():
-            self._sessions = [s for s in self._sessions if s._is_open.is_set()]
+            self._sessions = [s for s in self._sessions if s.is_open.is_set()]
             try:
-                self._socket.listen(2)
+                self._socket.listen(1)
                 client, addr = self._socket.accept()
                 self._connect(client)
             except TimeoutError as e:
                 continue
             except Exception as e:
-                print(f"Server error: {e}")
-            # Clean up closed sessions
-        
-            
-class SSHTestServerSession():
-    def __init__(self, client_shell: SimShell, transport: paramiko.Transport):
-        self._is_open = threading.Event()
-        self._client_shell = client_shell
-        self._transport = transport
-        self._thread = threading.Thread(target=self._serve)
-
-    def start(self):
-        if not self._thread.is_alive():
-            self._is_open.set()
-            self._thread.start()
-
-    def _serve(self):
-        self._client_shell.cmdloop()
-        if self._transport.is_active():
-            self._transport.close()
-
-    def close(self):
-        if not self._is_open.is_set():
-            return
-        self._is_open.clear()
-        if self._thread.is_alive():
-            self._client_shell.onecmd("exit")
-            self._thread.join(5.0)
-        if self._transport.is_active():
-            self._transport.close()
-
+                print(f"ssh_server.py | Server error: {e}")
+                
 class SSHTestServerInterface(paramiko.server.ServerInterface):
     """For paramiko"""
     def __init__(self, username: str, password: str):
         self.event = threading.Event()
+        self.requests = [ShellRequest | ExecRequest]
 
     def check_channel_request(self, kind: str, chanid: int) -> int:
         if kind == 'session':
@@ -128,9 +101,82 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
         return 'password'
 
     def check_channel_shell_request(self, channel: paramiko.Channel) -> bool:
+        self.requests.append(channel)
         self.event.set()
         return True
 
     def check_channel_exec_request(self, channel: paramiko.Channel, command: bytes) -> bool:
+        self.requests.append((channel, command.decode()))
         self.event.set()
         return True
+
+class SSHTestServerChannel():
+    def __init__(self, 
+                 server_interface: SSHTestServerInterface, 
+                 paramiko_channel: paramiko.Channel, 
+                 exec_command: str | None = None):
+        self.is_open = threading.Event()
+        self._thread = threading.Thread(target=self._serve)
+        self._server_interface = server_interface
+        self._paramiko_channel = paramiko_channel
+        self._exec_command = exec_command
+
+    def start(self):
+        if not self._thread.is_alive():
+            self.is_open.set()
+            self._thread.start()
+
+    def _serve(self):
+            self._server_interface.event.clear()
+            if self._exec_command:
+                self._paramiko_channel.send(self._exec_command)
+                self._paramiko_channel.send_exit_status(0)
+                self._paramiko_channel.close()
+            else:
+                try:
+                    stdin = self._paramiko_channel.makefile('rU')
+                    stdout = self._paramiko_channel.makefile('wU')
+                    shell = SimShell(stdin, stdout)
+                    shell.cmdloop()
+                except socket.error as e:
+                    print(f"ssh_server.py | Socket error: {e}")
+                except Exception as e:
+                    print(f"ssh_server.py | Session error: {e}")
+
+    def close(self):
+        if not self.is_open.is_set():
+            return
+        if self._thread.is_alive():
+            self._thread.join(5.0)
+        self.is_open.clear()
+
+
+class SSHTestServerSession():
+    def __init__(self, transport: paramiko.Transport, server_interface: SSHTestServerInterface):
+        self._transport = transport
+        self.is_open = threading.Event()
+        self.server_interface = server_interface
+        self.channels: List[SSHTestServerChannel] = []
+
+    def open(self):
+        self.is_open.set()
+
+    def close(self):
+        for channel in self.channels:
+            channel.close()
+        self.channels.clear()
+        self._transport.close()
+        self.is_open.clear()
+
+    def _serve(self):
+        while self._transport.is_alive():
+            self.channels = [c for c in self.channels if c.is_open.is_set()]
+            event_set = self.server_interface.event.wait(1)
+            if event_set:
+                request = self.server_interface.requests.pop()
+                match request:
+                    case (paramiko_channel, command):
+                        self.channels.append(SSHTestServerChannel(self.server_interface, paramiko_channel, command))
+                    case (paramiko_channel):
+                        self.channels.append(SSHTestServerChannel(self.server_interface, paramiko_channel))
+                self.server_interface.event.clear()

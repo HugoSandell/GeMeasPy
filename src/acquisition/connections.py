@@ -56,12 +56,14 @@ class SSHConnection():
                 self.channel = transport.open_session()
             else:
                 raise Exception("Transport is None")
-            self.channel.get_pty()
+            #self.channel.get_pty()
             self.channel.invoke_shell()
             print("Connected!")
             return True
         except paramiko.AuthenticationException:
             print('Failed!')
+        except paramiko.SSHException as e:
+            print(f'Failed! {e}')
         return False
 
     def disconnect(self) -> None:

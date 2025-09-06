@@ -107,7 +107,6 @@ def is_measuring(connection: SSHConnection) -> bool:
     connection.send_command_terrameter_software(is_measuring_command)
     channel_output = connection.read_channel_buffer(1024)
     print(channel_output)
-    # print(measuring)
     found = channel_output.find("measure\t0")
     if found != -1:
         return False
