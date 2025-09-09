@@ -1,3 +1,4 @@
+# Simply starts the test server. Can be used for manual testing
 from simulator import ssh_server
 
 if __name__ == "__main__":
