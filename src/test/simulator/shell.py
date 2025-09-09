@@ -2,37 +2,40 @@ from cmd import Cmd
 from typing import *
 
 class SimShell(Cmd):
+    """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, stdin: IO[str]=None, stdout: IO[str]=None):
         super(SimShell, self).__init__(completekey='tab', stdin=stdin, stdout=stdout)
-        self.intro = 'Test Shell.\n'
-        self.use_rawinput=False
+        self.use_rawinput=False # Required to read from the provided stdin insted of sys.stdin 
         self.prompt="root@LS123456789:~# "
 
     def do_exit(self, arg):
-        """Exit the shell."""
-        return True
+        """Called when 'exit' command is entered."""
+        return True # Shell should be closed (causes cmdloop to exit)
     
     def do_EOF(self, arg):
-        print('shell.py | EOF received', flush=True)
-        return True
+        """Called when EOF is read."""
+        return True # Shell should be closed (causes cmdloop to exit)
     
     def do_help(self, arg):
-        return super().do_help(arg)
+        # Will probably never be used, so print an empty line for now.
+        self.print_line_sh()
     
     def default(self, line: str):
-        """Handle unrecognized commands."""
-        print('In: ' + line.replace('\r', r'\r').replace('\n', r'\n'), flush=True)
-        self.print_line_sh(line)
+        # Emulate bash
+        self.print_line_sh(f'-bash: {line.split()[0]}: command not found')
+        # zsh version
+        #self.print_line_sh(f'zsh: {line.split()[0]}: command not found')
 
     def print_sh(self, chars: str):
-        print('Out: ' + chars.replace('\r', r'\r').replace('\n', r'\n'), flush=True)
-        # make sure stdout is set and not closed
+        """Write string to stdout"""
         if self.stdout and not self.stdout.closed:
             self.stdout.write(chars)
             self.stdout.flush()
 
-    def print_line_sh(self, chars: str):
+    def print_line_sh(self, chars: str = ''):
+        """Write string to stdout with an appended Windows-style line terminator (CRLF)"""
         self.print_sh(chars + '\r\n')
 
     def emptyline(self):
-        self.print_sh('\r\n')
+        # Do nothing when receiving an empty line
+        pass
