@@ -37,7 +37,7 @@ if __name__ == "__main__":
     server.start()
     utilities.progress_bar(1, 50)
 
-    test_thread = threading.Thread(target=test_simulator, daemon=True)
+    test_thread = threading.Thread(target=test_simulator)
     test_thread.start()
     try:
         while test_thread.is_alive():
