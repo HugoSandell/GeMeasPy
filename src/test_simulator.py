@@ -26,7 +26,9 @@ def test_simulator():
             stdin, stdout, stderr = conn.send_command_shell('echo "Hello, World!"')
             print("Command sent.")
             print("STDOUT:", stdout.read().decode())
-            print("STDERR:", stderr.read().decode())
+            stderr_output = stderr.read()
+            if len(stderr_output) > 0:
+                print("STDERR:", stderr_output.decode())
             conn.disconnect()
         else:
             print("Failed to establish connection.")
@@ -37,8 +39,8 @@ if __name__ == "__main__":
     server = ssh_server.InstrumentServerSimulator()
     print("Starting server.")
     server.start()
-    utilities.progress_bar(1, 50)
-
+    while not server.is_listening():
+        time.sleep(0.1)
     test_thread = threading.Thread(target=test_simulator)
     test_thread.start()
     try:
