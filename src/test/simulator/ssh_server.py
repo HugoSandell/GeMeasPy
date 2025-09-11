@@ -1,8 +1,12 @@
 from typing import *
 import socket
 import threading
-from .shell import SimShell
-from .host_key_store import get_test_host_key
+if __name__ != "__main__": # Is there a better way to do this?
+    from .shell import SimShell
+    from .host_key_store import get_test_host_key
+else:
+    from shell import SimShell
+    from host_key_store import get_test_host_key
 import paramiko
 
 type ShellRequest = paramiko.Channel 
