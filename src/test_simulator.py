@@ -1,3 +1,4 @@
+import os
 from acquisition import connections
 from test.simulator import ssh_server
 from acquisition import utilities
@@ -31,6 +32,7 @@ def test_simulator():
             print("Failed to establish connection.")
 
 if __name__ == "__main__":
+    os.makedirs(LOG_FOLDER, exist_ok=True)
     paramiko.util.log_to_file(f'{LOG_FOLDER}/paramiko.log')
     server = ssh_server.InstrumentServerSimulator()
     print("Starting server.")
