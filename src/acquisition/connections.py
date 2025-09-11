@@ -4,7 +4,7 @@ from typing import Any
 
 import paramiko
 
-import utilities
+from acquisition import utilities
 
 from settings.config import LOG_FOLDER
 

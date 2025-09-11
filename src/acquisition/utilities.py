@@ -172,4 +172,4 @@ def wait(start_time: str) -> None:
 def timestamp_hex() -> str:
     nano_to_milli = 1.0 / 1_000_000
     timestamp = int(time.time_ns() * nano_to_milli)
-    return f'{timestamp:0+x}'
+    return f'{timestamp:016x}'
