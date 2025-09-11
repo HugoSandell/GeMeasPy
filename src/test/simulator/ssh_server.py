@@ -218,3 +218,11 @@ class SSHTestServerSession():
                 # Clear handled requests
                 self.server_interface.requests.clear()
                 self.server_interface.has_request.clear()
+
+
+# Run server. For manual testing.
+if __name__ == "__main__":
+    sim = InstrumentServerSimulator()
+    sim.start()
+    input("Press Enter to stop the server...\n")
+    sim.stop()
