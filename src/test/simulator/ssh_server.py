@@ -61,6 +61,10 @@ class InstrumentServerSimulator():
             self._socket.close()
             self._socket = None
     
+    def is_listening(self):
+        if self._listen_thread:
+            return self._listen_thread.is_alive() and self._is_running.is_set()
+    
     def _connect(self, client: socket.socket):
         """Establish a new session with the client on the given socket"""
         try:
