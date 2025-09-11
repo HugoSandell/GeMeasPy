@@ -27,7 +27,8 @@ def parse_ssh_log_file(filepath: str) -> list[dict[str, str|bytes|int]]:
         <timestamp> is an integer timestamp in milliseconds
         <direction> is '>' for sent data and '<' for received data
         <data> is the data as a bytes object
-        <exit_status> is an integer exit status (only applicable for shell commands)
+        <exit_status> is an integer exit status code (only applicable for shell commands). 
+            Can be None if no exit code was found in log file (if e.g. host failed to respond)
     raises
         ValueError if any line is not in the correct format
         FileNotFoundError if the file does not exist
@@ -86,8 +87,8 @@ def parse_ssh_log_line(line: str) -> dict[str, str|bytes|int]:
     data_index = direction_index + 1
     data_end_index = len(line) # assume data goes to end of line unless exit status is found
 
-    # Check minimum length - type + ':' + timestamp + direction + at least 1 char of data
-    if len(line) < type_separator_index + 1 + TIMESTAMP_LENGTH + 1 + 1:
+    # Check minimum length - type + ':' + timestamp + direction
+    if len(line) < type_separator_index + 1 + TIMESTAMP_LENGTH + 1:
         raise ValueError("Invalid log line format - too short")
     
     # Get timestamp
@@ -107,10 +108,13 @@ def parse_ssh_log_line(line: str) -> dict[str, str|bytes|int]:
         exit_status_index = line.find('<', data_index) + 1
         if exit_status_index not in range(len(line)):
             raise ValueError("Invalid log line format - missing exit status for shell log")
-        try:
-            log_entry['exit_status'] = int(line[exit_status_index:])
-        except ValueError:
-            raise ValueError("Invalid exit status - must be integer")
+        if exit_status_index < len(line):
+            try:
+                log_entry['exit_status'] = int(line[exit_status_index:])
+            except ValueError:
+                raise ValueError("Invalid exit status - must be integer")
+        else:
+            log_entry['exit_status'] = None
         data_end_index = exit_status_index - 1
     
     # Get data
