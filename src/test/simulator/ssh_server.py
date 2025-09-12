@@ -4,9 +4,11 @@ import threading
 if __name__ != "__main__": # Is there a better way to do this?
     from .shell import SimShell
     from .host_key_store import get_test_host_key
+    from .terrameter import TerrameterLS
 else:
     from shell import SimShell
     from host_key_store import get_test_host_key
+    from terrameter import TerrameterLS
 import paramiko
 
 type ShellRequest = paramiko.Channel 
@@ -19,7 +21,8 @@ Consists of a paramiko Channel to communicate through and a command str to execu
 class InstrumentServerSimulator():
     """SSH server for testing. Emulates a server connected to a Terrameter"""
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
-        self._is_running = threading.Event()
+        self.instrument = TerrameterLS()
+        self.is_running = threading.Event()
         self._socket = None
         self._listen_thread = None # Thread that listens for new connections and sets up sessions
         self._host_key = host_key
@@ -30,9 +33,9 @@ class InstrumentServerSimulator():
     def start(self, host: str = 'localhost', port: int = 2222):
         """Run the server"""
         # Check if already running
-        if self._is_running.is_set():
+        if self.is_running.is_set():
             return
-        self._is_running.set()
+        self.is_running.set()
         
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -52,7 +55,7 @@ class InstrumentServerSimulator():
             session.close()
         self._sessions.clear()
 
-        self._is_running.clear()
+        self.is_running.clear()
         if self._listen_thread:
             self._listen_thread.join()
             self._listen_thread = None
@@ -63,7 +66,7 @@ class InstrumentServerSimulator():
     
     def is_listening(self):
         if self._listen_thread:
-            return self._listen_thread.is_alive() and self._is_running.is_set()
+            return self._listen_thread.is_alive() and self.is_running.is_set()
     
     def _connect(self, client: socket.socket):
         """Establish a new session with the client on the given socket"""
@@ -71,14 +74,14 @@ class InstrumentServerSimulator():
             transport = paramiko.Transport(client)
             transport.add_server_key(self._host_key)
 
-            server = SSHTestServerInterface(username=self._username, password=self._password)
+            paramiko_interface = SSHTestServerInterface(username=self._username, password=self._password)
             try:
-                transport.start_server(server=server)
+                transport.start_server(server=paramiko_interface)
             except paramiko.SSHException as e:
                 print(f"ssh_server.py | Failed to start SSH server: {str(e)}", flush=True)
                 return
 
-            session = SSHTestServerSession(transport, server)
+            session = SSHTestServerSession(transport, self, paramiko_interface)
             session.open()
             self._sessions.append(session)
         except Exception as e:
@@ -86,7 +89,7 @@ class InstrumentServerSimulator():
 
     def _listen(self):
         """Listen for new connections and """
-        while self._is_running.is_set():
+        while self.is_running.is_set():
             # Clear out closed sessions. Not the best way of doing it, but it should be fine.
             self._sessions = [s for s in self._sessions if s.is_open.is_set()]
             try:
@@ -99,7 +102,7 @@ class InstrumentServerSimulator():
                 print(f"ssh_server.py | Listening error: {e}")
                 
 class SSHTestServerInterface(paramiko.server.ServerInterface):
-    """Parmiko server overrides. Stores requests for new channels."""
+    """Paramiko server overrides. Stores requests for new channels."""
     def __init__(self, username: str, password: str):
         self.has_request = threading.Event()
         self.requests: List[ShellRequest | ExecRequest] = []
@@ -132,6 +135,7 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
 class SSHTestServerChannel():
     """Serves a paramiko SSH channel."""
     def __init__(self, 
+                 server: InstrumentServerSimulator,
                  server_interface: SSHTestServerInterface, 
                  paramiko_channel: paramiko.Channel, 
                  exec_command: str | None = None):
@@ -140,6 +144,7 @@ class SSHTestServerChannel():
         """
         self.is_open = threading.Event()
         self._thread = threading.Thread(target=self._serve)
+        self._server = server
         self._server_interface = server_interface
         self._paramiko_channel = paramiko_channel
         self._exec_command = exec_command
@@ -174,7 +179,7 @@ class SSHTestServerChannel():
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    shell = SimShell(stdin, stdout)
+                    shell = SimShell(self._server.instrument , stdin, stdout)
                     shell.cmdloop()
                 except socket.error as e:
                     print(f"ssh_server.py | Socket error: {e}")
@@ -184,8 +189,9 @@ class SSHTestServerChannel():
 
 class SSHTestServerSession():
     """Stores an SSH session (paramiko Transport) and manages its SSH channels"""
-    def __init__(self, transport: paramiko.Transport, server_interface: SSHTestServerInterface):
+    def __init__(self, transport: paramiko.Transport, server: InstrumentServerSimulator, server_interface: SSHTestServerInterface):
         self.is_open = threading.Event()
+        self._server = server
         self.server_interface = server_interface
         self.channels: List[SSHTestServerChannel] = []
         self._transport = transport
@@ -220,7 +226,7 @@ class SSHTestServerSession():
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
-                            new_channel = SSHTestServerChannel(self.server_interface, paramiko_channel)
+                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel)
                             new_channel.start()
                             self.channels.append(new_channel)
                 # Clear handled requests
