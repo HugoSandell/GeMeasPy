@@ -73,12 +73,28 @@ class SimShell(Cmd):
             return self.default(f"Q {arg}")
     
     def do_w(self, arg: str):
-        """Read terrameter settings from file"""
+        """Read Terrameter settings from file"""
         if self.terrameter_cli_active:
             self.instrument.read_settings(arg)
             self.print_line_sh("Read settings from file: {} 0") # assume 0
         else:
             return self.default(f"w {arg}")
+    
+    def do_m(self, arg: str):
+        """Start/stop Terrameter measurement process"""
+        raise NotImplementedError()
+
+    def do_S(self, arg: str):
+        """Create new Terrameter station"""
+        raise NotImplementedError()
+    
+    def do_T(self, arg: str):
+        """Create new Terrameter task"""
+        raise NotImplementedError()
+    
+    def do_P(self, arg: str):
+        """Create new Terrameter project"""
+        raise NotImplementedError()
         
     ##########    BASH COMMANDS    ##########
     def do_exit(self, arg: str):
