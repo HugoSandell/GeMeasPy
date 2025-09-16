@@ -76,6 +76,7 @@ class SimShell(Cmd):
         """Read terrameter settings from file"""
         if self.terrameter_cli_active:
             self.instrument.read_settings(arg)
+            self.print_line_sh("Read settings from file: {} 0") # assume 0
         else:
             return self.default(f"w {arg}")
         

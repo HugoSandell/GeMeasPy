@@ -96,3 +96,48 @@ TXSPI:OUT --> MyId=212 TxId=205 M_REQ_VALUE 0
 def TERRAMETER_UNKNOWN_COMMAND(command: str):
     return f"""*** Unknown Command ({command[0] or ' '})
     Type ? for a list of known commands."""
+
+
+TERRAMETER_DEFAULT_SETTINGS = {
+    "SampleRateHz": 1000,
+    "BaseFreqHz": 50,
+    "SP_TimeSec": 1,
+    "Acq_DelaySec": 0.1,
+    "Acq_TimeSec": 0.1,
+    "IPSP_TimeSec": 0.5,
+    "IP_OffTimeSec": 0.5,
+    "IP_MinOffTimeSec": 0.5,
+    "AGC_TimeSec": 0.06,
+    "SNR_TimeSec": 0,
+    "ErrorLimit": 0.01,
+    "IP_WindowSecList": [0.01, 0.02, 0.02],
+    "MeasureMode": 2,
+    "Measure_SNR": False,
+    "DoInitialAGC": False,
+    "AutoStack": True,
+    "StackLimitsLow": 1,
+    "StackLimitsHigh": 1,
+    "NumberOfPulses": 4,
+    "StackNorm": 0,
+    "CurrentLimitLowAmpere": 0.001,
+    "CurrentLimitHighAmpere": 0.2,
+    "VoltageLimitLowVolt": 0,
+    "VoltageLimitHighVolt": 400,
+    "PowerLimitLowWatt": 0,
+    "PowerLimitHighWatt": 250,
+    "PowerLossLimitHighWatt": 25,
+    "MarginLimitHigh": 1.2,
+    "ElectrodeResistanceBadLimitLowOhm": 1000,
+    "ElectrodeResistanceBadLimitHighOhm": 300000,
+    "ElectrodeTestCurrentAmpere": 0.02,
+    "ElectrodeTest": 1,
+    "Fullwaveform": 1,
+    "LogTemperature": 2,
+    "LogSelfPotential": 2,
+    "LogShortNormal": 1,
+    "LogLongNormal": 1,
+    "LogLateral18foot": 1,
+    "LogFluidResistivity": 1,
+    "BoreholeStepUp": 1,
+    "BoreholeStepDown": 1
+}

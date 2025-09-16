@@ -1,6 +1,7 @@
 from typing import *
 from vfs import VirtualFileSystem
 import xml.etree.ElementTree as ElementTree
+import constants
 
 type _Value = str | int | float | bool
 
@@ -19,7 +20,7 @@ class TerrameterLS():
     def __init__(self):
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
-        self._settings: Dict[str, str | int | float | bool] = {}
+        self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
 
     def set_variable(self, variable_name: str, value: _Value) -> None:
         """raises
