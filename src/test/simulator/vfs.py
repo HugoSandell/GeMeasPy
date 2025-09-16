@@ -53,6 +53,7 @@ class VirtualFileSystem:
             return True
     
     def read(self, path: str) -> bytes:
+        """Read file. Raises FileNotFoundError if file doesn't exist, or PermissionError if file can't be read."""
         file = self._traverse(path) 
         if hasattr(file, 'content'):
             return file.content
@@ -60,6 +61,7 @@ class VirtualFileSystem:
             raise PermissionError("[Errno 13] Permission denied: '{}'")
         
     def write(self, path: str, data: bytes):
+        """Write data to file. Raises FileNotFoundError if file doesn't exist, or PermissionError if file can't be written to."""
         file = self._traverse(path) 
         if hasattr(file, 'content'):
             file.content = data

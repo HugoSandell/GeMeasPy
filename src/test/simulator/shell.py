@@ -22,7 +22,8 @@ class SimShell(Cmd):
         return True # Shell should be closed (causes cmdloop to exit)
     
     ##########    TERRAMETER COMMANDS    ##########
-    def do_s(self, arg):
+    def do_s(self, arg: str):
+        """Set terrameter variable"""
         if not self.terrameter_cli_active:
             return self.default(f"s {arg}")
         try:
@@ -43,7 +44,8 @@ class SimShell(Cmd):
             self.print_line_sh()
             return
         
-    def do_g(self, arg):
+    def do_g(self, arg: str):
+        """Get terrameter variable"""
         if not self.terrameter_cli_active:
             return self.default(f"g {arg}")
         try:
@@ -61,16 +63,24 @@ class SimShell(Cmd):
             self.print_line_sh()
             return
 
-    def do_Q(self, arg):
+    def do_Q(self, arg: str):
+        """Quit terrameter"""
         if self.terrameter_cli_active:
             self.print_line_sh(constants.TERRAMETER_OUTRO)
             self.terrameter_cli_active = False
             self.prompt=f"root@LS123456789:{self.cwd.as_posix()}# "
         else:
             return self.default(f"Q {arg}")
+    
+    def do_w(self, arg: str):
+        """Read terrameter settings from file"""
+        if self.terrameter_cli_active:
+            self.instrument.read_settings(arg)
+        else:
+            return self.default(f"w {arg}")
         
     ##########    BASH COMMANDS    ##########
-    def do_exit(self, arg):
+    def do_exit(self, arg: str):
         """Called when 'exit' command is entered."""
         if self.terrameter_cli_active:
             return self.default(f"exit {arg}")
@@ -78,7 +88,7 @@ class SimShell(Cmd):
             return True # Shell should be closed (causes cmdloop to exit)
 
     
-    def do_terrameter(self, arg):
+    def do_terrameter(self, arg: str):
         if self.terrameter_cli_active:
             self.default(f"terrameter {arg}")
         else:
@@ -86,7 +96,7 @@ class SimShell(Cmd):
             self.terrameter_cli_active = True
             self.prompt = "> "
 
-    def do_help(self, arg):
+    def do_help(self, arg: str):
         # Will probably never be used, so print an empty line for now.
         self.print_line_sh()
     
