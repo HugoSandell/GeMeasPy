@@ -28,12 +28,12 @@ class _Dir(_Node):
 
 class VirtualFileSystem:
     def __init__(self):
-        self._root = _Dir()
+        self._root = _Dir("")
         self._root.children['/'] = _Dir('/')
         self._root.children['\\'] = self._root.children['/']
     
     def _traverse(self, path: str) -> _Node:
-        parts = list(pathlib.PurePath(path).parts)
+        parts = list(pathlib.PurePosixPath(path).parts)
         current_node = self._root
         while len(parts) > 0:
             next_name = parts.pop(0)
