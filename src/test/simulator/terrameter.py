@@ -74,7 +74,13 @@ class TerrameterLS():
         
         if xml_root.tag.lower() != "SETTINGS":
             raise ParseError("Root tag is not <Settings>")
-        for child in xml_root:   
+        for child in xml_root:
+            # IP_WindowSecList is a special case
+            if child.tag == "IP_WindowSecList":
+                try:
+                    self._settings["IP_WindowSecList"] = [float(s) for s in child.text.split()]
+                except Exception:
+                    raise ParseError(f"Failed to parse '{text}' as list of floats")
             if child.tag in self._settings:
                 text = child.text
                 try:
