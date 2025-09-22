@@ -7,7 +7,7 @@ from . import constants
 
 class SimShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: Optional[IO[str]]=None, stdout: Optional[IO[str]]=None):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str]):
         super(SimShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
         self.cwd: pathlib.PurePosixPath = pathlib.PurePosixPath("/home/root")
@@ -158,7 +158,7 @@ class SimShell(Cmd):
             self.stdout.flush()
 
     def print_line_sh(self, chars: str = ""):
-        """Write string to stdout with an appended Windows-style line terminator (CRLF)"""
+        """Write string to stdout with an appended line terminator (LF)"""
         self.print_sh(chars + "\n")
 
     def emptyline(self):
