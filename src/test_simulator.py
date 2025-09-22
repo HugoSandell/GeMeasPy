@@ -11,6 +11,15 @@ from settings.config import LOG_FOLDER
 
 conn: connections.SSHConnection = None
 
+def print_output():
+    global conn
+    while not conn.channel.closed:
+        recv = conn.read_channel_buffer(256)
+        if len(recv) > 0:
+            print("<", recv, flush=True)
+        time.sleep(0.1)
+    print("Closed", flush=True)
+
 def test_simulator():
     global conn
     params = {
@@ -23,14 +32,22 @@ def test_simulator():
     conn = connections.SSHConnection(params)
     if conn:
         if conn.connected:
-            print("Connection established successfully.")
-            stdin, stdout, stderr = conn.send_command_shell('echo "Hello, World!"')
-            print("Command sent.")
+            print_thread: threading.Thread = threading.Thread(target=print_output)
+            print_thread.start()
+            print("Connection established successfully.", flush=True)
+            stdin, stdout, stderr = conn.send_command_shell('echo "Hello, World!"\n', 5)
+            print("Command sent.", flush=True)
             print("STDOUT:", stdout.read().decode())
             stderr_output = stderr.read()
             if len(stderr_output) > 0:
-                print("STDERR:", stderr_output.decode())
+                print("STDERR:", stderr_output.decode(), flush=True)
+            
+            conn.send_command_terrameter_software("echo hello\n")
+            
+            time.sleep(0.5)
+            print("Disconnecting", flush=True)
             conn.disconnect()
+            print_thread.join()
         else:
             print("Failed to establish connection.")
 
