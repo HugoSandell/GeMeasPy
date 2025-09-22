@@ -1,7 +1,9 @@
+import time
 from typing import *
-from vfs import VirtualFileSystem
+from .vfs import VirtualFileSystem
 import xml.etree.ElementTree as ElementTree
-import constants
+from . import constants
+from .project import Project
 
 type _Value = str | int | float | bool
 
@@ -21,13 +23,15 @@ class TerrameterLS():
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
+        self._projects: Dict[str, Project] = {} # "name": object
+        self._current_project = "" # Name of current project, if any 
 
     def set_variable(self, variable_name: str, value: _Value) -> None:
-        """raises
+        """Write to a Terrameter variable.
+        Raises:
             TypeError if any argument is of an incorrect type.
             ValueError if the variable name or value is invalid.
-            PermissionError if the variable is read-only
-        """
+            PermissionError if the variable is read-only"""
         if type(variable_name) != str:
             raise TypeError("Variable name must be of type str.")
         if variable_name not in self._variables:
@@ -48,7 +52,8 @@ class TerrameterLS():
         variable.value = value
     
     def get_variable(self, variable_name: str) -> str | int | float | bool:
-        """Raises:  
+        """Read a Terrameter variable.
+        Raises:  
             TypeError if the variable name is of an incorrect type.
             ValueError if the variable name is invalid"""
         if type(variable_name) != str:
@@ -58,7 +63,7 @@ class TerrameterLS():
         return self._variables[variable_name].value
 
     def read_settings(self, path: str):
-        """Read data from file. 
+        """Read settings from file. 
         Raises: 
             FileNotFoundError if file doesn't exist.
             PermissionError if file can't be written to.
@@ -89,3 +94,66 @@ class TerrameterLS():
                 except Exception:
                     raise ParseError(f"Failed to parse '{text}' as {type(self._settings[child.tag])}")
                 self._settings[child.tag] = child.text
+
+    def create_project(self, name: str=""):
+        """Create a new project. 
+        Returns the final name of the new project, which may differ from the one provided.""" 
+        number_separator = "_" # Character that separates the name from the number in case of conflict
+        if name == "":
+            # Special case if no name provided
+            name = "Project"
+            number_separator = ""
+            
+        resolved_name = name # Name to make unique if necessary
+        
+        if name in self._projects: 
+            # Resolve name conflict by appending number
+            project_number = 1
+            done = False
+            # Find unused number suffix
+            while not done:
+                resolved_name = f"{name}{number_separator}{project_number}"
+                done = True # Assume done (unique name + suffix)
+                for existing_project_name in self._projects:
+                    # Collision test is case insensitive
+                    if existing_project_name.lower() == resolved_name.lower(): 
+                        project_number += 1
+                        done = False # Counter-example found
+        new_project = Project(resolved_name)
+        self._projects[resolved_name] = new_project
+        return resolved_name
+
+    def create_task(self, name: str, 
+                    spread_file: str, protocol_file: str, 
+                    spacing: Tuple[int, int ,int], unknown: Tuple[int, int, int]):
+        if self._current_project not in self._projects:
+            raise RuntimeError("Current project is not set or does not exist.")
+        project = self._projects[self._current_project]
+        project.create_task(name, spread_file, protocol_file, spacing, unknown)
+        raise NotImplementedError()
+
+    def measure(self):
+        """Perform measurements"""        
+        # Get the project and tasks to work on
+        if self._current_project not in self._projects:
+            return
+        project = self._projects[self._current_project]
+        unfinished_tasks = [task for task in project.tasks if not task.is_complete]
+        
+        while len(unfinished_tasks) > 0:
+            # Get task
+            current_task = unfinished_tasks[0]
+            # Make sure task is still relevant
+            if current_task not in project.tasks or current_task.is_complete:
+                unfinished_tasks.pop(0)
+                continue
+
+            # Perform task
+            time.sleep(2) # Pretend to measure
+            
+            # Finish task
+            current_task.is_complete = True
+            unfinished_tasks.pop(0)
+        
+        # Reset values
+        self._variables["measure"].value = 0
