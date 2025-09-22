@@ -112,6 +112,10 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
             return paramiko.OPEN_SUCCEEDED
         return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
+    def check_channel_pty_request(self, channel: paramiko.Channel, term: str, width: int, height: int, 
+                                  pixelwidth: int, pixelheight: int, modes):
+        return True        
+
     def check_auth_password(self, username: str, password: str) -> int:
         if (username == 'root') and (password == ''):
             return paramiko.AUTH_SUCCESSFUL
@@ -172,7 +176,10 @@ class SSHTestServerChannel():
             self._server_interface.has_request.clear()
             if self._exec_command:
                 # Serve command execution request
-                self._paramiko_channel.send(self._exec_command)
+                stdin = self._paramiko_channel.makefile('rU')
+                stdout = self._paramiko_channel.makefile('wU')
+                shell = SimShell(self._server.instrument , stdin, stdout)
+                shell.onecmd(self._exec_command)
                 self._paramiko_channel.send_exit_status(0)
             else:
                 # Serve shell request
@@ -182,7 +189,8 @@ class SSHTestServerChannel():
                     shell = SimShell(self._server.instrument , stdin, stdout)
                     shell.cmdloop()
                 except socket.error as e:
-                    print(f"ssh_server.py | Socket error: {e}")
+                    if "Socket is closed" not in e.args:
+                        print(f"ssh_server.py | Socket error: {e}")
                 except Exception as e:
                     print(f"ssh_server.py | Session error: {e}")
             self.close()
