@@ -1,8 +1,7 @@
 # Program Configuration
-# Relative paths are resolved relative to the src directory.
 
 # Folder to contain log files
-LOG_FOLDER = r"../logs"
+LOG_FOLDER = r"./logs"
 
 # Path to projects folder on Terrameter
 TERRAMETER_PROJECTS_FOLDER = r"/media/mmcblk0p1/projects"
