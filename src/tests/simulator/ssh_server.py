@@ -164,7 +164,7 @@ class SSHTestServerChannel():
         """Stop serving and close channel"""
         if not self.is_open.is_set():
             return
-        if self._paramiko_channel.active:
+        if not self._paramiko_channel.closed:
             try:
                 self._paramiko_channel.close()
             except EOFError:
@@ -176,17 +176,25 @@ class SSHTestServerChannel():
             self._server_interface.has_request.clear()
             if self._exec_command:
                 # Serve command execution request
-                stdin = self._paramiko_channel.makefile('rU')
-                stdout = self._paramiko_channel.makefile('wU')
-                shell = SimShell(self._server.instrument , stdin, stdout)
-                shell.onecmd(self._exec_command)
-                self._paramiko_channel.send_exit_status(0)
+                try:
+                    stdin = self._paramiko_channel.makefile('rU')
+                    stdout = self._paramiko_channel.makefile('wU')
+                    shell = SimShell(self._server.instrument, stdin, stdout)
+                    shell.onecmd(self._exec_command)
+                    self._paramiko_channel.send_exit_status(0)
+                    stdin.close()
+                    stdout.close()
+                except socket.error as e:
+                    if "Socket is closed" not in e.args:
+                        print(f"ssh_server.py | Socket error: {e}")
+                except Exception as e:
+                    print(f"ssh_server.py | Session error: {e}")
             else:
                 # Serve shell request
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    shell = SimShell(self._server.instrument , stdin, stdout)
+                    shell = SimShell(self._server.instrument, stdin, stdout)
                     shell.cmdloop()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
