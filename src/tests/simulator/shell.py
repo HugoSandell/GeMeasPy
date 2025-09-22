@@ -7,7 +7,7 @@ from . import constants
 
 class SimShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str]=None, stdout: IO[str]=None):
+    def __init__(self, instrument: TerrameterLS, stdin: Optional[IO[str]]=None, stdout: Optional[IO[str]]=None):
         super(SimShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
         self.cwd: pathlib.PurePosixPath = pathlib.PurePosixPath("/home/root")
@@ -125,6 +125,9 @@ class SimShell(Cmd):
             self.print_line_sh(constants.TERRAMETER_INTRO)
             self.terrameter_cli_active = True
             self.prompt = "> "
+            
+    def do_echo(self, arg: str):
+        self.print_line_sh(arg.strip())
 
     def do_help(self, arg: str):
         # Will probably never be used, so print an empty line for now.
