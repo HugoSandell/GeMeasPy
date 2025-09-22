@@ -1,6 +1,7 @@
+# Temporary file for testing Terrameter emulator
 import os
 from acquisition import connections
-from test.simulator import ssh_server
+from tests.simulator import ssh_server
 from acquisition import utilities
 import threading
 import logging
