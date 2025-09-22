@@ -144,10 +144,10 @@ class SSHTestServerChannel():
         """
         self.is_open = threading.Event()
         self._thread = threading.Thread(target=self._serve)
-        self._server = server
-        self._server_interface = server_interface
-        self._paramiko_channel = paramiko_channel
-        self._exec_command = exec_command
+        self._server: InstrumentServerSimulator = server
+        self._server_interface: SSHTestServerInterface = server_interface
+        self._paramiko_channel: paramiko.Channel = paramiko_channel
+        self._exec_command: str = exec_command
 
     def start(self):
         """Start thread to serve channel"""
@@ -222,7 +222,7 @@ class SSHTestServerSession():
                 for request in self.server_interface.requests:
                     match request:
                         case (paramiko_channel, command): # Execution request
-                            new_channel = SSHTestServerChannel(self.server_interface, paramiko_channel, command)
+                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel, command)
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
@@ -235,7 +235,7 @@ class SSHTestServerSession():
 
 
 # Run server. For manual testing.
-if __name__ == "__main__":
+def run():
     sim = InstrumentServerSimulator()
     sim.start()
     input("Press Enter to stop the server...\n")
