@@ -13,12 +13,28 @@ conn: connections.SSHConnection = None
 
 def print_output():
     global conn
+    recv: str = ""
     while not conn.channel.closed:
-        recv = conn.read_channel_buffer(256)
+        recv = recv + conn.read_channel_buffer(256)
         if len(recv) > 0:
-            print("<", recv, flush=True)
-        time.sleep(0.1)
+            lines = recv.splitlines(True)
+            # Ignore unfinished line
+            recv = ""
+            if not lines[-1].endswith("\n"):
+                recv = lines[-1]
+            for line in lines:
+                print("\n<", line, end="", flush=True)
+        time.sleep(0.0001)
     print("Closed", flush=True)
+
+
+def send_to_sh(command: str):
+    print("\n>", command, flush=True)
+    conn.send_command_terrameter_software(f"{command}\n", time_to_sleep=0.1)
+
+def send_single_command(command: str):
+    print("\n>", command, flush=True)
+    stdin, stdout, stderr = conn.send_command_shell(f"{command}", time_to_sleep=0.1)
 
 def test_simulator():
     global conn
@@ -32,20 +48,31 @@ def test_simulator():
     conn = connections.SSHConnection(params)
     if conn:
         if conn.connected:
+            print("Connection established successfully.", flush=True)
             print_thread: threading.Thread = threading.Thread(target=print_output)
             print_thread.start()
-            print("Connection established successfully.", flush=True)
-            stdin, stdout, stderr = conn.send_command_shell('echo "Hello, World!"\n', 5)
-            print("Command sent.", flush=True)
-            print("STDOUT:", stdout.read().decode())
-            stderr_output = stderr.read()
-            if len(stderr_output) > 0:
-                print("STDERR:", stderr_output.decode(), flush=True)
+
+            project_name = "abc"
+
+            try:
+                send_to_sh("terrameter")
+                time.sleep(0.1)
+                send_single_command("touch /monitoring/new_day")
+                time.sleep(0.1)
+                send_single_command(f"echo {project_name} > /monitoring/new_day")
+                time.sleep(0.1)
+                send_to_sh("P test")
+                time.sleep(0.1)
+                send_to_sh("T Task1 /home/root/protocols/2X21.xml /home/root/protocols/Gradient_2x21.xml 1 1 1 0 0 0")
+                time.sleep(0.1)
+                send_to_sh("w /home/root/settings/testing1s.settings")
+                time.sleep(0.1)
+                send_to_sh("S 1")
+                time.sleep(2)
+            except Exception as e:
+                print(f"{type(e).__name__}: {e}")
+                print(f"Context: {e.__context__}")
             
-            conn.send_command_terrameter_software("echo hello\n")
-            
-            time.sleep(0.5)
-            print("Disconnecting", flush=True)
             conn.disconnect()
             print_thread.join()
         else:
@@ -58,7 +85,7 @@ if __name__ == "__main__":
     print("Starting server.")
     server.start()
     while not server.is_listening():
-        time.sleep(0.1)
+        time.sleep(0.0001)
     test_thread = threading.Thread(target=test_simulator)
     test_thread.start()
     try:
