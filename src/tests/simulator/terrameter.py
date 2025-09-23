@@ -24,7 +24,7 @@ class TerrameterLS():
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: Dict[str, Project] = {} # "name": object
-        self._current_project = "" # Name of current project, if any 
+        self._current_project: str = "" # Name of current project, if any 
 
     def set_variable(self, variable_name: str, value: _Value) -> None:
         """Write to a Terrameter variable.
@@ -121,6 +121,7 @@ class TerrameterLS():
                         done = False # Counter-example found
         new_project = Project(resolved_name)
         self._projects[resolved_name] = new_project
+        self._current_project = resolved_name
         return resolved_name
 
     def create_task(self, name: str, 
