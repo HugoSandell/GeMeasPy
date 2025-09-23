@@ -18,7 +18,7 @@ class _Variable:
         self.readonly = readonly
 
 class TerrameterLS():
-    """A simulated Terrameter LS instrument"""
+    """An emulated Terrameter LS instrument"""
     def __init__(self):
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()

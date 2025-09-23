@@ -2,11 +2,11 @@ from typing import *
 import socket
 import threading
 if __name__ != "__main__": # Is there a better way to do this?
-    from .shell import SimShell
+    from .shell import TerrameterShell
     from .host_key_store import get_test_host_key
     from .terrameter import TerrameterLS
 else:
-    from shell import SimShell
+    from shell import TerrameterShell
     from host_key_store import get_test_host_key
     from terrameter import TerrameterLS
 import paramiko
@@ -18,7 +18,7 @@ type ExecRequest = Tuple[paramiko.Channel, str]
 """A request for a command execution session. 
 Consists of a paramiko Channel to communicate through and a command str to execute."""
 
-class InstrumentServerSimulator():
+class InstrumentServerEmulator():
     """SSH server for testing. Emulates a server connected to a Terrameter"""
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
         self.instrument = TerrameterLS()
@@ -139,7 +139,7 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
 class SSHTestServerChannel():
     """Serves a paramiko SSH channel."""
     def __init__(self, 
-                 server: InstrumentServerSimulator,
+                 server: InstrumentServerEmulator,
                  server_interface: SSHTestServerInterface, 
                  paramiko_channel: paramiko.Channel, 
                  exec_command: str | None = None):
@@ -148,7 +148,7 @@ class SSHTestServerChannel():
         """
         self.is_open = threading.Event()
         self._thread = threading.Thread(target=self._serve)
-        self._server: InstrumentServerSimulator = server
+        self._server: InstrumentServerEmulator = server
         self._server_interface: SSHTestServerInterface = server_interface
         self._paramiko_channel: paramiko.Channel = paramiko_channel
         self._exec_command: str = exec_command
@@ -179,7 +179,7 @@ class SSHTestServerChannel():
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    shell = SimShell(self._server.instrument, stdin, stdout)
+                    shell = TerrameterShell(self._server.instrument, stdin, stdout)
                     shell.onecmd(self._exec_command)
                     self._paramiko_channel.send_exit_status(0)
                     stdin.close()
@@ -192,7 +192,7 @@ class SSHTestServerChannel():
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    shell = SimShell(self._server.instrument, stdin, stdout)
+                    shell = TerrameterShell(self._server.instrument, stdin, stdout)
                     shell.cmdloop()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
@@ -201,7 +201,7 @@ class SSHTestServerChannel():
 
 class SSHTestServerSession():
     """Stores an SSH session (paramiko Transport) and manages its SSH channels"""
-    def __init__(self, transport: paramiko.Transport, server: InstrumentServerSimulator, server_interface: SSHTestServerInterface):
+    def __init__(self, transport: paramiko.Transport, server: InstrumentServerEmulator, server_interface: SSHTestServerInterface):
         self.is_open = threading.Event()
         self._server = server
         self.server_interface = server_interface
@@ -248,7 +248,7 @@ class SSHTestServerSession():
 
 # Run server. For manual testing.
 def run():
-    sim = InstrumentServerSimulator()
-    sim.start()
+    emu = InstrumentServerEmulator()
+    emu.start()
     input("Press Enter to stop the server...\n")
-    sim.stop()
+    emu.stop()

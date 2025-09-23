@@ -5,10 +5,10 @@ from typing import *
 from .terrameter import TerrameterLS
 from . import constants
 
-class SimShell(Cmd):
+class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str]):
-        super(SimShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
+        super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
         self.cwd: pathlib.PurePosixPath = pathlib.PurePosixPath("/home/root")
         self.use_rawinput=False # Required to read from the provided stdin insted of sys.stdin 
@@ -168,5 +168,5 @@ class SimShell(Cmd):
 def run():
     import sys
     instrument = TerrameterLS()
-    shell = SimShell(instrument, sys.stdin, sys.stdout)
+    shell = TerrameterShell(instrument, sys.stdin, sys.stdout)
     shell.cmdloop()

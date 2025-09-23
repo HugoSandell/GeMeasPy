@@ -1,7 +1,7 @@
 # Temporary file for testing Terrameter emulator
 import os
 from acquisition import connections
-from tests.simulator import ssh_server
+from tests.emulator import ssh_server
 from acquisition import utilities
 import threading
 import logging
@@ -36,7 +36,7 @@ def send_single_command(command: str):
     print("\n>", command, flush=True)
     stdin, stdout, stderr = conn.send_command_shell(f"{command}", time_to_sleep=0.1)
 
-def test_simulator():
+def test_emulator():
     global conn
     params = {
         'hostname': 'localhost',
@@ -81,12 +81,12 @@ def test_simulator():
 if __name__ == "__main__":
     os.makedirs(LOG_FOLDER, exist_ok=True)
     paramiko.util.log_to_file(f'{LOG_FOLDER}/paramiko.log')
-    server = ssh_server.InstrumentServerSimulator()
+    server = ssh_server.InstrumentServerEmulator()
     print("Starting server.")
     server.start()
     while not server.is_listening():
         time.sleep(0.0001)
-    test_thread = threading.Thread(target=test_simulator)
+    test_thread = threading.Thread(target=test_emulator)
     test_thread.start()
     try:
         while test_thread.is_alive():
