@@ -131,7 +131,6 @@ class TerrameterLS():
             raise RuntimeError("Current project is not set or does not exist.")
         project = self._projects[self._current_project]
         project.create_task(name, spread_file, protocol_file, spacing, unknown)
-        raise NotImplementedError()
 
     def measure(self):
         """Perform measurements"""        
