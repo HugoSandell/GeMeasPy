@@ -186,9 +186,7 @@ class SSHTestServerChannel():
                     stdout.close()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
-                        print(f"ssh_server.py | Socket error: {e}")
-                except Exception as e:
-                    print(f"ssh_server.py | Session error: {e}")
+                        raise e
             else:
                 # Serve shell request
                 try:
@@ -198,9 +196,7 @@ class SSHTestServerChannel():
                     shell.cmdloop()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
-                        print(f"ssh_server.py | Socket error: {e}")
-                except Exception as e:
-                    print(f"ssh_server.py | Session error: {e}")
+                        raise e
             self.close()
 
 class SSHTestServerSession():
