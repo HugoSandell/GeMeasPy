@@ -74,7 +74,7 @@ class SimShell(Cmd):
             case "P":
                 # Create new Terrameter project
                 try:
-                    if len(arg_split) == 1:
+                    if len(arg_split) == 0:
                         # Default name: Project
                         created_project_name = self.instrument.create_project()
                     else:
