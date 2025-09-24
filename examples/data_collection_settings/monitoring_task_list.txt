@@ -15,11 +15,11 @@
 Task1
 2X21.xml
 Gradient_2x21.xml
-testing1s.settings
+IP100_1sec.settings
 1 1 1
 # Task 2
 Task2
 2X21.xml
 DipoleDipole2x21.xml
-testing1s.settings
+IP100_1sec.settings
 1 1 1
