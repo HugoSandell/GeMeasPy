@@ -9,7 +9,6 @@ from acquisition.connections import SSHConnection
 from acquisition import utilities
 from settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER, TERRAMETER_MONITORING_FOLDER
 
-
 def start_terrameter_software(connection: SSHConnection, display=0) -> None:
     connection.send_command_terrameter_software("killall terrameter\n")
     connection.send_command_terrameter_software('export DISPLAY="localhost:{0:2.1f}"\n'.format(display))
@@ -18,7 +17,10 @@ def start_terrameter_software(connection: SSHConnection, display=0) -> None:
     elif display == 10:
         print("Starting terrameter software in remote (X11) screen] ")
     connection.send_command_terrameter_software("terrameter\n")
-    utilities.progress_bar(60)
+    if os.getenv("USETERRAMETEREMULATOR") is not None:
+        utilities.progress_bar(1) # Using emulated terrameter; assume near-zero startup time
+    else:
+        utilities.progress_bar(50)
     connection.send_command_terrameter_software("s unattendedmode 1\n")
     clear_buffer(connection, 0)
 

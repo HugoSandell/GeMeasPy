@@ -1,6 +1,8 @@
 from typing import *
 import socket
 import threading
+import os
+
 if __name__ != "__main__": # Is there a better way to do this?
     from .shell import TerrameterShell
     from .host_key_store import get_test_host_key
@@ -36,6 +38,8 @@ class InstrumentServerEmulator():
         if self.is_running.is_set():
             return
         self.is_running.set()
+        
+        os.environ['USETERRAMETEREMULATOR'] = '1' # Let the SUT know we're running the emulator
         
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
