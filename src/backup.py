@@ -106,6 +106,9 @@ def main() -> None:
                 # if running for longer than 2 hours
                 break
             continue
+        except KeyboardInterrupt as e:
+            # Handle keyboard interrupts gracefully
+            print("Backup interrupted")
         finally:
             if sftp is not None:
                 sftp.close()

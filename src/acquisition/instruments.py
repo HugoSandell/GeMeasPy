@@ -51,7 +51,15 @@ class Terrameter(Instrument):
             raise Exception("No Active Connection")
         self.logfile.write("Starting Monitoring Software\n")
         print("Starting Monitoring Software")
-        monitoring.main(self.connection, self.logfile, task_file)
+        try:
+            monitoring.main(self.connection, self.logfile, task_file)
+        except KeyboardInterrupt:
+            # Handle keyboard interrupts gracefully 
+            if self.connection.connected:
+                print("Interrupted")
+                self.connection.send_command_terrameter_software("Q\n")
+                self.connection.send_command_shell("exit")
+                self.disconnect()
 
     def disconnect(self) -> None:
         if self.connection is None:
