@@ -19,12 +19,12 @@ def main() -> None:
         raise Exception("No Active Connection")
     # Check if there are files to be transfered
     stdin, stdout, stderr = ls.connection.send_command_shell(f"more {TERRAMETER_MONITORING_FOLDER}/new_day")
-    project_name = 'test'#stdout.readline().strip()
+    project_name = stdout.readline().strip()
     if project_name != '':
         while not check_transfer(ls.connection):
             transfer_project(ls.connection)
         print("Files have succesfully transferred to the pc!")
-        #delete_project(ls.connection, project_name)
+        delete_project(ls.connection, project_name)
     else:
         print("No files were to transfer")
 

@@ -33,9 +33,9 @@ def create_project(connection: SSHConnection) -> None:
     command = f"touch {TERRAMETER_MONITORING_FOLDER}/new_day"
     connection.send_command_shell(command)
     project_time_stamp = datetime.datetime.now()
-    project_name = "test" #"{:4d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(
-        #project_time_stamp.year, project_time_stamp.month, project_time_stamp.day,
-		#project_time_stamp.hour, project_time_stamp.minute, project_time_stamp.second)
+    project_name = "{:4d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(
+        project_time_stamp.year, project_time_stamp.month, project_time_stamp.day,
+	    project_time_stamp.hour, project_time_stamp.minute, project_time_stamp.second)
     new_project_command = f"P {project_name:s}\n"
     command = f"echo {project_name} > {TERRAMETER_MONITORING_FOLDER}/new_day"
     connection.send_command_shell(command)
@@ -179,7 +179,7 @@ def remove_control_files(connection: SSHConnection, task_list: list[dict[str, An
     command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     time.sleep(1)
-    project = 'test' #stdout.readline().strip()
+    project = stdout.readline().strip()
     for task in task_list:
         command = f"rm {TERRAMETER_MONITORING_FOLDER}/task_{0:02d}_completed".format(task["id"])
         connection.send_command_shell(command)
@@ -195,7 +195,7 @@ def transfer_project(connection: SSHConnection) -> None:
     # get project name
     command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
-    project = 'test' #stdout.readline().strip()
+    project = stdout.readline().strip()
     # create 'zetsum' file
     command = "mkdir {}/{}/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project)
     stdin, stdout, stderr = connection.send_command_shell(command)
@@ -213,7 +213,7 @@ def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
     command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
-    project = 'test'#stdout.readline().strip()
+    project = stdout.readline().strip()
     zetsum = "{}/{}/zetsum/zetsum".format(LOCAL_PATH_TO_DATA, project)
     return os.path.isfile(zetsum)
 
