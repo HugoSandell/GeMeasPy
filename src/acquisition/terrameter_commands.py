@@ -20,7 +20,7 @@ def start_terrameter_software(connection: SSHConnection, display=0) -> None:
     if os.getenv("USETERRAMETEREMULATOR") is not None:
         utilities.progress_bar(1) # Using emulated terrameter; assume near-zero startup time
     else:
-        utilities.progress_bar(50)
+        utilities.progress_bar(30)
     connection.send_command_terrameter_software("s unattendedmode 1\n")
     clear_buffer(connection, 0)
 
