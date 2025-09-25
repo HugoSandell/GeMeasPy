@@ -1,0 +1,21 @@
+***********************************************************
+New Terrameter Monitoring Session Starts
+This software created by Aristeidis Nivorlis
+Establishing Secure Shell Connection...
+Connected!
+Starting Monitoring Software
+Checking if its a New Day or should resume..
+Its a New Day!
+Starting New Project
+Measure Task #1
+Measurement started at 2025/09/25 02:24:30
+Waiting for measurement to finish...
+Measurement finished at 2025/09/25 02:31:28
+Measurement lasted for 00:00:00
+Task #1 Finished!
+Measure Task #2
+Measurement started at 2025/09/25 02:31:45
+Waiting for measurement to finish...
+Measurement finished at 2025/09/25 02:45:13
+Measurement lasted for 00:00:00
+Task #2 Finished!
