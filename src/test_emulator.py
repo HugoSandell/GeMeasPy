@@ -65,7 +65,7 @@ def test_emulator():
                 time.sleep(0.1)
                 send_to_sh("T Task1 /home/root/protocols/2X21.xml /home/root/protocols/Gradient_2x21.xml 1 1 1 0 0 0")
                 time.sleep(0.1)
-                send_to_sh("w /home/root/settings/IP100_1sec.settings")
+                send_to_sh("w /home/root/settings/CABIN.settings")
                 time.sleep(0.1)
                 send_to_sh("S 1")
                 time.sleep(2)
