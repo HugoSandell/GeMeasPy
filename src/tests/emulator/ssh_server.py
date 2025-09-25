@@ -3,14 +3,9 @@ import socket
 import threading
 import os
 
-if __name__ != "__main__": # Is there a better way to do this?
-    from .shell import TerrameterShell
-    from .host_key_store import get_test_host_key
-    from .terrameter import TerrameterLS
-else:
-    from shell import TerrameterShell
-    from host_key_store import get_test_host_key
-    from terrameter import TerrameterLS
+from shell import TerrameterShell
+from host_key_store import get_test_host_key
+from terrameter import TerrameterLS
 import paramiko
 
 type ShellRequest = paramiko.Channel 

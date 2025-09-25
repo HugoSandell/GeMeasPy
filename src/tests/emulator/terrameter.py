@@ -1,9 +1,9 @@
 import time
 from typing import *
-from .vfs import VirtualFileSystem
+from vfs import VirtualFileSystem
 import xml.etree.ElementTree as ElementTree
-from . import constants
-from .project import Project
+import constants
+from project import Project
 
 type _Value = str | int | float | bool
 

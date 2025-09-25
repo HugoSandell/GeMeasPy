@@ -2,8 +2,8 @@ from cmd import Cmd
 import pathlib
 import argparse
 from typing import *
-from .terrameter import TerrameterLS
-from . import constants
+from terrameter import TerrameterLS
+import constants
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
