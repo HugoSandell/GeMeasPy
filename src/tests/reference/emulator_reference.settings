@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Settings>
+
+    <Measure_SNR>false</Measure_SNR>
+    <DoInitialAGC>false</DoInitialAGC>
+    <SP_TimeSec>1</SP_TimeSec>
+    <AGC_TimeSec>0.06</AGC_TimeSec>
+    <IPSP_TimeSec>0.5</IPSP_TimeSec>
+    <SNR_TimeSec>0</SNR_TimeSec>
+    <StackNorm>0</StackNorm>
+    <AutoStack>true</AutoStack>
+    
+
+    
+    <StackLimitsLow>1</StackLimitsLow>
+    <StackLimitsHigh>4</StackLimitsHigh>
+    <ErrorLimit>0.01</ErrorLimit>
+	
+    <!-- Transmitter -->
+    <CurrentLimitLowAmpere>0.001</CurrentLimitLowAmpere>
+    <CurrentLimitHighAmpere>0.01</CurrentLimitHighAmpere>
+    <VoltageLimitLowVolt>0</VoltageLimitLowVolt>
+    <VoltageLimitHighVolt>600</VoltageLimitHighVolt>
+    <PowerLimitLowWatt>0</PowerLimitLowWatt>
+    <PowerLimitHighWatt>250</PowerLimitHighWatt>
+    <PowerLossLimitHighWatt>25</PowerLossLimitHighWatt>
+    <MarginLimitHigh>1.3</MarginLimitHigh>
+	
+    <!-- Electrode Test -->
+    <ElectrodeResistanceBadLimitLowOhm>30000</ElectrodeResistanceBadLimitLowOhm>
+    <ElectrodeResistanceBadLimitHighOhm>500000</ElectrodeResistanceBadLimitHighOhm>
+    <ElectrodeTestCurrentAmpere>0.02</ElectrodeTestCurrentAmpere>
+    <ElectrodeTest>0</ElectrodeTest>
+	
+    <!-- Record full wave form 0=off 1=on -->
+    <Fullwaveform>1</Fullwaveform>
+	
+    <!-- Bore hole logg settings -->
+    <!-- 0= off 1= up 2=down 3= up and down -->
+    <LogTemperature>2</LogTemperature>
+    <LogSelfPotential>2</LogSelfPotential>
+    <LogShortNormal>1</LogShortNormal>
+    <LogLongNormal>1</LogLongNormal>
+    <LogLateral18foot>1</LogLateral18foot>
+    <LogFluidResistivity>1</LogFluidResistivity>
+    <BoreholeStepUp>1</BoreholeStepUp>
+    <BoreholeStepDown>1</BoreholeStepDown>
+
+
+    <!-- Timing system settings-->
+	<BaseFreqHz>50</BaseFreqHz>
+	
+    <!-- Sample rate use only 1000, 2000, or 3750
+		use  1000 for 1000hz/1200Hz
+		use  2000 for 2000hz/2400Hz
+		use  3750 for 3750hz/4500Hz
+	-->
+    <SampleRateHz>3750</SampleRateHz>
+    
+    <!-- Timing setup-->
+    <Acq_DelaySec>0.7</Acq_DelaySec>
+    <Acq_TimeSec>0.3</Acq_TimeSec>
+    <IP_OffTimeSec>1.0</IP_OffTimeSec>
+    <IP_MinOffTimeSec>1.0</IP_MinOffTimeSec>
+    <IP_WindowSecList>0.01 0.060 0.240 0.540</IP_WindowSecList>
+
+    <!-- Measure mode -->
+    <!--
+	RES/IP50 1
+        RES 2
+        SP 3
+        RES/IP100 6
+    -->
+    <MeasureMode>6</MeasureMode>
+
+    
+</Settings>
