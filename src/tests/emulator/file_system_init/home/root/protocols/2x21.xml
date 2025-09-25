@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Spread>
+<Name> 2X21 </Name>
+<Description> Spread consisting of 2 x 21 take-out cables w. last and first electrode overlapping. </Description>
+
+<CreateStation>
+  <Name> 2 cables no move </Name>
+  <X> 0 </X>
+</CreateStation>
+
+<CreateStation>
+  <Name> 1 cable forward </Name>
+  <X> 20 </X>
+</CreateStation>
+
+<CreateStation>
+  <Name> 1 cable backwards </Name>
+  <X> -20 </X>
+</CreateStation>
+
+<Rollalong>  // Kept for compatibility with older versions of Terrameter LS instrument software
+<X> 20 </X>
+<Y> 0 </Y>
+</Rollalong>
+
+<Cable>
+<Name> 1 </Name>
+<Electrode>
+<Id> 1 </Id>
+<X> 0 </X>
+<Name> 1-1 </Name>
+<SwitchAddress> 1 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 2 </Id>
+<X> 1 </X>
+<Name> 1-2 </Name>
+<SwitchAddress> 2 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 3 </Id>
+<X> 2 </X>
+<Name> 1-3 </Name>
+<SwitchAddress> 3 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 4 </Id>
+<X> 3 </X>
+<Name> 1-4 </Name>
+<SwitchAddress> 4 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 5 </Id>
+<X> 4 </X>
+<Name> 1-5 </Name>
+<SwitchAddress> 5 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 6 </Id>
+<X> 5 </X>
+<Name> 1-6 </Name>
+<SwitchAddress> 6 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 7 </Id>
+<X> 6 </X>
+<Name> 1-7 </Name>
+<SwitchAddress> 7 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 8 </Id>
+<X> 7 </X>
+<Name> 1-8 </Name>
+<SwitchAddress> 8 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 9 </Id>
+<X> 8 </X>
+<Name> 1-9 </Name>
+<SwitchAddress> 9 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 10 </Id>
+<X> 9 </X>
+<Name> 1-10 </Name>
+<SwitchAddress> 10 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 11 </Id>
+<X> 10 </X>
+<Name> 1-11 </Name>
+<SwitchAddress> 11 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 12 </Id>
+<X> 11 </X>
+<Name> 1-12 </Name>
+<SwitchAddress> 12 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 13 </Id>
+<X> 12 </X>
+<Name> 1-13 </Name>
+<SwitchAddress> 13 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 14 </Id>
+<X> 13 </X>
+<Name> 1-14 </Name>
+<SwitchAddress> 14 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 15 </Id>
+<X> 14 </X>
+<Name> 1-15 </Name>
+<SwitchAddress> 15 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 16 </Id>
+<X> 15 </X>
+<Name> 1-16 </Name>
+<SwitchAddress> 16 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 17 </Id>
+<X> 16 </X>
+<Name> 1-17 </Name>
+<SwitchAddress> 17 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 18 </Id>
+<X> 17 </X>
+<Name> 1-18 </Name>
+<SwitchAddress> 18 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 19 </Id>
+<X> 18 </X>
+<Name> 1-19 </Name>
+<SwitchAddress> 19 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 20 </Id>
+<X> 19 </X>
+<Name> 1-20 </Name>
+<SwitchAddress> 20 </SwitchAddress>
+</Electrode>
+
+</Cable>
+<Cable>
+<Name> 2 </Name>
+<Electrode>
+<Id> 21 </Id>
+<X> 20 </X>
+<Name> 2-1 </Name>
+<SwitchAddress> 33 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 22 </Id>
+<X> 21 </X>
+<Name> 2-2 </Name>
+<SwitchAddress> 34 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 23 </Id>
+<X> 22 </X>
+<Name> 2-3 </Name>
+<SwitchAddress> 35 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 24 </Id>
+<X> 23 </X>
+<Name> 2-4 </Name>
+<SwitchAddress> 36 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 25 </Id>
+<X> 24 </X>
+<Name> 2-5 </Name>
+<SwitchAddress> 37 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 26 </Id>
+<X> 25 </X>
+<Name> 2-6 </Name>
+<SwitchAddress> 38 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 27 </Id>
+<X> 26 </X>
+<Name> 2-7 </Name>
+<SwitchAddress> 39 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 28 </Id>
+<X> 27 </X>
+<Name> 2-8 </Name>
+<SwitchAddress> 40 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 29 </Id>
+<X> 28 </X>
+<Name> 2-9 </Name>
+<SwitchAddress> 41 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 30 </Id>
+<X> 29 </X>
+<Name> 2-10 </Name>
+<SwitchAddress> 42 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 31 </Id>
+<X> 30 </X>
+<Name> 2-11 </Name>
+<SwitchAddress> 43 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 32 </Id>
+<X> 31 </X>
+<Name> 2-12 </Name>
+<SwitchAddress> 44 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 33 </Id>
+<X> 32 </X>
+<Name> 2-13 </Name>
+<SwitchAddress> 45 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 34 </Id>
+<X> 33 </X>
+<Name> 2-14 </Name>
+<SwitchAddress> 46 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 35 </Id>
+<X> 34 </X>
+<Name> 2-15 </Name>
+<SwitchAddress> 47 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 36 </Id>
+<X> 35 </X>
+<Name> 2-16 </Name>
+<SwitchAddress> 48 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 37 </Id>
+<X> 36 </X>
+<Name> 2-17 </Name>
+<SwitchAddress> 49 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 38 </Id>
+<X> 37 </X>
+<Name> 2-18 </Name>
+<SwitchAddress> 50 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 39 </Id>
+<X> 38 </X>
+<Name> 2-19 </Name>
+<SwitchAddress> 51 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 40 </Id>
+<X> 39 </X>
+<Name> 2-20 </Name>
+<SwitchAddress> 52 </SwitchAddress>
+</Electrode>
+
+<Electrode>
+<Id> 41 </Id>
+<X> 40 </X>
+<Name> 2-21 </Name>
+<SwitchAddress> 53 </SwitchAddress>
+</Electrode>
+
+</Cable>
+</Spread>
