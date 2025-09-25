@@ -2,7 +2,7 @@
 
 from typing import  *
 import os.path
-import pathlib
+from pathlib import PurePosixPath as Path
 
 class _Node:
     def __init__(self, name: str):
@@ -32,8 +32,13 @@ class VirtualFileSystem:
         self._root.children['/'] = _Dir('/')
         self._root.children['\\'] = self._root.children['/']
     
-    def _traverse(self, path: str) -> _Node:
-        parts = list(pathlib.PurePosixPath(path).parts)
+    def _traverse(self, path: Path) -> _Node:
+        if path.parts[0] == "~": 
+            #Resolve ~ for home dir
+            path = Path("/home/root").joinpath(Path("/".join(path.parts[1:])))
+        
+        parts = list(path.parts)
+
         current_node = self._root
         while len(parts) > 0:
             next_name = parts.pop(0)
@@ -44,7 +49,7 @@ class VirtualFileSystem:
             else:
                 raise FileNotFoundError(f"[Errno 2] No such file or directory: '{path}'")
 
-    def exists(self, path: str):
+    def exists(self, path: Path):
         try:
             self._traverse(path)
         except FileNotFoundError:
@@ -52,7 +57,7 @@ class VirtualFileSystem:
         finally:
             return True
     
-    def read(self, path: str) -> bytes:
+    def read(self, path: Path) -> bytes:
         """Read file. Raises FileNotFoundError if file doesn't exist, or PermissionError if file can't be read."""
         file = self._traverse(path) 
         if hasattr(file, 'content'):
@@ -60,10 +65,42 @@ class VirtualFileSystem:
         else:
             raise PermissionError("[Errno 13] Permission denied: '{}'")
         
-    def write(self, path: str, data: bytes):
-        """Write data to file. Raises FileNotFoundError if file doesn't exist, or PermissionError if file can't be written to."""
+    def write(self, path: Path, data: bytes):
+        """Write data to file. 
+        Raises FileNotFoundError if file doesn't exist. 
+        Raises PermissionError if file can't be written to."""
         file = self._traverse(path) 
         if hasattr(file, 'content'):
             file.content = data
         else:
             raise PermissionError("[Errno 13] Permission denied: '{}'")
+    
+    def _make_node(self, path: Path, node_type: type[_File | _Dir]):
+        if node_type is not type[_File | _Dir]:
+            return
+        if self.exists(path):
+            return
+        node_name = path.name
+        parent = self._traverse(path.parent.as_posix())
+        if type(parent) != _Dir:
+            raise PermissionError("[Errno 13] Permission denied: '{}'")
+        else:
+            parent.children[node_name] = node_type(node_name)
+    
+    def make_file(self, path: Path):
+        """Create a new file at `path`
+        Raises PermissionError
+        Raises FileNotFoundError"""
+        print("Making file: " + path.as_posix())
+        self._make_node(path, _File)
+        if self.exists(path):
+            print("File exists now!")
+        else:
+            print("Warning: file still doesn't exist!")
+        
+        
+    def make_dir(self, path: Path):
+        """Create a new file at `path`
+        Raises PermissionError
+        Raises FileNotFoundError"""
+        self._make_node(path, _Dir)

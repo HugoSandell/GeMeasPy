@@ -1,16 +1,16 @@
 from cmd import Cmd
-import pathlib
+from . import vfs
 import argparse
 from typing import *
-from terrameter import TerrameterLS
-import constants
+from .terrameter import TerrameterLS
+from . import constants
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str]):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
-        self.cwd: pathlib.PurePosixPath = pathlib.PurePosixPath("/home/root")
+        self.cwd: vfs.Path = vfs.Path("/home/root")
         self.use_rawinput=False # Required to read from the provided stdin insted of sys.stdin 
         self.prompt="root@LS123456789:~# "
         self.terrameter_cli_active = False # Is the terrameter CLI opened
@@ -128,6 +128,9 @@ class TerrameterShell(Cmd):
             
     def do_echo(self, arg: str):
         self.print_line_sh(arg.strip())
+
+    def do_touch(self, arg: str):
+        self.instrument.touch(arg)
 
     def do_help(self, arg: str):
         # Will probably never be used, so print an empty line for now.

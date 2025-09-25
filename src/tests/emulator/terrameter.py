@@ -1,9 +1,10 @@
 import time
 from typing import *
-from vfs import VirtualFileSystem
+import pathlib
+from .vfs import VirtualFileSystem, Path
 import xml.etree.ElementTree as ElementTree
-import constants
-from project import Project
+from . import constants
+from .project import Project
 
 type _Value = str | int | float | bool
 
@@ -69,7 +70,11 @@ class TerrameterLS():
             PermissionError if file can't be written to.
             ParseError if the file could not be parsed correctly."""
         # Read data and parse XML
-        data_raw = self._filesystem.read(path)
+        try: 
+            parsed_path = Path(path)
+        except Exception:
+            raise FileNotFoundError(path)
+        data_raw = self._filesystem.read(parsed_path)
         try:
             data_str = data_raw.decode()
             xml_root = ElementTree.fromstring(data_str)
@@ -157,3 +162,9 @@ class TerrameterLS():
         
         # Reset values
         self._variables["measure"].value = 0
+        
+    def touch(self, file_path: str):
+        """Approximates the Unix `touch` command. Creates a file at path if it does not exist.
+        Raises FileNotFoundException if the directory containing the file doesn't exist. 
+        Raises PermissionError if file could otherwise not be created."""
+        self._filesystem.make_file(Path(file_path))

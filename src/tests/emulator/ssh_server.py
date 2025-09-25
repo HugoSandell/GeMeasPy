@@ -3,9 +3,9 @@ import socket
 import threading
 import os
 
-from shell import TerrameterShell
-from host_key_store import get_test_host_key
-from terrameter import TerrameterLS
+from .shell import TerrameterShell
+from .host_key_store import get_test_host_key
+from .terrameter import TerrameterLS
 import paramiko
 
 type ShellRequest = paramiko.Channel 
