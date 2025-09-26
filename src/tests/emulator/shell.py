@@ -64,6 +64,12 @@ class TerrameterShell(Cmd):
         self.prompt="root@LS123456789:~# "
         self.terrameter_cli_active = False # Is the terrameter CLI opened
     
+    def print_os_error(self, program: str, error: OSError):
+        if error.filename != "":
+            self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
+        else:
+            self.print_line_sh(f"{program}: {error.strerror}")
+    
     def do_EOF(self, arg):
         """Called when EOF is read."""
         if self.terrameter_cli_active:
@@ -71,8 +77,8 @@ class TerrameterShell(Cmd):
         return True # Shell should be closed (causes cmdloop to exit)
     
     ##########    TERRAMETER COMMANDS    ##########    
-    def _do_terrameter_command(self, command: str, arg: str):
-        arg_split = arg.split()
+    def _do_terrameter_command(self, command: str, args: str):
+        arg_split = args.split()
         match command:
             case "g":
                 # Get terrameter variable
@@ -93,7 +99,7 @@ class TerrameterShell(Cmd):
             case "s":
                 # Set terrameter variable
                 if not self.terrameter_cli_active:
-                    return self.default(f"s {arg}")
+                    return self.default(f"s {args}")
                 try:
                     variable = arg_split[0]
                     value = arg_split[1]
@@ -113,8 +119,12 @@ class TerrameterShell(Cmd):
                     return
             case "w":
                 # Read Terrameter settings from file
-                self.instrument.read_settings(arg)
-                self.print_line_sh("Read settings from file: {} 0") # assume 0
+                try:
+                    self.instrument.read_settings(_split_args(args)[-1])
+                except OSError as e:
+                    self.print_os_error("terrameter", e)
+                    return
+                self.print_line_sh(f"Read settings from file: {args} 0") # assume 0
             case "Q":
                 # Quit terrameter
                 self.print_line_sh(constants.TERRAMETER_OUTRO)
@@ -160,29 +170,52 @@ class TerrameterShell(Cmd):
                 self.print_line_sh(constants.TERRAMETER_UNKNOWN_COMMAND(command))
 
     ##########    BASH COMMANDS    ##########
-    def do_exit(self, arg: str):
+    def do_exit(self, args: str):
         """Called when 'exit' command is entered."""
         if self.terrameter_cli_active:
-            return self._do_terrameter_command("e", f"xit {arg}")
+            return self._do_terrameter_command("e", f"xit {args}")
         else:
             return True # Shell should be closed (causes cmdloop to exit)
 
-    def do_terrameter(self, arg: str):
+    def do_terrameter(self, args: str):
         if self.terrameter_cli_active:
-            return self._do_terrameter_command("t", f"errameter {arg}")
+            return self._do_terrameter_command("t", f"errameter {args}")
         else:
             self.print_line_sh(constants.TERRAMETER_INTRO)
             self.terrameter_cli_active = True
             self.prompt = "> "
             
-    def do_echo(self, arg: str):
-        args = _split_args(arg)
-        self.print_line_sh(" ".join(args))
+    def do_echo(self, args: str):
+        arg_list = _split_args(args)
+        outfile = "&1" # &1 for stdout
+        
+        num_text_segments = len(arg_list) # How many text segments to echo
+        for i, arg in enumerate(arg_list):
+            if arg == ">":
+                if num_text_segments == len(arg_list):
+                    num_text_segments = i
+                if i+1 < len(arg_list):
+                    outfile=arg_list[i+1]
+                else:
+                    self.print_line_sh("-bash: syntax error near unexpected token `newline'")
+        if outfile == "&1":
+            self.print_line_sh(" ".join(arg_list[:num_text_segments]))
+        else:
+            try:
+                self.instrument.write_file(outfile, " ".join(arg_list[:num_text_segments]))
+            except OSError as e:
+                self.print_os_error("-bash", e)
+                return
 
-    def do_touch(self, arg: str):
-        self.instrument.touch(arg)
+    def do_touch(self, args: str):
+        path = _split_args(args)[0]
+        try:
+            self.instrument.touch(path)
+        except OSError as e:
+            self.print_os_error("-bash", e)
+            return
 
-    def do_help(self, arg: str):
+    def do_help(self, args: str):
         # Will probably never be used, so print an empty line for now.
         self.print_line_sh()
     

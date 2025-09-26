@@ -70,10 +70,7 @@ class TerrameterLS():
             PermissionError if file can't be written to.
             ParseError if the file could not be parsed correctly."""
         # Read data and parse XML
-        try: 
-            parsed_path = Path(path)
-        except Exception:
-            raise FileNotFoundError(path)
+        parsed_path = Path(path)
         data_raw = self._filesystem.read(parsed_path)
         try:
             data_str = data_raw.decode()
@@ -164,7 +161,19 @@ class TerrameterLS():
         self._variables["measure"].value = 0
         
     def touch(self, file_path: str):
-        """Approximates the Unix `touch` command. Creates a file at path if it does not exist.
-        Raises FileNotFoundException if the directory containing the file doesn't exist. 
-        Raises PermissionError if file could otherwise not be created."""
-        self._filesystem.make_file(Path(file_path))
+        """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
+        Raises FileNotFoundException if the directory containing the file doesn't exist.   
+        Raises NotADirectoryError if part of path is not a directory."""
+        try:
+            self._filesystem.make_file(Path(file_path))
+        except IsADirectoryError:
+            pass
+    
+    def write_file(self, file_path: str, data: bytes = b''):
+        """Writes data to file at path.  
+        Raises FileNotFoundException if the directory containing the file does not exist.   
+        Raises IsADirectoryError if path points to a directory.  
+        Raises NotADirectoryError if part of path is not a directory."""
+        parsed_path = Path(file_path)
+        self._filesystem.make_file(parsed_path)
+        self._filesystem.write(parsed_path, data)
