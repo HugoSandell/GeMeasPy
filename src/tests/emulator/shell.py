@@ -5,6 +5,55 @@ from typing import *
 from .terrameter import TerrameterLS
 from . import constants
 
+def _split_args(args: str) -> list[str]:
+    # Only supports single level of quotation
+    arg_list = [] # Store result here
+    part_start = -1 # Where the current argument starts in the string. Negative for no part.
+    excluded_characters = [] # Indices of which characters to exclude from the part, relative to part_start
+    quote_start = -1 # Where a quote (single or double) was opened. Negative for no open quote.
+    
+    # End the current part at the given index (exclusive) and add it to the argument list
+    def end_part(end: int):
+        nonlocal part_start, excluded_characters, arg_list
+        part = args[part_start:end]
+        excluded_characters.sort(reverse=True) # Just to be sure
+        for ec in excluded_characters:
+            part = part[:ec] + part[ec+1:]
+        excluded_characters.clear()
+        part_start = -1
+        arg_list.append(part)
+    
+    for i, c in enumerate(args + " "):
+        match c:
+            case '"' | "'":
+                if quote_start >= 0:
+                    # Close quote if char matches opening quote
+                    if args[quote_start] == c: 
+                        quote_start = -1
+                        excluded_characters.append(i - part_start)
+                else:
+                    # Open quote
+                    quote_start = i
+                    if part_start < 0:
+                        part_start = i+1
+                    else:
+                        excluded_characters.append(i - part_start)
+            case " " | "\t" | "\n":
+                is_last_char = i == len(args) - 1
+                if (quote_start < 0 or is_last_char) and part_start >= 0:
+                    end_part(i)
+            case "<" | ">":
+                if quote_start < 0:
+                    end_part(i)
+                    arg_list.append(c)
+            case _:
+                if part_start < 0:
+                    part_start = i
+    # Add last part, even if quote isn't closed
+    if part_start >= 0 and len(arg_list) - part_start > 1:
+        arg_list.append(args[part_start:])
+    return arg_list
+
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str]):
@@ -34,7 +83,7 @@ class TerrameterShell(Cmd):
                     return
                 if variable:
                     try:
-                        self.print_line_sh(f"{variable} {self.instrument.get_variable(variable)}\n")
+                        self.print_line_sh(f"{variable}\t{self.instrument.get_variable(variable)}\n")
                     except Exception:
                         self.print_line_sh()
                         return
@@ -127,7 +176,8 @@ class TerrameterShell(Cmd):
             self.prompt = "> "
             
     def do_echo(self, arg: str):
-        self.print_line_sh(arg.strip())
+        args = _split_args(arg)
+        self.print_line_sh(" ".join(args))
 
     def do_touch(self, arg: str):
         self.instrument.touch(arg)
