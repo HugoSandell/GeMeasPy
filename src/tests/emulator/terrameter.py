@@ -92,12 +92,16 @@ class TerrameterLS():
                         float(s) for s in text.split()
                     ]
                 except Exception:
-                    raise ParseError(f"Failed to parse '{text}' as list of floats")
+                    raise ParseError(
+                        f"Failed to parse {child.tag} '{text}' as list of floats"
+                    )
             if child.tag in self._settings:
                 try:
                     type(self._settings[child.tag])(text)
                 except Exception:
-                    raise ParseError(f"Failed to parse '{text}' as {type(self._settings[child.tag])}")
+                    raise ParseError(
+                        f"Failed to parse {child.tag} '{text}' as {type(self._settings[child.tag])}"
+                    )
                 self._settings[child.tag] = text
 
     def create_project(self, name: str=""):
