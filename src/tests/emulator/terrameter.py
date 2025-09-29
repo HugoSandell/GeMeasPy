@@ -80,23 +80,25 @@ class TerrameterLS():
             raise ParseError(f"Unicode error: {e}")
         except ElementTree.ParseError as e:
             raise ParseError(f"XML error: {e}")
-        
-        if xml_root.tag.lower() != "SETTINGS":
+
+        if xml_root.tag.lower() != "settings":
             raise ParseError("Root tag is not <Settings>")
         for child in xml_root:
+            text = child.text
             # IP_WindowSecList is a special case
             if child.tag == "IP_WindowSecList":
                 try:
-                    self._settings["IP_WindowSecList"] = [float(s) for s in child.text.split()]
+                    self._settings["IP_WindowSecList"] = [
+                        float(s) for s in text.split()
+                    ]
                 except Exception:
                     raise ParseError(f"Failed to parse '{text}' as list of floats")
             if child.tag in self._settings:
-                text = child.text
                 try:
                     type(self._settings[child.tag])(text)
                 except Exception:
                     raise ParseError(f"Failed to parse '{text}' as {type(self._settings[child.tag])}")
-                self._settings[child.tag] = child.text
+                self._settings[child.tag] = text
 
     def create_project(self, name: str=""):
         """Create a new project. 
