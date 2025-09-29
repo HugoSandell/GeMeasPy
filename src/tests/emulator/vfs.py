@@ -57,9 +57,8 @@ class VirtualFileSystem:
             self._traverse(path)
         except FileNotFoundError:
             return False
-        finally:
-            return True
-    
+        return True
+
     def read(self, path: Path) -> bytes:
         """Read file.         
         Raises FileNotFoundError if file does not exist.  
