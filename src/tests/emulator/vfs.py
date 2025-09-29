@@ -5,6 +5,9 @@ from pathlib import PurePosixPath as Path
 import errno
 import os
 
+_INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
+
+
 class _Node:
     def __init__(self, name: str):
         self.name = name
@@ -32,7 +35,20 @@ class VirtualFileSystem:
         self._root = _Dir("")
         self._root.children['/'] = _Dir('/')
         self._root.children['\\'] = self._root.children['/']
-    
+
+    def load_initial_fs(self):
+        for parent, child_dirs, child_files in os.walk(_INIT_PATH):
+            parent_vfs = Path("/", os.path.relpath(parent, _INIT_PATH))
+
+            for child in child_dirs:
+                self.make_dir(parent_vfs.joinpath(child))
+
+            for child in child_files:
+                child_vfs = parent_vfs.joinpath(child)
+                self.make_file(child_vfs)
+                with open(os.path.join(parent, child), "rb") as f:
+                    self.write(child_vfs, f.read())
+
     def _traverse(self, path: Path) -> _Node:
         if path.parts[0] == "~": 
             #Resolve ~ for home dir
