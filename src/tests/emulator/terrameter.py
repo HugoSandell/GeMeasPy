@@ -23,6 +23,7 @@ class TerrameterLS():
     def __init__(self):
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
+        self._filesystem.load_initial_fs()
         self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: Dict[str, Project] = {} # "name": object
         self._current_project: str = "" # Name of current project, if any 
