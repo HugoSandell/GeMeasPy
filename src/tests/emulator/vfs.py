@@ -82,7 +82,7 @@ class VirtualFileSystem:
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
     
     def _make_node(self, path: Path, node_type: type[_File | _Dir]):
-        if node_type is not type[_File | _Dir]:
+        if node_type not in {_File, _Dir}:
             return
         if self.exists(path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path.as_posix())
