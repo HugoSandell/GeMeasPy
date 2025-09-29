@@ -87,7 +87,7 @@ class VirtualFileSystem:
         if self.exists(path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path.as_posix())
         node_name = path.name
-        parent = self._traverse(path.parent.as_posix())
+        parent = self._traverse(path.parent)
         if type(parent) != _Dir:
             raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix())
         else:
