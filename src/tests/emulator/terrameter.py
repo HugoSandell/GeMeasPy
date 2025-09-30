@@ -131,6 +131,14 @@ class TerrameterLS():
         new_project = Project(resolved_name)
         self._projects[resolved_name] = new_project
         self._current_project = resolved_name
+
+        project_path = Path(f"/media/mmcblk0p1/projects/{resolved_name}")
+        project_name_path = project_path.joinpath("project_name.txt")
+        self._filesystem.make_dir(project_path)
+        self._filesystem.make_file(project_name_path)
+        # TODO: should this use `resolved_name`?
+        self._filesystem.write(project_name_path, name.encode())
+
         return resolved_name
 
     def create_task(self, name: str, 
