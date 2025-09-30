@@ -105,6 +105,8 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
     def __init__(self, username: str, password: str):
         self.has_request = threading.Event()
         self.requests: List[ShellRequest | ExecRequest] = []
+        self._username = username
+        self._password = password
 
     def check_channel_request(self, kind: str, chanid: int) -> int:
         if kind == 'session':
@@ -116,7 +118,7 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
         return True        
 
     def check_auth_password(self, username: str, password: str) -> int:
-        if (username == 'root') and (password == ''):
+        if (username == self._username) and (password == self._password):
             return paramiko.AUTH_SUCCESSFUL
         return paramiko.AUTH_FAILED
 
