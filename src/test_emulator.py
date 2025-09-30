@@ -39,10 +39,11 @@ def send_single_command(command: str):
 def test_emulator():
     global conn
     params = {
-        'hostname': 'localhost',
-        'port': 2222,
-        'username': 'root',
-        'password': ''
+        "hostname": "localhost",
+        "port": 2222,
+        "username": "root",
+        "password": "",
+        "allow_agent": False,
     }
 
     conn = connections.SSHConnection(params)
