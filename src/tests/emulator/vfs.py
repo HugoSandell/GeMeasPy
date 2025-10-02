@@ -60,7 +60,9 @@ class VirtualFileSystem:
         while len(parts) > 0:
             next_name = parts.pop(0)
             if not current_node.is_dir:
-                raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
+                raise NotADirectoryError(
+                    errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix()
+                )
             if next_name in current_node:
                 current_node = current_node[next_name]
                 if len(parts) == 0:
