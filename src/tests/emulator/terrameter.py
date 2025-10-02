@@ -192,3 +192,9 @@ class TerrameterLS():
         parsed_path = Path(file_path)
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
+
+    def path_exists(self, path: str) -> bool:
+        """Checks if a file or directory exists at a path.
+        Returns True if it exists and False if it does not.
+        Raises NotADirectoryError if part of path is not a directory."""
+        return self._filesystem.exists(Path(path))
