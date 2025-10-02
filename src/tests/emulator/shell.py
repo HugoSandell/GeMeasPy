@@ -1,9 +1,10 @@
+import shlex
 from cmd import Cmd
-from . import vfs
-import argparse
 from typing import *
+
+from . import constants, vfs
 from .terrameter import TerrameterLS
-from . import constants
+
 
 def _split_args(args: str) -> list[str]:
     # Only supports single level of quotation
@@ -215,6 +216,45 @@ class TerrameterShell(Cmd):
             self.print_os_error("-bash", e)
             return
 
+    # `[` command, called from `default`
+    # Currently only supports testing for existence of paths.
+    def _do_bracket_test(self, args: str):
+        arg_list = _split_args(args)
+
+        # Logic operators are not implemented at the shell level, so handle them
+        # specially here. Does not work correctly if the same operator occurs twice.
+        try:
+            true_i = arg_list.index("&&")
+        except ValueError:
+            true_i = len(arg_list)
+        try:
+            false_i = arg_list.index("||")
+        except ValueError:
+            false_i = len(arg_list)
+
+        # split out commands to execute based on result
+        true_cmd = arg_list[true_i + 1 : false_i if false_i > true_i else None]
+        false_cmd = arg_list[false_i + 1 : true_i if true_i > false_i else None]
+        arg_list = arg_list[: min(true_i, false_i)]
+
+        # implementation of test
+        result = False
+        match arg_list:
+            case ["]"]:
+                pass
+            case [arg, "]"]:
+                if arg:
+                    result = True
+            case ["-e", path, "]"]:
+                result = self.instrument.path_exists(path)
+            case [*_, "]"]:
+                raise NotImplementedError()
+            case _:
+                self.print_line_sh("-bash: [: missing `]'")
+
+        # execute another command based on result
+        self.onecmd(shlex.join(true_cmd if result else false_cmd))
+
     def do_help(self, args: str):
         # Will probably never be used, so print an empty line for now.
         self.print_line_sh()
@@ -225,6 +265,8 @@ class TerrameterShell(Cmd):
             cmd = line[0]
             arg = line[1:]
             return self._do_terrameter_command(cmd, arg)
+        elif line.startswith("[ "):
+            self._do_bracket_test(line[2:].lstrip())
         else:
             # Get the name of the command
             command = " "

@@ -56,6 +56,10 @@ def test_emulator():
             project_name = "abc"
 
             try:
+                send_to_sh(
+                    "[ -e /home/root/protocols/2x21.xml ] && echo 'OK' || echo 'MISSING'"
+                )
+                time.sleep(0.1)
                 send_to_sh("terrameter")
                 time.sleep(0.1)
                 send_single_command("touch /monitoring/new_day")
