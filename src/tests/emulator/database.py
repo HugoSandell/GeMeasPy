@@ -44,7 +44,7 @@ class DP_ABMNRow:
     def __init__(self):
         self.ID = 0
         self.TaskID = 0
-        self.DPKey: list[int] = [0] * 13
+        self._DPKEY: list[int] = [0] * 13 
         self.APosX: float = 0
         self.APosY: float = 0
         self.APosZ: float = 0
@@ -64,6 +64,25 @@ class DP_ABMNRow:
         self.Note: str = None
         self.Mode: int = 0
         self.ModeValue: float = None
+    
+    # To handle str assignment, e.g: row.DPKEY = "1;0;0;1;...
+    @property
+    def DPKEY(self):
+        return self._DPKEY
+    @DPKEY.setter
+    def DPKEY(self, value):
+        if isinstance(value, list) and all([isinstance(x, int) for x in value]):
+            self._DPKEY = value
+            return
+        elif isinstance(value, str):
+            values_str = value.split(";")
+            try:
+                self._DPKEY = [int(x, 10) for x in values_str]
+                return
+            except:
+                pass
+        # No match
+        raise TypeError("DPKEY value must be of type list[int] or str")
 
 class DP_MEASURERow:
     def __init__(self):
@@ -279,7 +298,7 @@ class ProjectDatabase:
             if not row_class or not hasattr(self, "_" + table):
                 continue
             
-            attribute = self.__getattribute__("_" + table)
+            attribute = getattr(self, "_" + table)
             
             # Get column names
             column_names = ()
@@ -293,7 +312,7 @@ class ProjectDatabase:
             for row in cursor:
                 new_row = row_class()
                 for i in range(len(column_names)):
-                    setattr(new_row, column_names[i], row[i])
+                    setattr(new_row, column_names[i], row[i])                      
                 if isinstance(attribute, list):
                     attribute.append(new_row)
                 else: # Support for single row attributes
@@ -314,29 +333,29 @@ class ProjectDatabase:
 
 if __name__ == "__main__":
     # Testing script
-    # Swap print function to capture stdout
-    from io import StringIO
-    from builtins import print as realprint
     import pathlib
-    output_capture = StringIO()
-    def fakeprint(*args, **kwargs):
-        kwargs["file"] = output_capture
-        realprint(*args, **kwargs)
-    #print = fakeprint
 
+    # Find path to reference database file
     relative_path = "reference/reference_measurement_data/project.db"
     path = pathlib.Path(__file__).parents[1].resolve().joinpath(relative_path).as_posix()
 
     def check_output():
-        settings = [{'Setting': s.Setting, 'Value': s.Value, 'key1': s.key1, 'key2': s.key2, 'Auto': s.Auto} for s in db._AcqSettings]
+        # Loose output validation
+        # AcqSettings
+        settings = [{'Setting': row.Setting, 'Value': row.Value, 'key1': row.key1, 'key2': row.key2, 'Auto': row.Auto} for row in db._AcqSettings]
         assert {'Setting': 'IP_OffTimeSec', 'Value': '1.000000', 'key1': 1, 'key2': -1, 'Auto': 0} in settings
         assert {'Setting': 'Measure_SNR', 'Value': '0', 'key1': 1, 'key2': -1, 'Auto': 0} in settings
         assert {'Setting': 'BoreholeStepDown', 'Value': '1', 'key1': 1, 'key2': -1, 'Auto': 0} in settings
         assert {'Setting': 'IP_MinOffTimeSec', 'Value': '1.000000', 'key1': 2, 'key2': -1, 'Auto': 0} in settings
         assert {'Setting': 'Fullwaveform', 'Value': '0', 'key1': 2, 'key2': -1, 'Auto': 0} in settings
-
+        # Tasks
+        tasks = [{'Setting': row.Setting, 'Value': row.Value, 'key1': row.key1, 'key2': row.key2, 'Auto': row.Auto} for row in db._AcqSettings]
+        # DP_ABMN
+        dp_abmn = [{'ID': row.ID, 'TaskID': row.TaskID, 'DPKEY': row.DPKEY} for row in db._DP_ABMN]
+        assert {'ID': 194, 'TaskID': 1, 'DPKEY': [19,0,0,37,0,0,29,0,0,31,0,0,-2]} in dp_abmn
     
-    realprint("Running with file descriptor")
+    
+    print("Running with file descriptor")
     f = open(path, "r+b")
     db = ProjectDatabase(f.fileno())
     db.close()
@@ -344,18 +363,18 @@ if __name__ == "__main__":
     f.close()
     check_output()
     
-    realprint("Running with file path")
+    print("Running with file path")
     db = ProjectDatabase(path)
     db.close()
     check_output()
         
-    realprint("Running with file opened with `with` keyword")
+    print("Running with file opened with `with` keyword")
     with open(path, "r+b") as f:
         db = ProjectDatabase(f.fileno())
         db.close()
     check_output()
     
-    realprint("Running with bad argument type")
+    print("Running with bad argument type")
     raised_correct_exception = False
     try:
         db = ProjectDatabase([1,2,3])
@@ -365,7 +384,7 @@ if __name__ == "__main__":
             raised_correct_exception = True
     assert raised_correct_exception
     
-    realprint("Running with nonexistent file")
+    print("Running with nonexistent file")
     raised_correct_exception = False
     try:
         db = ProjectDatabase("file/that/does/not/exists.txt")
@@ -373,4 +392,4 @@ if __name__ == "__main__":
         raised_correct_exception = True
     assert raised_correct_exception
     
-    realprint("Tests done!")
+    print("Tests done!")
