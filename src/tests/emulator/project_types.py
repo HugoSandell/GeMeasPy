@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 class AcqSettingsRow:
     def __init__(self):
         self.Setting: str = ""
-        self.Value: int | float | str = 0
+        self.Value: str = "0"
         self.key1: int = 1   
         self.key2: int = -1
         self.Auto: int = 0

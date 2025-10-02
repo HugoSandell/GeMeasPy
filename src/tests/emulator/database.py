@@ -93,7 +93,40 @@ class ProjectDatabase:
             except (OSError, FileNotFoundError):
                 pass
         self._tmpfile = None
-
+    
+    def get_AcqSetting(self, key1: int, key2: int, name: str) -> Optional[int | float | list[float]]:
+        """Get a value from the AcqSettings table.
+        May return None if no match was found"""
+        for row in self._AcqSettings:
+            if row.key1 == key1 and row.key2 == key2 and row.Setting == name:
+                value = None
+                try:
+                    value = int(row.Value)
+                except:
+                    try:
+                        value = float(row.Value)
+                    except:
+                        try:
+                            value = [float(v) for v in row.Value.split()]
+                        except:
+                            return None # Bad value
+                return value
+    
+    def set_AcqSetting(self, key1: int, key2: int, name: str, value: int | float | list[float], auto: int = 0):
+        """Update the content of the AcqSettings table."""
+        for row in self._AcqSettings:
+            if row.key1 == key1 and row.key2 == key2 and row.Setting == name:
+                if isinstance(value, list):
+                    row.Value = " ".join(value)
+                else:
+                    row.Value = str(value)
+                return
+        # Setting not found; add it
+        new_row = AcqSettingsRow()
+        new_row.key1 = key1
+        new_row.key2 = key2
+        new_row.Auto = auto
+        self._AcqSettings.append(new_row)
 
 if __name__ == "__main__":
     # Testing script
