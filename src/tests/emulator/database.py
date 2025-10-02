@@ -317,13 +317,15 @@ if __name__ == "__main__":
     # Swap print function to capture stdout
     from io import StringIO
     from builtins import print as realprint
+    import pathlib
     output_capture = StringIO()
     def fakeprint(*args, **kwargs):
         kwargs["file"] = output_capture
         realprint(*args, **kwargs)
     #print = fakeprint
 
-    path = r"C:\Users\Hugo\GeoSuite\GeMeasPy\src\tests\reference\reference_measurement_data\project.db"    
+    relative_path = "reference/reference_measurement_data/project.db"
+    path = pathlib.Path(__file__).parents[1].resolve().joinpath(relative_path).as_posix()
 
     def check_output():
         settings = [{'Setting': s.Setting, 'Value': s.Value, 'key1': s.key1, 'key2': s.key2, 'Auto': s.Auto} for s in db._AcqSettings]
