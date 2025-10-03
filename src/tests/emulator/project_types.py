@@ -36,7 +36,7 @@ class DP_ABMNRow:
     def __init__(self):
         self.ID = 0
         self.TaskID = 0
-        self._DPKEY: list[int] = [0] * 13 
+        self.DPKEY: str 
         self.APosX: float = 0.0
         self.APosY: float = 0.0
         self.APosZ: float = 0.0
@@ -57,25 +57,6 @@ class DP_ABMNRow:
         self.Mode: int = 0
         self.ModeValue: float = None
     
-    # To handle str assignment, e.g: row.DPKEY = "1;0;0;1;...
-    @property
-    def DPKEY(self):
-        return self._DPKEY
-    @DPKEY.setter
-    def DPKEY(self, value):
-        if isinstance(value, list) and all([isinstance(x, int) for x in value]):
-            self._DPKEY = value
-            return
-        elif isinstance(value, str):
-            values_str = value.split(";")
-            try:
-                self._DPKEY = [int(x, 10) for x in values_str]
-                return
-            except:
-                pass
-        # No match
-        raise TypeError("DPKEY value must be of type list[int] or str")
-
 class DP_MEASURERow:
     def __init__(self):
         self.ID: int = 0
@@ -94,7 +75,7 @@ class DatasetsRow:
     def __init__(self):
         self.Id: int = 0
         self.Name: str = ""
-        self.ExcludeSet: bool = 1
+        self.ExcludeSet: bool = True
 
 class DatatypeRow:
     def __init__(self):
@@ -277,3 +258,10 @@ class sqlite_sequenceRow:
     def __init__(self):
         self.name = ""
         self.seq = ""
+
+TERRAMETER_DATABASE_TABLE_NAMES: list[str] = ["AcqSettings", "CommonScemaVersion", "DPV", "DP_ABMN", 
+                                              "DP_MEASURE", "DatasetItems", "Datasets", "Datatype", 
+                                              "ElectrodeTestData", "Electrodes", "EventSources", 
+                                              "ExternalData", "GPSPositions", "Log", "Measures", 
+                                              "Positions", "ProjectShemaVersion", "Sessions", 
+                                              "Stations", "TaskSettings", "Tasks", "sqlite_sequence"]

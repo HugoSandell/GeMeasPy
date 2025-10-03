@@ -3,18 +3,19 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import *
 import os 
+import io
 import tempfile
 if __name__ == "__main__":
     from project_types import *    
 else:
     from .project_types import *
 
-Path: TypeAlias = str | bytes | os.PathLike 
-FileDescriptorOrPath: TypeAlias = int | Path
+Path: TypeAlias = str | bytes | os.PathLike
+File: TypeAlias = Path | io.BufferedIOBase
 
 class ProjectDatabase:
     """Terrameter LS2 project database."""
-    def __init__(self, db_file: Optional[FileDescriptorOrPath] = None):
+    def __init__(self, db_file: Optional[File] = None):
         self._AcqSettings: list[AcqSettingsRow] = []
         self._CommonSchemaVersion: CommonSchemaVersionRow = CommonSchemaVersionRow()
         self._ProjectSchemaVersion: ProjectSchemaVersionRow = ProjectSchemaVersionRow()
@@ -36,35 +37,43 @@ class ProjectDatabase:
         self._EventSources: list[EventSourcesRow] = []
         self._ExternalData: list[ExternalDataRow] = []
         self._Datatype: list[DatatypeRow] = []
-        
-        self._file: Optional[Path] = None
-        self._tmpfile: Optional[tuple[int, str]] = None # (file descriptor, path)
+        self._file: Optional[File] = None
         if db_file is not None:
             self.open(db_file)
-
+    
+    def __del__(self):
+        self.close()
+            
     def is_open(self):
-        return self._file != None and self._tmpfile != None
+        return self._file != None
 
-    def open(self, file: FileDescriptorOrPath):
+    def open(self, file: File):
         """Open the provided stream as the active database.  
         Closes previously opened database if any.  
-        Raises TypeError if db_file is not a file descriptor or path.
+        Raises TypeError if db_file is not a binary I/O stream or path.
         Raises OSError or RuntimeError if file or SQLite operations fail."""
-        if not isinstance(file, (int, str, bytes, os.PathLike)):
-            raise TypeError(f"file should be string, bytes or os.PathLike, not {type(file)}")
+        if not isinstance(file, (io.BufferedIOBase, str, bytes, os.PathLike)):
+            raise TypeError(f"file should be binary stream or file path, not {type(file)}")
         self._file = file
 
         # Create a temporary file as a middle ground between the file and sqlite3.
-        # sqlite3 cannot work with file descriptors        
-        with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
-            raw_data = dbf.read()
-        self._tmpfile = tempfile.mkstemp(prefix="gemeaspy")    
-        tmp_file_stream = open(file=self._tmpfile[0], mode="r+b")
-        tmp_file_stream.write(raw_data)
-        tmp_file_stream.close()
+        # sqlite3 doesn't accept         
+        if isinstance(file, (str, bytes, os.PathLike)):
+            with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
+                raw_data = dbf.read()
+        else:
+            if file.seekable():
+                file.seek(0)
+            raw_data = file.read()    
+            
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix="gemeaspy",)    
+        with open(file=tmp_fd, mode="r+b") as f:
+            f.write(raw_data)
+        
         try:
-            connection = sqlite3.connect(self._tmpfile[1])
+            connection = sqlite3.connect(tmp_path)
         except sqlite3.OperationalError as e:
+            os.remove(tmp_path)
             raise RuntimeError("Something went wrong when opening temporary database file.") from e
 
         # Get tables
@@ -99,36 +108,79 @@ class ProjectDatabase:
                     break
         cursor.close()
         connection.close()
+        os.remove(tmp_path)
 
-    def write(self, file: FileDescriptorOrPath = None):
-        """Write to file. If file is None, write to opened file. file must be an existing database file"""
-        # Create a temporary file as a middle ground between the file and sqlite3.
-        # sqlite3 cannot work with file descriptors  
-        with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
-            raw_data = dbf.read()
+    def write(self, file: File = None):
+        """Write to file. Default (file=None) is the currently opened file. file must be an existing database file"""
         if file == None:
+            if not self.is_open():
+                raise FileNotFoundError("Tried to write to currently open file, but no file is open")
             file = self._file
 
-        self._tmpfile = tempfile.mkstemp(prefix="gemeaspy")    
-        tmp_file_stream = open(file=self._tmpfile[0], mode="r+b")
-        tmp_file_stream.write()
-        tmp_file_stream.close()
-        try:
-            connection = sqlite3.connect(self._tmpfile[1])
-        except sqlite3.OperationalError as e:
-            raise RuntimeError("Something went wrong when opening temporary database file.") from e
-             
-        with open(file, "w+b", closefd=isinstance(file, Path)) as dbf:
-            raw_data = dbf.read()
+        # Read existing data from file. This lets us initialise the database
+        if isinstance(file, (str, bytes, os.PathLike)):
+            with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
+                existing_data = dbf.read()
+        else:
+            if file.seekable():
+                file.seek(0)
+            existing_data = file.read()        
         
+        # Create a temporary file as a middle ground between the file and sqlite3.
+        # sqlite3 won't accept streams  
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix="gemeaspy")
+        with open(file=tmp_fd, mode="wb", closefd=False) as tmpfs:
+            tmpfs.write(existing_data)
+        
+        # Create SQLite connection to temporary database file and write rows
+        try:
+            connection = sqlite3.connect(tmp_path)
+        except sqlite3.OperationalError as e:
+            os.remove(tmp_path)
+            raise RuntimeError("Something went wrong when opening temporary database file.") from e
+        
+        with connection:
+            for table_name in TERRAMETER_DATABASE_TABLE_NAMES:
+                attribute_name = "_" + table_name
+                if not hasattr(self, attribute_name):
+                    continue
+                data = getattr(self, attribute_name)
+                
+                # Normalise non-list attributes
+                if not isinstance(data, list):
+                    data = [data] 
+                
+                # Clear existing rows
+                connection.execute(f"DELETE FROM `{table_name}`")
+                if len(data) == 0:
+                    continue
+                
+                for row in data:
+                    row_dict: dict[str, Any] = row.__dict__
+                    column_names = ",".join([key.removeprefix("_") for key in row_dict.keys()])
+                    values = tuple(row_dict.values())
+                    query = f"INSERT INTO `{table_name}` ({column_names}) VALUES({",".join(["?"] * len(values))})"
+                    connection.execute(query, values)
+        connection.close()
+        
+        # Copy contents of temporary file to the provided file
+        with open(file=tmp_fd, mode="rb") as tmpfs:
+            tmpfs.seek(0)
+            new_data = tmpfs.read()
+        
+        if isinstance(file, (str, bytes, os.PathLike)):
+            with open(file, "wb", closefd=isinstance(file, Path)) as dbf:
+                dbf.truncate(0)
+                dbf.seek(0)
+                dbf.write(new_data)
+        else:
+            file.truncate(0)
+            file.seek(0)
+            file.write(new_data)
+            file.flush()
+    
     def close(self):
         self._file = None
-        if self._tmpfile:
-            try:
-                os.remove(self._tmpfile[1])
-            except (OSError, FileNotFoundError):
-                pass
-        self._tmpfile = None
     
     def get_AcqSetting(self, key1: int, key2: int, name: str) -> Optional[int | float | list[float]]:
         """Get a value from the AcqSettings table.
@@ -173,7 +225,8 @@ if __name__ == "__main__":
     path = pathlib.Path(__file__).parents[1].resolve().joinpath(relative_path).as_posix()
 
     def check_output():
-        # Loose output validation
+        # Validate some of the data to see that it's been loaded correctly. 
+        # Should not be called if database has been altered
         # AcqSettings
         settings = [{'Setting': row.Setting, 'Value': row.Value, 'key1': row.key1, 'key2': row.key2, 'Auto': row.Auto} for row in db._AcqSettings]
         assert {'Setting': 'IP_OffTimeSec', 'Value': '1.000000', 'key1': 1, 'key2': -1, 'Auto': 0} in settings
@@ -185,26 +238,11 @@ if __name__ == "__main__":
         tasks = [{'Setting': row.Setting, 'Value': row.Value, 'key1': row.key1, 'key2': row.key2, 'Auto': row.Auto} for row in db._AcqSettings]
         # DP_ABMN
         dp_abmn = [{'ID': row.ID, 'TaskID': row.TaskID, 'DPKEY': row.DPKEY} for row in db._DP_ABMN]
-        assert {'ID': 194, 'TaskID': 1, 'DPKEY': [19,0,0,37,0,0,29,0,0,31,0,0,-2]} in dp_abmn
-    
-    
-    print("Running with file descriptor")
-    f = open(path, "r+b")
-    db = ProjectDatabase(f.fileno())
-    db.close()
-    assert not f.closed
-    f.close()
-    check_output()
+        assert {'ID': 194, 'TaskID': 1, 'DPKEY': "19;0;0;37;0;0;29;0;0;31;0;0;-2"} in dp_abmn
     
     print("Running with file path")
     db = ProjectDatabase(path)
     db.close()
-    check_output()
-        
-    print("Running with file opened with `with` keyword")
-    with open(path, "r+b") as f:
-        db = ProjectDatabase(f.fileno())
-        db.close()
     check_output()
     
     print("Running with bad argument type")
@@ -224,5 +262,23 @@ if __name__ == "__main__":
     except FileNotFoundError:
         raised_correct_exception = True
     assert raised_correct_exception
+    
+    print("Running with BytesIO")
+    file = io.BytesIO()
+    with open(path, "rb") as f:
+        file.write(f.read())
+    file.flush()
+    file.seek(0)
+    db = ProjectDatabase(file)
+    check_output()
+    assert db.get_AcqSetting(1,-1,"CurrentLimitHighAmpere") == 0.05
+    db.set_AcqSetting(1,-1,"CurrentLimitHighAmpere", 0.06)
+    assert db.get_AcqSetting(1,-1,"CurrentLimitHighAmpere") == 0.06
+    db.write()
+    db.close()
+    db = ProjectDatabase()
+    db.open(file)
+    stored_value = db.get_AcqSetting(1, -1, "CurrentLimitHighAmpere")
+    assert stored_value == 0.06
     
     print("Tests done!")
