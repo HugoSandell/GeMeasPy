@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 from typing import *
 import os 
 import tempfile
-from .project_types import *
+if __name__ == "__main__":
+    from project_types import *    
+else:
+    from .project_types import *
 
 Path: TypeAlias = str | bytes | os.PathLike 
 FileDescriptorOrPath: TypeAlias = int | Path
@@ -14,14 +17,26 @@ class ProjectDatabase:
     def __init__(self, db_file: Optional[FileDescriptorOrPath] = None):
         self._AcqSettings: list[AcqSettingsRow] = []
         self._CommonSchemaVersion: CommonSchemaVersionRow = CommonSchemaVersionRow()
+        self._ProjectSchemaVersion: ProjectSchemaVersionRow = ProjectSchemaVersionRow()
+        self._DPV: list[DPVRow]= []
         self._DP_ABMN: list[DP_ABMNRow] = []
+        self._DP_MEASURE: list[DP_MEASURERow] = []
         self._DatasetItems: list[DatasetItemsRow] = []
         self._Datasets: list[DatasetsRow] = []
         self._Electrodes: list[ElectrodesRow] = []
         self._Measures: list[MeasuresRow] = []
-        self._Tasks: list[TasksRow] = []
         self._Sessions: list[SessionsRow] = []
         self._Stations: list[StationsRow] = []
+        self._TaskSettings: list[TaskSettingsRow] = []
+        self._Tasks: list[TasksRow] = []
+        self._sqlite_sequence: list[sqlite_sequenceRow] = []
+        self._Log: list[LogRow] = []
+        self._Positions: list[PositionsRow] = []
+        self._GPSPositions: list[GPSPositionsRow] = []
+        self._EventSources: list[EventSourcesRow] = []
+        self._ExternalData: list[ExternalDataRow] = []
+        self._Datatype: list[DatatypeRow] = []
+        
         self._file: Optional[Path] = None
         self._tmpfile: Optional[tuple[int, str]] = None # (file descriptor, path)
         if db_file is not None:
@@ -30,18 +45,18 @@ class ProjectDatabase:
     def is_open(self):
         return self._file != None and self._tmpfile != None
 
-    def open(self, db_file: FileDescriptorOrPath):
+    def open(self, file: FileDescriptorOrPath):
         """Open the provided stream as the active database.  
         Closes previously opened database if any.  
         Raises TypeError if db_file is not a file descriptor or path.
         Raises OSError or RuntimeError if file or SQLite operations fail."""
-        if not isinstance(db_file, (int, str, bytes, os.PathLike)):
-            raise TypeError(f"db_file should be string, bytes or os.PathLike, not {type(db_file)}")
-        self._file = db_file
+        if not isinstance(file, (int, str, bytes, os.PathLike)):
+            raise TypeError(f"file should be string, bytes or os.PathLike, not {type(file)}")
+        self._file = file
 
         # Create a temporary file as a middle ground between the file and sqlite3.
         # sqlite3 cannot work with file descriptors        
-        with open(db_file, "rb", closefd=isinstance(db_file, Path)) as dbf:
+        with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
             raw_data = dbf.read()
         self._tmpfile = tempfile.mkstemp(prefix="gemeaspy")    
         tmp_file_stream = open(file=self._tmpfile[0], mode="r+b")
@@ -85,6 +100,27 @@ class ProjectDatabase:
         cursor.close()
         connection.close()
 
+    def write(self, file: FileDescriptorOrPath = None):
+        """Write to file. If file is None, write to opened file. file must be an existing database file"""
+        # Create a temporary file as a middle ground between the file and sqlite3.
+        # sqlite3 cannot work with file descriptors  
+        with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
+            raw_data = dbf.read()
+        if file == None:
+            file = self._file
+
+        self._tmpfile = tempfile.mkstemp(prefix="gemeaspy")    
+        tmp_file_stream = open(file=self._tmpfile[0], mode="r+b")
+        tmp_file_stream.write()
+        tmp_file_stream.close()
+        try:
+            connection = sqlite3.connect(self._tmpfile[1])
+        except sqlite3.OperationalError as e:
+            raise RuntimeError("Something went wrong when opening temporary database file.") from e
+             
+        with open(file, "w+b", closefd=isinstance(file, Path)) as dbf:
+            raw_data = dbf.read()
+        
     def close(self):
         self._file = None
         if self._tmpfile:
