@@ -1,12 +1,13 @@
 """ Provides a virtual file system for the Terrameter emulator"""
 
 from typing import  *
+from pathlib import PurePath as _HostPlatformPath
 from pathlib import PurePosixPath as Path
 import errno
 import os
+from io import BytesIO
 
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
-
 
 class _Node:
     def __init__(self, name: str):
@@ -17,7 +18,7 @@ class _Node:
 class _File(_Node):
     def __init__(self, name: str, content: bytes = b''):
         super(_File, self).__init__(name)
-        self.content: bytes = content
+        self.content: BytesIO = BytesIO(content)
         self.is_file = True
 
 class _Dir(_Node):
@@ -30,7 +31,7 @@ class _Dir(_Node):
     def __getitem__(self, key: str):
         return self.children[key]
 
-class VirtualFileSystem:
+class VirtualFileSystem(object):
     def __init__(self):
         self._root = _Dir("")
         self._root.children['/'] = _Dir('/')
@@ -38,7 +39,8 @@ class VirtualFileSystem:
 
     def load_initial_fs(self):
         for parent, child_dirs, child_files in os.walk(_INIT_PATH):
-            parent_vfs = Path("/", os.path.relpath(parent, _INIT_PATH))
+            relative_path = _HostPlatformPath(os.path.relpath(parent, _INIT_PATH)).as_posix()
+            parent_vfs = Path("/", relative_path)
 
             for child in child_dirs:
                 self.make_dir(parent_vfs.joinpath(child))
@@ -77,8 +79,8 @@ class VirtualFileSystem:
             return False
         return True
 
-    def read(self, path: Path) -> bytes:
-        """Read file.         
+    def get_file(self, path: Path) -> BytesIO:
+        """Get file as an I/O object.
         Raises FileNotFoundError if file does not exist.  
         Raises IsADirectoryError if path points to a directory.   
         Raises PermissionError if file cannot be read."""
@@ -87,15 +89,31 @@ class VirtualFileSystem:
             return file.content
         else:
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
-        
+
+    def read(self, path: Path) -> bytes:
+        """Read file into and return a bytes buffer.
+        Raises FileNotFoundError if file does not exist.  
+        Raises IsADirectoryError if path points to a directory.   
+        Raises PermissionError if file cannot be read."""
+        file = self._traverse(path) 
+        if hasattr(file, 'content'):
+            io: BytesIO = file.content
+            io.seek(0)
+            return io.getvalue()
+        else:
+            raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
+
     def write(self, path: Path, data: bytes):
-        """Write data to file. 
+        """Truncate file and write data to it. 
         Raises FileNotFoundError if file does not exist.
         Raises IsADirectoryError if path points to a directory 
         Raises PermissionError if file cannot be written to."""
         file = self._traverse(path) 
         if hasattr(file, 'content'):
-            file.content = data
+            io: BytesIO = file.content
+            io.truncate(0)
+            io.seek(0)
+            io.write(data)
         else:
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
     
