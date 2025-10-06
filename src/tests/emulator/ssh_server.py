@@ -18,16 +18,17 @@ Consists of a paramiko Channel to communicate through and a command str to execu
 class InstrumentServerEmulator():
     """SSH server for testing. Emulates a server connected to a Terrameter"""
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
-        self.instrument = TerrameterLS()
-        self.is_running = threading.Event()
-        self._socket = None
-        self._listen_thread = None # Thread that listens for new connections and sets up sessions
-        self._host_key = host_key
-        self._username = username
-        self._password = password
+        self.instrument: TerrameterLS = TerrameterLS()
+        self.is_running: bool = threading.Event()
+        self.address: Optional[tuple[str, int]] = None
+        self._socket: Optional[socket.socket] = None
+        self._listen_thread: Optional[threading.Thread] = None # Thread that listens for new connections and sets up sessions
+        self._host_key: paramiko.RSAKey = host_key
+        self._username: str = username
+        self._password: str = password
         self._sessions: List[SSHTestServerSession] = [] # Handles state per connection
 
-    def start(self, host: str = 'localhost', port: int = 2222):
+    def start(self, host: str = 'localhost', port: int = 0):
         """Run the server"""
         # Check if already running
         if self.is_running.is_set():
@@ -43,13 +44,16 @@ class InstrumentServerEmulator():
             self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
         self._socket.settimeout(0.1) # Use timeout to prevent multithreading deadlocks
-        self._socket.bind((host, port))
+        self._socket.bind((host, 0))
+        self.address = self._socket.getsockname()
         
         self._listen_thread = threading.Thread(target=self._listen)
         self._listen_thread.start()
     
     def stop(self):
         # Shut down connections and stop listening
+        self.address = None
+        
         for session in self._sessions:
             session.close()
         self._sessions.clear()
@@ -251,5 +255,6 @@ class SSHTestServerSession():
 def run():
     emu = InstrumentServerEmulator()
     emu.start()
+    print("Running on port %s" % emu.address[1])
     input("Press Enter to stop the server...\n")
     emu.stop()

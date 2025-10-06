@@ -36,11 +36,11 @@ def send_single_command(command: str):
     print("\n>", command, flush=True)
     stdin, stdout, stderr = conn.send_command_shell(f"{command}", time_to_sleep=0.1)
 
-def test_emulator():
+def test_emulator(address: tuple[str, int]):
     global conn
     params = {
-        "hostname": "localhost",
-        "port": 2222,
+        "hostname": address[0],
+        "port": address[1],
         "username": "root",
         "password": "",
         "allow_agent": False,
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     server.start()
     while not server.is_listening():
         time.sleep(0.0001)
-    test_thread = threading.Thread(target=test_emulator)
+    test_thread = threading.Thread(target=test_emulator, args=[server.address])
     test_thread.start()
     try:
         while test_thread.is_alive():
