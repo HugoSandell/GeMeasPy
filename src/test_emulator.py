@@ -1,4 +1,7 @@
 # Temporary file for testing Terrameter emulator
+import pytest
+pytestmark = pytest.mark.skip("Not made for pytest")
+
 import os
 from acquisition import connections
 from tests.emulator import ssh_server
