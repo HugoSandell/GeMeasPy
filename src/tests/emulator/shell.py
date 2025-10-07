@@ -230,7 +230,7 @@ class TerrameterShell(Cmd):
             self.print_line_sh(" ".join(arg_list[:num_text_segments]))
         else:
             try:
-                self.instrument.write_file(outfile, " ".join(arg_list[:num_text_segments]))
+                self.instrument.write_file_utf8(outfile, " ".join(arg_list[:num_text_segments]))
             except OSError as e:
                 self.print_os_error("-bash", e)
                 return

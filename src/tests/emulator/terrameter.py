@@ -187,12 +187,21 @@ class TerrameterLS():
     
     def write_file(self, file_path: str, data: bytes = b''):
         """Writes data to file at path.  
+        Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
         parsed_path = Path(file_path)
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
+        
+    def write_file_utf8(self, file_path: str, data: str = ''):
+        """Writes string to file at path.  
+        Raises TypeError if any argument is of the wrong type
+        Raises FileNotFoundException if the directory containing the file does not exist.   
+        Raises IsADirectoryError if path points to a directory.  
+        Raises NotADirectoryError if part of path is not a directory."""
+        self.write_file(file_path, data.encode("utf-8"))
 
     def path_exists(self, path: str) -> bool:
         """Checks if a file or directory exists at a path.
