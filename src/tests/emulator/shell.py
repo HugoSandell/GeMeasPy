@@ -77,8 +77,8 @@ class TerrameterShell(Cmd):
         if len(line) == 0:
             return line
         # Override
-        if line[0]:
-            return line.replace("[", "test")
+        if line[0] == "[":
+            return line.replace("[", "left_square_bracket")
         return line
     
     def do_EOF(self, arg):
@@ -250,20 +250,24 @@ class TerrameterShell(Cmd):
         # implementation of test
         result = False
         match arg_list:
-            case ["]"]:
+            case []:
                 pass
-            case [arg, "]"]:
+            case [arg]:
                 if arg:
                     result = True
-            case ["-e", path, "]"]:
+            case ["-e", path]:
                 result = self.instrument.path_exists(path)
-            case [*_, "]"]:
-                raise NotImplementedError()
             case _:
-                self.print_line_sh("-bash: [: missing `]'")
+                raise NotImplementedError()
 
         # execute another command based on result
         self.onecmd(shlex.join(true_cmd if result else false_cmd))
+
+    def do_left_square_bracket(self, args: str):
+        if "]" not in args:
+            self.print_line_sh("-bash: [: missing `]'")
+        else:
+            self.do_test(args.replace("]", "", 1))
 
     def do_help(self, args: str):
         # Will probably never be used, so print an empty line for now.
