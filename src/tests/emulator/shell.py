@@ -70,6 +70,16 @@ class TerrameterShell(Cmd):
             self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
         else:
             self.print_line_sh(f"{program}: {error.strerror}")
+        
+    
+    def precmd(self, line: str) -> str:
+        line = line.strip()
+        if len(line) == 0:
+            return line
+        # Override
+        if line[0]:
+            return line.replace("[", "test")
+        return line
     
     def do_EOF(self, arg):
         """Called when EOF is read."""
@@ -216,9 +226,9 @@ class TerrameterShell(Cmd):
             self.print_os_error("-bash", e)
             return
 
-    # `[` command, called from `default`
+    # Also known as `[`
     # Currently only supports testing for existence of paths.
-    def _do_bracket_test(self, args: str):
+    def do_test(self, args: str):
         arg_list = _split_args(args)
 
         # Logic operators are not implemented at the shell level, so handle them
@@ -265,8 +275,6 @@ class TerrameterShell(Cmd):
             cmd = line[0]
             arg = line[1:]
             return self._do_terrameter_command(cmd, arg)
-        elif line.startswith("[ "):
-            self._do_bracket_test(line[2:].lstrip())
         else:
             # Get the name of the command
             command = " "
