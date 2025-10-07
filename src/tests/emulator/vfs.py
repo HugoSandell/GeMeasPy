@@ -105,9 +105,15 @@ class VirtualFileSystem(object):
 
     def write(self, path: Path, data: bytes):
         """Truncate file and write data to it. 
+        Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundError if file does not exist.
         Raises IsADirectoryError if path points to a directory 
         Raises PermissionError if file cannot be written to."""
+        if not isinstance(path, Path):
+            raise TypeError(f"Expected type '{Path.__name__}', but got '{type(path).__name__}'")
+        if not isinstance(data, bytes):
+            raise TypeError(f"Expected type 'bytes', but got '{type(data).__name__}'")
+        
         file = self._traverse(path) 
         if hasattr(file, 'content'):
             io: BytesIO = file.content
