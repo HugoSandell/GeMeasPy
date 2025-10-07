@@ -21,7 +21,7 @@ class SSHConnection():
             raise Exception("Failed to create directory '" + LOG_FOLDER + "'")
         self.log = open(os.path.join(LOG_FOLDER, "ssh.log"), 'a', 1)
 
-    def send_command_shell(self, command: str, time_to_sleep: int = 1) -> tuple[paramiko.ChannelFile, paramiko.ChannelFile, paramiko.ChannelFile]:
+    def send_command_shell(self, command: str, time_to_sleep: float = 0.1) -> tuple[paramiko.ChannelFile, paramiko.ChannelFile, paramiko.ChannelFile]:
         if self.ssh is None:
             raise Exception("No Active Connection")
         stdin, stdout, stderr = self.ssh.exec_command(command)
@@ -30,7 +30,7 @@ class SSHConnection():
         time.sleep(time_to_sleep)
         return stdin, stdout, stderr
 
-    def send_command_terrameter_software(self, command: str, time_to_sleep: int = 5) -> None:
+    def send_command_terrameter_software(self, command: str, time_to_sleep: float = 0.5) -> None:
         if self.channel is None:
             raise Exception("No Active Connection")
         encoded_command = command.encode(encoding="UTF-8")

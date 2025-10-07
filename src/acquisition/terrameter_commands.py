@@ -81,7 +81,7 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
         log_str = "Measurement resumed at " + utilities.time_stamp_string_from_datetime(measurement_resume_time)
         logfile.write(log_str + "\n")
         print(log_str)
-    connection.send_command_terrameter_software('m\n', time_to_sleep=60)
+    connection.send_command_terrameter_software('m\n')
     clear_buffer(connection, 1)
 
 

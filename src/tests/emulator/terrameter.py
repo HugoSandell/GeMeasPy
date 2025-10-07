@@ -157,6 +157,8 @@ class TerrameterLS():
         project = self._projects[self._current_project]
         unfinished_tasks = [task for task in project.tasks if not task.is_complete]
         
+        self.set_variable("measure", 1)
+            
         while len(unfinished_tasks) > 0:
             # Get task
             current_task = unfinished_tasks[0]
@@ -171,9 +173,8 @@ class TerrameterLS():
             # Finish task
             current_task.is_complete = True
             unfinished_tasks.pop(0)
-        
-        # Reset values
-        self._variables["measure"].value = 0
+
+        self.set_variable("measure", 0)
         
     def touch(self, file_path: str):
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
