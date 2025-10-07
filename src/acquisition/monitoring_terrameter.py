@@ -5,8 +5,13 @@ from acquisition.connections import SSHConnection
 
 from acquisition import terrameter_commands as tc
 from acquisition import utilities
+import os
 
-is_meas_delay = 60
+if os.getenv("USETERRAMETEREMULATOR") is not None:
+    is_meas_delay = 60
+else:
+    is_meas_delay = 6
+
 def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     # Read Info
     task_list = utilities.read_monitoring_tasks(task_file)
@@ -51,7 +56,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 logfile.write("Resuming Task #{0:02d}\n".format(task["id"]))
                 tc.measure(connection, task, logfile, False)
                 while tc.is_measuring(connection):
-                    time.sleep(10)
+                    time.sleep(1)
                 tc.task_completed(connection, task["id"], logfile)
                 break
         else:
@@ -67,7 +72,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 # tc.create_station(connection)
                 tc.measure(connection, task, logfile)
                 while tc.is_measuring(connection):
-                    time.sleep(10)
+                    time.sleep(1)
                 tc.task_completed(connection, task["id"], logfile)
     tc.terminate_terrameter_software(connection)
     utilities.reset_relay(task_list[0])
