@@ -150,8 +150,8 @@ class SSHTestServerChannel():
                  server: InstrumentServerEmulator,
                  server_interface: SSHTestServerInterface, 
                  paramiko_channel: paramiko.Channel,
-                 pty: Optional[dict[str, str | int]] = None,
-                 exec_command: str | None = None):
+                 exec_command: str | None = None,
+                 pty: Optional[dict[str, str | int]] = None):
         """
             exec_command - The command to execute if serving an execute request. Opens a Shell if this is None.
         """
@@ -248,13 +248,13 @@ class SSHTestServerSession():
                 for request in requests:
                     match request:
                         case (paramiko_channel, command): # Execution request
-                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel, command)
+                            new_channel = SSHTestServerChannel(server=self._server, server_interface=self.server_interface, paramiko_channel=paramiko_channel, exec_command=command)
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
                             pty = self.server_interface.pty_requests.get(paramiko_channel.chanid)
                             self.server_interface.pty_requests.pop(paramiko_channel.chanid, None)
-                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel, pty)
+                            new_channel = SSHTestServerChannel(server=self._server, server_interface=self.server_interface, paramiko_channel=paramiko_channel, pty=pty)
                             new_channel.start()
                             self.channels.append(new_channel)
 
