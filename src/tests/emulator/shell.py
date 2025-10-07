@@ -5,6 +5,17 @@ from typing import *
 from . import constants, vfs
 from .terrameter import TerrameterLS
 
+class PtyRequest:
+    """A request for a pseudo terminal.
+    Terminal, width, height, pixel_width, pixel_height"""
+    def __init__(self, terminal: str = "vt100", 
+                 width: int = 80, height: int = 24, 
+                 width_pixels: int = 0, height_pixels: int = 0):
+        self.terminal: str = terminal
+        self.width: int = width
+        self.height: int = height
+        self.width_pixels: int = width_pixels
+        self.height_pixels: int = height_pixels
 
 def _split_args(args: str) -> list[str]:
     # Only supports single level of quotation
@@ -57,14 +68,21 @@ def _split_args(args: str) -> list[str]:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str]):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], pty: PtyRequest = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
         self.cwd: vfs.Path = vfs.Path("/home/root")
         self.use_rawinput=False # Required to read from the provided stdin insted of sys.stdin 
         self.prompt="root@LS123456789:~# "
         self.terrameter_cli_active = False # Is the terrameter CLI opened
-    
+        self.pty = pty is not None
+        if self.pty:
+            self.width = pty.width
+            self.height = pty.height
+            self.line_terminator = "\r\n"
+        else:
+            self.line_terminator = "\n"
+
     def print_os_error(self, program: str, error: OSError):
         if error.filename != "":
             self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
@@ -73,12 +91,11 @@ class TerrameterShell(Cmd):
         
     
     def precmd(self, line: str) -> str:
+        self.print_line_sh(line)
         line = line.strip()
-        if len(line) == 0:
-            return line
         # Override
-        if line[0] == "[":
-            return line.replace("[", "left_square_bracket")
+        if len(line) > 1 and line.split(maxsplit=1)[0] == "[":
+            return line.replace("[", "left_square_bracket", 1)
         return line
     
     def do_EOF(self, arg):
@@ -293,13 +310,14 @@ class TerrameterShell(Cmd):
 
     def print_sh(self, chars: str):
         """Write string to stdout"""
-        if self.stdout and not self.stdout.closed:
-            self.stdout.write(chars)
-            self.stdout.flush()
-
+        if not self.stdout or self.stdout.closed:
+            return    
+        self.stdout.write(chars)
+        self.stdout.flush()
+        
     def print_line_sh(self, chars: str = ""):
-        """Write string to stdout with an appended line terminator (LF)"""
-        self.print_sh(chars + "\n")
+        """Write string to stdout with an appended line terminator (CRLF)"""
+        self.print_sh(chars + self.line_terminator)
 
     def emptyline(self):
         # Do nothing when receiving an empty line
@@ -308,5 +326,5 @@ class TerrameterShell(Cmd):
 def run():
     import sys
     instrument = TerrameterLS()
-    shell = TerrameterShell(instrument, sys.stdin, sys.stdout)
+    shell = TerrameterShell(instrument, sys.stdin, sys.stdout, pty={"terminal": "vt100", "width": 80, "height": 24, "width_pixels": 0, "height_pixels": 0})
     shell.cmdloop()

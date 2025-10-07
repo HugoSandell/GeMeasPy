@@ -3,15 +3,15 @@ import socket
 import threading
 import os
 
-from .shell import TerrameterShell
+from .shell import TerrameterShell, PtyRequest
 from .host_key_store import get_test_host_key
 from .terrameter import TerrameterLS
 import paramiko
 
-type ShellRequest = paramiko.Channel 
+ShellRequest: TypeAlias = paramiko.Channel 
 """A request for a shell session. 
 Consists of a paramiko Channel to communicate through."""
-type ExecRequest = Tuple[paramiko.Channel, str]
+ExecRequest: TypeAlias = Tuple[paramiko.Channel, str]
 """A request for a command execution session. 
 Consists of a paramiko Channel to communicate through and a command str to execute."""
 
@@ -108,7 +108,8 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
     """Paramiko server overrides. Stores requests for new channels."""
     def __init__(self, username: str, password: str):
         self.has_request = threading.Event()
-        self.requests: List[ShellRequest | ExecRequest] = []
+        self.requests: list[ShellRequest | ExecRequest] = []
+        self.pty_requests: dict[int, PtyRequest] = {} # ChannelID: Request
         self._username = username
         self._password = password
 
@@ -119,7 +120,9 @@ class SSHTestServerInterface(paramiko.server.ServerInterface):
 
     def check_channel_pty_request(self, channel: paramiko.Channel, term: str, width: int, height: int, 
                                   pixelwidth: int, pixelheight: int, modes):
-        return True        
+        request: PtyRequest = PtyRequest(term, width, height, pixelwidth, pixelheight)
+        self.pty_requests[channel.chanid] = request
+        return True
 
     def check_auth_password(self, username: str, password: str) -> int:
         if (username == self._username) and (password == self._password):
@@ -146,7 +149,8 @@ class SSHTestServerChannel():
     def __init__(self, 
                  server: InstrumentServerEmulator,
                  server_interface: SSHTestServerInterface, 
-                 paramiko_channel: paramiko.Channel, 
+                 paramiko_channel: paramiko.Channel,
+                 pty: Optional[dict[str, str | int]] = None,
                  exec_command: str | None = None):
         """
             exec_command - The command to execute if serving an execute request. Opens a Shell if this is None.
@@ -157,6 +161,7 @@ class SSHTestServerChannel():
         self._server_interface: SSHTestServerInterface = server_interface
         self._paramiko_channel: paramiko.Channel = paramiko_channel
         self._exec_command: str = exec_command
+        self._pty = pty
 
     def start(self):
         """Start thread to serve channel"""
@@ -197,7 +202,7 @@ class SSHTestServerChannel():
                 try:
                     stdin = self._paramiko_channel.makefile('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    shell = TerrameterShell(self._server.instrument, stdin, stdout)
+                    shell = TerrameterShell(self._server.instrument, stdin, stdout, self._pty)
                     shell.cmdloop()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
@@ -211,6 +216,7 @@ class SSHTestServerSession():
         self._server = server
         self.server_interface = server_interface
         self.channels: List[SSHTestServerChannel] = []
+        self.pseudoterminals: list[PtyRequest] = []
         self._transport = transport
         self._thread = threading.Thread(target = self._serve)
         self.__close_event = threading.Event() # Signifies that the session is closing
@@ -236,20 +242,21 @@ class SSHTestServerSession():
             wait_time = 0.1 # Timeout in seconds to avoid multithreading deadlocks
             request_exists = self.server_interface.has_request.wait(wait_time) 
             if request_exists:
-                for request in self.server_interface.requests:
+                requests = self.server_interface.requests.copy()
+                self.server_interface.requests.clear()
+                self.server_interface.has_request.clear()
+                for request in requests:
                     match request:
                         case (paramiko_channel, command): # Execution request
                             new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel, command)
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
-                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel)
+                            pty = self.server_interface.pty_requests.get(paramiko_channel.chanid)
+                            self.server_interface.pty_requests.pop(paramiko_channel.chanid, None)
+                            new_channel = SSHTestServerChannel(self._server, self.server_interface, paramiko_channel, pty)
                             new_channel.start()
                             self.channels.append(new_channel)
-                # Clear handled requests
-                self.server_interface.requests.clear()
-                self.server_interface.has_request.clear()
-
 
 # Run server. For manual testing.
 def run():
