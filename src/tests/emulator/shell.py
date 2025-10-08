@@ -242,7 +242,22 @@ class TerrameterShell(Cmd):
             except OSError as e:
                 self.print_os_error("-bash", e)
                 return
-            
+    
+    def do_cd(self, args: str):
+        split_args = _split_args(args)
+        if len(split_args) > 1:
+            self.print_line_sh("-bash: cd: too many arguments")
+            return
+        elif len(split_args) == 0:
+            self.cwd = vfs.Path("/home/root")
+            return
+        try:
+            self.instrument.list_folder(split_args[0], self.cwd)
+        except OSError as e:
+            self.print_os_error("-bash: cd", e)
+            return
+        self.cwd = self.cwd.joinpath(split_args[0])
+    
     def do_ls(self, args: str):
         # Not very accurate to the real thing
         split_args = _split_args(args)
@@ -254,7 +269,8 @@ class TerrameterShell(Cmd):
             try:
                 folders[path] = self.instrument.list_folder(path, self.cwd)
             except OSError as e:
-                self.print_os_error("ls", e)
+                self.print_os_error("-bash: ls", e)
+                return
                 
         for folder_path in folders:
             files = folders[folder_path]

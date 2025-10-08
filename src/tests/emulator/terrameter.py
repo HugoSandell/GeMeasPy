@@ -209,7 +209,7 @@ class TerrameterLS():
             raise TypeError(f"Expected 'str', but got '{type(folder_path).__name__}'")
         parsed_path = Path(folder_path)
         if not parsed_path.is_absolute():
-            parsed_path = Path(folder_path).joinpath(folder_path)
+            parsed_path = Path(relative_to).joinpath(folder_path)
         return self._filesystem.list_folder(parsed_path)
 
     def open_file(self, file_path: str, relative_to: str) -> BytesIO:
