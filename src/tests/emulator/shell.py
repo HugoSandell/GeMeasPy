@@ -256,8 +256,8 @@ class TerrameterShell(Cmd):
         except OSError as e:
             self.print_os_error("-bash: cd", e)
             return
-        self.cwd = self.cwd.joinpath(split_args[0])
-    
+        self.cwd = self.instrument.absolute_path(self.cwd.joinpath(split_args[0]), self.cwd)
+
     def do_ls(self, args: str):
         # Not very accurate to the real thing
         split_args = _split_args(args)

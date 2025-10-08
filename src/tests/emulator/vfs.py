@@ -1,5 +1,4 @@
 """ Provides a virtual file system for the Terrameter emulator"""
-
 from typing import  *
 from pathlib import PurePath as _HostPlatformPath
 from pathlib import PurePosixPath as Path
@@ -9,21 +8,26 @@ from io import BytesIO
 
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
 
+_Dir = object # To suppress warnings
+
 class _Node:
-    def __init__(self, name: str):
-        self.name = name
-        self.is_dir = False
-        self.is_file = False
+    def __init__(self, name: str, parent: _Dir):
+        self.name: str = name
+        self.is_dir: bool = False
+        self.is_file: bool = False
+        self.parent: _Dir = parent
+        if not self.parent:
+            self.parent = self
 
 class _File(_Node):
-    def __init__(self, name: str, content: bytes = b''):
-        super(_File, self).__init__(name)
+    def __init__(self, name: str, parent: _Dir, content: bytes = b''):
+        super(_File, self).__init__(name, parent)
         self.content: BytesIO = BytesIO(content)
         self.is_file = True
 
 class _Dir(_Node):
-    def __init__(self, name: str):
-        super(_Dir, self).__init__(name)
+    def __init__(self, name: str, parent: _Dir):
+        super(_Dir, self).__init__(name, parent)
         self.children: Dict[str, _Node] = {}
         self.is_dir = True
     def __contains__(self, name: str):
@@ -33,8 +37,8 @@ class _Dir(_Node):
 
 class VirtualFileSystem(object):
     def __init__(self):
-        self._root = _Dir("")
-        self._root.children['/'] = _Dir('/')
+        self._root = _Dir("", None)
+        self._root.children['/'] = _Dir('/', None)
         self._root.children['\\'] = self._root.children['/']
 
     def load_initial_fs(self):
@@ -56,8 +60,8 @@ class VirtualFileSystem(object):
 
         if len(parts) > 0 and parts[0] == "~": 
             #Resolve ~ for home dir
-            path = Path("/home/root").joinpath(Path("/".join(path.parts[1:])))        
-        
+            path = Path("/home/root", *path.parts[1:])        
+
         current_node = self._root
         while len(parts) > 0:
             next_name = parts.pop(0)
@@ -67,10 +71,13 @@ class VirtualFileSystem(object):
                 )
             if next_name in current_node:
                 current_node = current_node[next_name]
-                if len(parts) == 0:
-                    return current_node
+            elif next_name == ".":
+                continue
+            elif next_name == "..":
+                current_node = current_node.parent
             else:
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path.as_posix())
+        return current_node
 
     def exists(self, path: Path):
         try:
@@ -144,7 +151,7 @@ class VirtualFileSystem(object):
         if type(parent) != _Dir:
             raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix())
         else:
-            parent.children[node_name] = node_type(node_name)
+            parent.children[node_name] = node_type(node_name, parent)
     
     def make_file(self, path: Path):
         """Create a new file at `path`  
@@ -159,3 +166,16 @@ class VirtualFileSystem(object):
         Raises FileNotFoundError if parent directory does not exist  
         Raises FileExistsError if directory already exists"""
         self._make_node(path, _Dir)
+        
+    def absolute_path(self, path: Path) -> Path:
+        """Returns the canonical path.
+        Raises FileNotFoundError if path couldn't be found"""
+        try:
+            node = self._traverse(path)
+        except OSError:
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path.as_posix())
+        parts = []
+        while node.parent and node.name != "/":
+            parts.insert(0, node.name)
+            node = node.parent
+        return Path("/", *parts)

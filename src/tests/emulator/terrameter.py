@@ -256,3 +256,11 @@ class TerrameterLS():
         if not parsed_path.is_absolute():
             parsed_path = Path(relative_to).joinpath(path)
         return self._filesystem.exists(parsed_path)
+
+    def absolute_path(self, path: str, relative_to: str) -> str:
+        """Returns the absolute path.
+        Raises FileNotFoundError if path couldn't be found"""
+        parsed_path = Path(path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(path)
+        return self._filesystem.absolute_path(parsed_path)
