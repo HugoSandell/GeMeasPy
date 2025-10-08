@@ -1,12 +1,21 @@
 import time
 from typing import *
 import pathlib
-from .vfs import VirtualFileSystem, Path
 import xml.etree.ElementTree as ElementTree
-from . import constants
-from .project import Project
+import sys
+from io import BytesIO
 
-type _Value = str | int | float | bool
+parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
+if __name__ == '__main__' or parent_module.__name__ == '__main__':
+    from vfs import VirtualFileSystem, Path
+    import constants
+    from project import Project
+else:
+    from .vfs import VirtualFileSystem, Path
+    from . import constants
+    from .project import Project
+    
+_Value: TypeAlias = str | int | float | bool
 
 class ParseError(Exception):
     def __init__(self, *args: object):
@@ -136,8 +145,7 @@ class TerrameterLS():
         project_name_path = project_path.joinpath("project_name.txt")
         self._filesystem.make_dir(project_path)
         self._filesystem.make_file(project_name_path)
-        # TODO: should this use `resolved_name`?
-        self._filesystem.write(project_name_path, name.encode())
+        self._filesystem.write(project_name_path, resolved_name.encode())
 
         return resolved_name
 
@@ -176,35 +184,75 @@ class TerrameterLS():
 
         self.set_variable("measure", 0)
         
-    def touch(self, file_path: str):
+    def touch(self, file_path: str, relative_to: str):
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
         Raises FileNotFoundException if the directory containing the file doesn't exist.   
         Raises NotADirectoryError if part of path is not a directory."""
+        parsed_path = Path(file_path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(file_path)
         try:
-            self._filesystem.make_file(Path(file_path))
+            self._filesystem.make_file(parsed_path)
         except IsADirectoryError:
             pass
+        except FileExistsError:
+            pass
+
+    def list_folder(self, folder_path: str, relative_to: str) -> list[str]:
+        """Get list of files in folder.
+        Raises TypeError if the path is of the wrong type  
+        Raises FileNotFoundException if the path does not exist.   
+        Raises PermissionError if user does not have permission.   
+        Raises NotADirectoryError if the target is not a directory.
+        """
+        if not isinstance(folder_path, str):
+            raise TypeError(f"Expected 'str', but got '{type(folder_path).__name__}'")
+        parsed_path = Path(folder_path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(folder_path).joinpath(folder_path)
+        return self._filesystem.list_folder(parsed_path)
+
+    def open_file(self, file_path: str, relative_to: str) -> BytesIO:
+        """Get BytesIO object for file at path.  
+        Raises TypeError if the path is of the wrong type  
+        Raises FileNotFoundException if the file does not exist.   
+        Raises PermissionError if file can not be opened.   
+        Raises IsADirectoryError if path points to a directory."""
+        if not isinstance(file_path, str):
+            raise TypeError(f"Expected 'str', but got '{type(file_path).__name__}'")
+        parsed_path = Path(file_path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(file_path)
+        self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, data: bytes = b''):
+    def write_file(self, file_path: str, relative_to: str, data: bytes = b''):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
         parsed_path = Path(file_path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(file_path)
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, data: str = ''):
+    def write_file_utf8(self, file_path: str, relative_to: str, data: str = ''):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
+        parsed_path = Path(file_path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(file_path)
         self.write_file(file_path, data.encode("utf-8"))
 
-    def path_exists(self, path: str) -> bool:
+    def path_exists(self, path: str, relative_to: str) -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
         Raises NotADirectoryError if part of path is not a directory."""
-        return self._filesystem.exists(Path(path))
+        parsed_path = Path(path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(path)
+        return self._filesystem.exists(parsed_path)

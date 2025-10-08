@@ -52,12 +52,12 @@ class VirtualFileSystem(object):
                     self.write(child_vfs, f.read())
 
     def _traverse(self, path: Path) -> _Node:
-        if path.parts[0] == "~": 
-            #Resolve ~ for home dir
-            path = Path("/home/root").joinpath(Path("/".join(path.parts[1:])))
-        
         parts = list(path.parts)
 
+        if len(parts) > 0 and parts[0] == "~": 
+            #Resolve ~ for home dir
+            path = Path("/home/root").joinpath(Path("/".join(path.parts[1:])))        
+        
         current_node = self._root
         while len(parts) > 0:
             next_name = parts.pop(0)
@@ -78,7 +78,18 @@ class VirtualFileSystem(object):
         except FileNotFoundError:
             return False
         return True
-
+    
+    def list_folder(self, path: Path) -> list[str]:
+        """Get list of files in folder.
+        Raises FileNotFoundException if the path does not exist.   
+        Raises PermissionError if user does not have permission.   
+        Raises NotADirectoryError if the target is not a directory.
+        """
+        dir = self._traverse(path)
+        if not isinstance(dir, _Dir):
+            raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix())
+        return list(dir.children.keys())
+    
     def get_file(self, path: Path) -> BytesIO:
         """Get file as an I/O object.
         Raises FileNotFoundError if file does not exist.  

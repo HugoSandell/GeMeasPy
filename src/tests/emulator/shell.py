@@ -1,9 +1,16 @@
 import shlex
 from cmd import Cmd
 from typing import *
+import sys
+import math
 
-from . import constants, vfs
-from .terrameter import TerrameterLS
+parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
+if __name__ == '__main__' or parent_module.__name__ == '__main__':
+    import constants, vfs
+    from terrameter import TerrameterLS
+else:
+    from . import constants, vfs
+    from .terrameter import TerrameterLS
 
 class PtyRequest:
     """A request for a pseudo terminal.
@@ -91,7 +98,8 @@ class TerrameterShell(Cmd):
         
     
     def precmd(self, line: str) -> str:
-        self.print_line_sh(line)
+        if self.pty:
+            self.print_line_sh(line)
         line = line.strip()
         # Override
         if len(line) > 1 and line.split(maxsplit=1)[0] == "[":
@@ -230,15 +238,37 @@ class TerrameterShell(Cmd):
             self.print_line_sh(" ".join(arg_list[:num_text_segments]))
         else:
             try:
-                self.instrument.write_file_utf8(outfile, " ".join(arg_list[:num_text_segments]))
+                self.instrument.write_file_utf8(outfile, self.cwd, " ".join(arg_list[:num_text_segments]))
             except OSError as e:
                 self.print_os_error("-bash", e)
                 return
-
+            
+    def do_ls(self, args: str):
+        # Not very accurate to the real thing
+        split_args = _split_args(args)
+        if len(split_args) == 0:
+            split_args.append(self.cwd.as_posix())
+        folders = {}
+        
+        for path in split_args:
+            try:
+                folders[path] = self.instrument.list_folder(path, self.cwd)
+            except OSError as e:
+                self.print_os_error("ls", e)
+                
+        for folder_path in folders:
+            files = folders[folder_path]
+            if len(split_args) > 1:
+                self.print_line_sh(f"{folder_path}:")
+                self.print_sh(" ")
+            for name in files:
+                self.print_line_sh(name)
+            self.print_line_sh()
+            
     def do_touch(self, args: str):
         path = _split_args(args)[0]
         try:
-            self.instrument.touch(path)
+            self.instrument.touch(path, self.cwd)
         except OSError as e:
             self.print_os_error("-bash", e)
             return
@@ -277,7 +307,7 @@ class TerrameterShell(Cmd):
                 if arg:
                     result = True
             case ["-e", path]:
-                result = self.instrument.path_exists(path)
+                result = self.instrument.path_exists(path, self.cwd)
             case _:
                 raise NotImplementedError()
 
@@ -330,5 +360,9 @@ class TerrameterShell(Cmd):
 def run():
     import sys
     instrument = TerrameterLS()
-    shell = TerrameterShell(instrument, sys.stdin, sys.stdout, pty={"terminal": "vt100", "width": 80, "height": 24, "width_pixels": 0, "height_pixels": 0})
+    pty = PtyRequest(width = 100, height = 60)
+    shell = TerrameterShell(instrument, sys.stdin, sys.stdout, pty)
     shell.cmdloop()
+
+if __name__ == "__main__":
+    run()
