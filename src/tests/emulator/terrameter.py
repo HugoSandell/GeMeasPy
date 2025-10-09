@@ -4,6 +4,7 @@ import pathlib
 import xml.etree.ElementTree as ElementTree
 import sys
 from io import BytesIO
+import os
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
 if __name__ == '__main__' or parent_module.__name__ == '__main__':
@@ -183,14 +184,22 @@ class TerrameterLS():
             unfinished_tasks.pop(0)
 
         self.set_variable("measure", 0)
-        
+    
+    ### Interface to the file system ###
+    def canonical_absolute_path(self, path: str, relative_to: str= "/") -> Path:
+        """Raises ValueError if relative_to is not an absolute path"""
+        parsed_path = Path(path)
+        if not parsed_path.is_absolute():
+            parsed_path = Path(relative_to).joinpath(parsed_path)
+            if not parsed_path.is_absolute():
+                raise ValueError(f"'{relative_to}' is not an absolute path.")
+        return self._filesystem.canonical_path(parsed_path)
+    
     def touch(self, file_path: str, relative_to: str):
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
         Raises FileNotFoundException if the directory containing the file doesn't exist.   
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = Path(file_path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(file_path)
+        parsed_path = self.canonical_absolute_path(file_path, relative_to)
         try:
             self._filesystem.make_file(parsed_path)
         except IsADirectoryError:
@@ -207,12 +216,10 @@ class TerrameterLS():
         """
         if not isinstance(folder_path, str):
             raise TypeError(f"Expected 'str', but got '{type(folder_path).__name__}'")
-        parsed_path = Path(folder_path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(folder_path)
+        parsed_path = self.canonical_absolute_path(folder_path, relative_to)
         return self._filesystem.list_folder(parsed_path)
 
-    def open_file(self, file_path: str, relative_to: str) -> BytesIO:
+    def open_file(self, file_path: str, relative_to: str = "/") -> BytesIO:
         """Get BytesIO object for file at path.  
         Raises TypeError if the path is of the wrong type  
         Raises FileNotFoundException if the file does not exist.   
@@ -220,47 +227,34 @@ class TerrameterLS():
         Raises IsADirectoryError if path points to a directory."""
         if not isinstance(file_path, str):
             raise TypeError(f"Expected 'str', but got '{type(file_path).__name__}'")
-        parsed_path = Path(file_path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(file_path)
+        parsed_path = self.canonical_absolute_path(file_path, relative_to)
         self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, relative_to: str, data: bytes = b''):
+    def write_file(self, file_path: str, relative_to: str = "/", data: bytes = b''):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = Path(file_path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(file_path)
+        parsed_path = self.canonical_absolute_path(file_path, relative_to)
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, relative_to: str, data: str = ''):
+    def write_file_utf8(self, file_path: str, relative_to: str = "/", data: str = ''):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = Path(file_path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(file_path)
-        self.write_file(file_path, data.encode("utf-8"))
+        self.write_file(file_path, relative_to, data.encode("utf-8"))
 
-    def path_exists(self, path: str, relative_to: str) -> bool:
+    def path_exists(self, path: str, relative_to: str = "/") -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = Path(path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(path)
+        parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.exists(parsed_path)
 
-    def absolute_path(self, path: str, relative_to: str) -> str:
-        """Returns the absolute path.
-        Raises FileNotFoundError if path couldn't be found"""
-        parsed_path = Path(path)
-        if not parsed_path.is_absolute():
-            parsed_path = Path(relative_to).joinpath(path)
-        return self._filesystem.absolute_path(parsed_path)
+    def stat(self, path, relative_to: str) -> os.stat_result:
+        parsed_path = self.canonical_absolute_path(path, relative_to)
+        return self._filesystem.stat(parsed_path)

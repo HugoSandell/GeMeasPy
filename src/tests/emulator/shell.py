@@ -3,6 +3,7 @@ from cmd import Cmd
 from typing import *
 import sys
 import math
+import re
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
 if __name__ == '__main__' or parent_module.__name__ == '__main__':
@@ -42,6 +43,10 @@ def _split_args(args: str) -> list[str]:
         part_start = -1
         arg_list.append(part)
     
+    # Resolve the special character ~ for home dir. 
+    # Could be precompiled for performance, but not likely needed
+    args = re.sub(r"(^|[\s])~([/\s]|$)", r"\1/home/root\2", args)
+
     for i, c in enumerate(args + " "):
         match c:
             case '"' | "'":
@@ -256,7 +261,7 @@ class TerrameterShell(Cmd):
         except OSError as e:
             self.print_os_error("-bash: cd", e)
             return
-        self.cwd = self.instrument.absolute_path(self.cwd.joinpath(split_args[0]), self.cwd)
+        self.cwd = self.instrument.canonical_absolute_path(self.cwd.joinpath(split_args[0]), self.cwd)
 
     def do_ls(self, args: str):
         # Not very accurate to the real thing

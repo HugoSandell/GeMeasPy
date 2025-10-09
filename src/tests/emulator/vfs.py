@@ -5,6 +5,7 @@ from pathlib import PurePosixPath as Path
 import errno
 import os
 from io import BytesIO
+from collections import deque
 
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
 
@@ -55,12 +56,22 @@ class VirtualFileSystem(object):
                 with open(os.path.join(parent, child), "rb") as f:
                     self.write(child_vfs, f.read())
 
+    def canonical_path(self, path: Path) -> Path:
+        """Returns the canonical form of the path with '..' and '.' parts resolved"""
+        parts = deque(maxlen = len(path.parts))
+        for part in path.parts:
+            if part == ".":
+                pass
+            elif part == ".." and len(parts) != 0 and parts[-1] != "..":
+                # '/..' should refer to '/'
+                if not (len(parts) == 1 and parts[0] == "/"):
+                    parts.pop()
+            else:
+                parts.append(part)
+        return Path(*parts)
+
     def _traverse(self, path: Path) -> _Node:
         parts = list(path.parts)
-
-        if len(parts) > 0 and parts[0] == "~": 
-            #Resolve ~ for home dir
-            path = Path("/home/root", *path.parts[1:])        
 
         current_node = self._root
         while len(parts) > 0:
@@ -167,15 +178,41 @@ class VirtualFileSystem(object):
         Raises FileExistsError if directory already exists"""
         self._make_node(path, _Dir)
         
-    def absolute_path(self, path: Path) -> Path:
-        """Returns the canonical path.
-        Raises FileNotFoundError if path couldn't be found"""
-        try:
-            node = self._traverse(path)
-        except OSError:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path.as_posix())
-        parts = []
-        while node.parent and node.name != "/":
-            parts.insert(0, node.name)
-            node = node.parent
-        return Path("/", *parts)
+    def stat(self, path: Path) -> os.stat_result:
+        node = self._traverse(path)
+        # File type masks
+        S_IFREG =   0o0100000 # Regular file
+        S_IFDIR =   0o0040000 # directory
+
+        # File mode masks        
+        S_ISUID =   0o04000   # set-user-ID bit (see execve(2))
+        S_ISGID =   0o02000   # set-group-ID bit (see below)
+        S_ISVTX =   0o01000   # sticky bit (see below)
+
+        S_IRWXU =    0o00700   # owner has read, write, and execute permission
+        S_IRUSR =    0o00400   # owner has read permission
+        S_IWUSR =   0o00200   # owner has write permission
+        S_IXUSR =   0o00100   # owner has execute permission
+
+        S_IRWXG =   0o00070   # group has read, write, and execute permission
+        S_IRGRP =   0o00040   # group has read permission
+        S_IWGRP =   0o00020   # group has write permission
+        S_IXGRP =   0o00010   # group has execute permission
+
+        S_IRWXO =   0o00007   # others (not in group) have read, write, and execute permission
+        S_IROTH =   0o00004   # others have read permission
+        S_IWOTH =   0o00002   # others have write permission
+        S_IXOTH =   0o00001   # others have execute permission
+        
+        mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
+        size = 0
+        
+        if isinstance(node, _Dir):
+            mode |= S_IFDIR
+        elif isinstance(node, _File):
+            mode |= S_IFREG
+            size = len(node.content.getvalue())
+        
+        stats = {"st_mode": mode, "st_ino": node.inode, "st_dev": 0, "st_nlink": 1, "st_uid": 0, "st_gid": 0, "st_size": size, "st_atime": 0, "st_mtime": 0, "st_ctime": 0} 
+        return os.stat_result(stats)
+        
