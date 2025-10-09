@@ -184,26 +184,15 @@ class VirtualFileSystem(object):
         S_IFREG =   0o0100000 # Regular file
         S_IFDIR =   0o0040000 # directory
 
-        # File mode masks        
-        S_ISUID =   0o04000   # set-user-ID bit (see execve(2))
-        S_ISGID =   0o02000   # set-group-ID bit (see below)
-        S_ISVTX =   0o01000   # sticky bit (see below)
-
-        S_IRWXU =    0o00700   # owner has read, write, and execute permission
         S_IRUSR =    0o00400   # owner has read permission
         S_IWUSR =   0o00200   # owner has write permission
-        S_IXUSR =   0o00100   # owner has execute permission
 
-        S_IRWXG =   0o00070   # group has read, write, and execute permission
         S_IRGRP =   0o00040   # group has read permission
         S_IWGRP =   0o00020   # group has write permission
-        S_IXGRP =   0o00010   # group has execute permission
 
-        S_IRWXO =   0o00007   # others (not in group) have read, write, and execute permission
         S_IROTH =   0o00004   # others have read permission
         S_IWOTH =   0o00002   # others have write permission
-        S_IXOTH =   0o00001   # others have execute permission
-        
+ 
         mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
         size = 0
         
@@ -213,6 +202,6 @@ class VirtualFileSystem(object):
             mode |= S_IFREG
             size = len(node.content.getvalue())
         
-        stats = {"st_mode": mode, "st_ino": node.inode, "st_dev": 0, "st_nlink": 1, "st_uid": 0, "st_gid": 0, "st_size": size, "st_atime": 0, "st_mtime": 0, "st_ctime": 0} 
-        return os.stat_result(stats)
+        stats = {"st_mode": mode, "st_ino": 0, "st_dev": 0, "st_nlink": 1, "st_uid": 0, "st_gid": 0, "st_size": size, "st_atime": 0, "st_mtime": 0, "st_ctime": 0} 
+        return os.stat_result(stats.values())
         
