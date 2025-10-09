@@ -230,7 +230,7 @@ class TerrameterLS():
         if not isinstance(file_path, str):
             raise TypeError(f"Expected 'str', but got '{type(file_path).__name__}'")
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
-        self._filesystem.get_file(parsed_path)
+        return self._filesystem.get_file(parsed_path)
     
     def write_file(self, file_path: str, relative_to: Optional[str] = None, data: bytes = b''):
         """Writes data to file at path.  
