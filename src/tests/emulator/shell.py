@@ -285,7 +285,33 @@ class TerrameterShell(Cmd):
             for name in files:
                 self.print_line_sh(name)
             self.print_line_sh()
-            
+    
+    def do_more(self, args: str):
+        # Doesn't actually allow scrolling for large files
+        paths = _split_args(args)
+        buffer: list[tuple[str, str]] = [] # [(path, text), ...]
+        for path in paths:
+            try:
+                path_data = self.instrument.read_file(path, self.cwd)
+                buffer.append((path, path_data.decode()))
+            except IsADirectoryError as e:
+                self.print_line_sh(f"\n*** {path}: directory ***\n")
+            except FileNotFoundError as e:
+                self.print_line_sh(f"more: cannot open {path}: No such file or directory")
+            except OSError as e:
+                self.print_os_error("more", e)
+            except UnicodeDecodeError as e:
+                self.print_line_sh(f"\n******** {path}: Not a text file ********\n")
+        if len(buffer) == 1:
+            self.print_line_sh(buffer[0][1])
+        elif len(buffer) > 1:
+            for path, text in buffer:
+                self.print_line_sh("::::::::::::::")
+                self.print_line_sh(path)
+                self.print_line_sh("::::::::::::::")
+                self.print_line_sh(text)
+        self.print_line_sh()
+
     def do_touch(self, args: str):
         path = _split_args(args)[0]
         try:

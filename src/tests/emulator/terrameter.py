@@ -250,6 +250,15 @@ class TerrameterLS():
         Raises NotADirectoryError if part of path is not a directory."""
         self.write_file(file_path, data.encode("utf-8"), relative_to)
 
+    def read_file(self, file_path: str, relative_to: Optional[str] = None) -> bytes:
+        """Read data from file at path.  
+        Raises TypeError if any argument is of the wrong type
+        Raises FileNotFoundException if the directory containing the file does not exist.   
+        Raises IsADirectoryError if path points to a directory.  
+        Raises NotADirectoryError if part of path is not a directory."""
+        parsed_path = self.canonical_absolute_path(file_path, relative_to)
+        return self._filesystem.read(parsed_path)
+
     def path_exists(self, path: str, relative_to: Optional[str] = None) -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
