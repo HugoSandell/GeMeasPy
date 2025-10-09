@@ -4,6 +4,7 @@ import threading
 import os
 
 from .shell import TerrameterShell, PtyRequest
+from .sftp import EmulatorSFTPServerInterface
 from .host_key_store import get_test_host_key
 from .terrameter import TerrameterLS
 import paramiko
@@ -76,19 +77,18 @@ class InstrumentServerEmulator():
         try:
             transport = paramiko.Transport(client)
             transport.add_server_key(self._host_key)
-
+            transport.set_subsystem_handler("sftp", paramiko.SFTPServer, EmulatorSFTPServerInterface, self.instrument)
             paramiko_interface = SSHTestServerInterface(username=self._username, password=self._password)
             try:
                 transport.start_server(server=paramiko_interface)
-            except paramiko.SSHException as e:
-                print(f"ssh_server.py | Failed to start SSH server: {str(e)}", flush=True)
+            except EOFError as e:
                 return
 
             session = SSHTestServerSession(transport, self, paramiko_interface)
             session.open()
             self._sessions.append(session)
-        except Exception as e:
-            print(f"ssh_server.py | Failed to connect to {client.getpeername()}: {e}", flush=True)
+        except ConnectionResetError as e:
+            return
 
     def _listen(self):
         """Listen for new connections and """
@@ -101,17 +101,17 @@ class InstrumentServerEmulator():
                 self._connect(client)
             except TimeoutError as e:
                 continue
-            except Exception as e:
-                print(f"ssh_server.py | Listening error: {e}")
-                
-class SSHTestServerInterface(paramiko.server.ServerInterface):
+
+class SSHTestServerInterface(paramiko.ServerInterface):
     """Paramiko server overrides. Stores requests for new channels."""
     def __init__(self, username: str, password: str):
+        super(SSHTestServerInterface, self).__init__()
         self.has_request = threading.Event()
         self.requests: list[ShellRequest | ExecRequest] = []
         self.pty_requests: dict[int, PtyRequest] = {} # ChannelID: Request
         self._username = username
         self._password = password
+        
 
     def check_channel_request(self, kind: str, chanid: int) -> int:
         if kind == 'session':

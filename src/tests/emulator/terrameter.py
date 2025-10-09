@@ -232,7 +232,7 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
         return self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, relative_to: Optional[str] = None, data: bytes = b''):
+    def write_file(self, file_path: str, data: bytes = b'', relative_to: Optional[str] = None):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -242,13 +242,13 @@ class TerrameterLS():
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, relative_to: Optional[str] = None, data: str = ''):
+    def write_file_utf8(self, file_path: str, data: str = '', relative_to: Optional[str] = None):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
-        self.write_file(file_path, relative_to, data.encode("utf-8"))
+        self.write_file(file_path, data.encode("utf-8"), relative_to)
 
     def path_exists(self, path: str, relative_to: Optional[str] = None) -> bool:
         """Checks if a file or directory exists at a path.
