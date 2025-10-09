@@ -186,16 +186,18 @@ class TerrameterLS():
         self.set_variable("measure", 0)
     
     ### Interface to the file system ###
-    def canonical_absolute_path(self, path: str, relative_to: str= "/") -> Path:
-        """Raises ValueError if relative_to is not an absolute path"""
+    def canonical_absolute_path(self, path: str, relative_to: Optional[str] = None) -> Path:
+        """Raises ValueError if path is relative and relative_to is relative or None"""
         parsed_path = Path(path)
         if not parsed_path.is_absolute():
+            if not relative_to:
+                raise ValueError("No absolute path provided as reference")
             parsed_path = Path(relative_to).joinpath(parsed_path)
             if not parsed_path.is_absolute():
                 raise ValueError(f"'{relative_to}' is not an absolute path.")
         return self._filesystem.canonical_path(parsed_path)
     
-    def touch(self, file_path: str, relative_to: str):
+    def touch(self, file_path: str, relative_to: Optional[str] = None):
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
         Raises FileNotFoundException if the directory containing the file doesn't exist.   
         Raises NotADirectoryError if part of path is not a directory."""
@@ -207,7 +209,7 @@ class TerrameterLS():
         except FileExistsError:
             pass
 
-    def list_folder(self, folder_path: str, relative_to: str) -> list[str]:
+    def list_folder(self, folder_path: str, relative_to: Optional[str] = None) -> list[str]:
         """Get list of files in folder.
         Raises TypeError if the path is of the wrong type  
         Raises FileNotFoundException if the path does not exist.   
@@ -219,7 +221,7 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(folder_path, relative_to)
         return self._filesystem.list_folder(parsed_path)
 
-    def open_file(self, file_path: str, relative_to: str = "/") -> BytesIO:
+    def open_file(self, file_path: str, relative_to: Optional[str] = None) -> BytesIO:
         """Get BytesIO object for file at path.  
         Raises TypeError if the path is of the wrong type  
         Raises FileNotFoundException if the file does not exist.   
@@ -230,7 +232,7 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
         self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, relative_to: str = "/", data: bytes = b''):
+    def write_file(self, file_path: str, relative_to: Optional[str] = None, data: bytes = b''):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -240,7 +242,7 @@ class TerrameterLS():
         self._filesystem.make_file(parsed_path)
         self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, relative_to: str = "/", data: str = ''):
+    def write_file_utf8(self, file_path: str, relative_to: Optional[str] = None, data: str = ''):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -248,13 +250,13 @@ class TerrameterLS():
         Raises NotADirectoryError if part of path is not a directory."""
         self.write_file(file_path, relative_to, data.encode("utf-8"))
 
-    def path_exists(self, path: str, relative_to: str = "/") -> bool:
+    def path_exists(self, path: str, relative_to: Optional[str] = None) -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
         Raises NotADirectoryError if part of path is not a directory."""
         parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.exists(parsed_path)
 
-    def stat(self, path, relative_to: str) -> os.stat_result:
+    def stat(self, path, relative_to: Optional[str] = None) -> os.stat_result:
         parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.stat(parsed_path)
