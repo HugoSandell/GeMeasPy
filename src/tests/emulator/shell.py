@@ -339,6 +339,15 @@ class TerrameterShell(Cmd):
             except OSError as e:
                 self.print_line_sh(f"rm: cannot remove '{path}': {e.strerror}")
         self.print_line_sh()
+        
+    def do_mkdir(self, args: str):
+        args_list = _split_args(args)
+        for path in args_list:
+            try:
+                self.instrument.make_directory(path, self.cwd)
+            except OSError as e:
+                self.print_line_sh(f"rm: cannot create directory '{path}': {e.strerror}")
+        self.print_line_sh()
 
     def do_touch(self, args: str):
         path = _split_args(args)[0]
