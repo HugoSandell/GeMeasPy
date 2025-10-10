@@ -2,7 +2,7 @@ import shlex
 from cmd import Cmd
 from typing import *
 import sys
-import math
+import argparse
 import re
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
@@ -310,6 +310,34 @@ class TerrameterShell(Cmd):
                 self.print_line_sh(path)
                 self.print_line_sh("::::::::::::::")
                 self.print_line_sh(text)
+        self.print_line_sh()
+
+    def do_rm(self, args: str):
+        class MissingArgumentError(Exception):
+            pass
+        
+        def argparse_error(message):
+            raise MissingArgumentError("Argument parser exception")
+        
+        args_list = _split_args(args)
+
+        parser = argparse.ArgumentParser("rm", exit_on_error=False)
+        parser.error = argparse_error
+        
+        parser.add_argument("-r", "-R", "--recursive", action="store_true")
+        parser.add_argument("files", action="extend", nargs="+", type=str)
+        try:
+            args_namespace, _ = parser.parse_known_args(args_list)
+        except MissingArgumentError:
+            self.print_line_sh("rm: missing operand")
+            self.print_line_sh("Try 'rm --help' for more information.\n")
+            return
+        
+        for path in args_namespace.files:
+            try:
+                self.instrument.remove(path, self.cwd, args_namespace.recursive)
+            except OSError as e:
+                self.print_line_sh(f"rm: cannot remove '{path}': {e.strerror}")
         self.print_line_sh()
 
     def do_touch(self, args: str):

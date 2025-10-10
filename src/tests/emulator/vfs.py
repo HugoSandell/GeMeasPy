@@ -152,6 +152,17 @@ class VirtualFileSystem(object):
         else:
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
     
+    def remove(self, path: Path, recursive: bool = False):
+        """Removes a file.    
+        If recursive is True and the target is a directory, removes directory and all subdirectories and files.  
+        Raises IsADirectoryError if recursive is False and the target is a directory.   
+        Raises FileNotFoundException if path doesn't point to a file or directory.
+        """
+        node = self._traverse(path)
+        if not recursive and isinstance(node, _Dir):
+            raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
+        node.parent.children.pop(node.name)
+
     def _make_node(self, path: Path, node_type: type[_File | _Dir]):
         if node_type not in {_File, _Dir}:
             return

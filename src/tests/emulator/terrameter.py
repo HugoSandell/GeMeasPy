@@ -259,6 +259,15 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
         return self._filesystem.read(parsed_path)
 
+    def remove(self, path: str, relative_to: Optional[str] = None, recursive: bool = False) -> int:
+        """Removes a file.    
+        If recursive is True and the target is a directory, removes directory and all subdirectories and files.  
+        Raises IsADirectoryError if recursive is False and the target is a directory.   
+        Raises FileNotFoundException if path doesn't point to a file or directory.
+        """
+        parsed_path = self.canonical_absolute_path(path, relative_to)
+        self._filesystem.remove(parsed_path, recursive)
+
     def path_exists(self, path: str, relative_to: Optional[str] = None) -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
