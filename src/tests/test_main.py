@@ -14,7 +14,7 @@ _connection_parameters = {"hostname": "localhost", "port": 0, "username": "root"
 @pytest.fixture(autouse=True)
 def init_config():
     global _task_list, _connection_parameters
-    _task_list = []
+    _task_list = ""
     _connection_parameters = {"hostname": "localhost",
         "port": _port,
         "username": "root",
