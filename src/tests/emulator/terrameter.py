@@ -232,23 +232,29 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
         return self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, data: bytes = b'', relative_to: Optional[str] = None):
+    def write_file(self, file_path: str, data: bytes = b'', relative_to: Optional[str] = None, append: bool = False):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
-        self._filesystem.make_file(parsed_path)
-        self._filesystem.write(parsed_path, data)
+        if not self._filesystem.exists(parsed_path):
+            self._filesystem.make_file(parsed_path)
+        if append:
+            file = self._filesystem.get_file(parsed_path)
+            file.seek(0, 2)
+            file.write(data)
+        else:
+            self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, data: str = '', relative_to: Optional[str] = None):
+    def write_file_utf8(self, file_path: str, data: str = '', relative_to: Optional[str] = None, append: bool = False):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
-        self.write_file(file_path, data.encode("utf-8"), relative_to)
+        self.write_file(file_path, data=data.encode("utf-8"), relative_to=relative_to, append=append)
 
     def read_file(self, file_path: str, relative_to: Optional[str] = None) -> bytes:
         """Read data from file at path.  

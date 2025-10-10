@@ -66,10 +66,13 @@ def _split_args(args: str) -> list[str]:
                 is_last_char = i == len(args) - 1
                 if (quote_start < 0 or is_last_char) and part_start >= 0:
                     end_part(i)
-            case "<" | ">":
+            case "<" | ">": 
                 if quote_start < 0:
-                    end_part(i)
-                    arg_list.append(c)
+                    if arg_list[-1] == c:
+                        arg_list[-1] += c # Not accurate if bad sequence of > < is provided 
+                    else:
+                        end_part(i)
+                        arg_list.append(c)
             case _:
                 if part_start < 0:
                     part_start = i
@@ -229,21 +232,23 @@ class TerrameterShell(Cmd):
     def do_echo(self, args: str):
         arg_list = _split_args(args)
         outfile = "&1" # &1 for stdout
+        append = ">>" in arg_list # Append to outfile? (for >>)
         
         num_text_segments = len(arg_list) # How many text segments to echo
         for i, arg in enumerate(arg_list):
-            if arg == ">":
+            if arg in (">", ">>"):
                 if num_text_segments == len(arg_list):
                     num_text_segments = i
                 if i+1 < len(arg_list):
                     outfile=arg_list[i+1]
                 else:
                     self.print_line_sh("-bash: syntax error near unexpected token `newline'")
+            
         if outfile == "&1":
             self.print_line_sh(" ".join(arg_list[:num_text_segments]))
         else:
             try:
-                self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd)
+                self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd, append=append)
             except OSError as e:
                 self.print_os_error("-bash", e)
                 return
