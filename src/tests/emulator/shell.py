@@ -231,6 +231,13 @@ class TerrameterShell(Cmd):
             
     def do_echo(self, args: str):
         arg_list = _split_args(args)
+        
+        # Should we interpret e.g. \n as a newline?
+        backslash_escapes = arg_list[0] == "-e"
+        if backslash_escapes:
+            arg_list = arg_list[1:]
+        should_print_final_newline = True # Should this command exit with a newline to console? Used for character '\c'
+        
         outfile = "&1" # &1 for stdout
         append = ">>" in arg_list # Append to outfile? (for >>)
         
@@ -243,7 +250,26 @@ class TerrameterShell(Cmd):
                     outfile=arg_list[i+1]
                 else:
                     self.print_line_sh("-bash: syntax error near unexpected token `newline'")
-            
+            if backslash_escapes:
+                arg = arg.replace(r"\\", "\\")
+                arg = arg.replace(r"\a", "\a")
+                arg = arg.replace(r"\b", "\b")
+                arg = arg.replace(r"\f", "\f")
+                arg = arg.replace(r"\n", "\n")
+                arg = arg.replace(r"\r", "\r")
+                arg = arg.replace(r"\t", "\t")
+                arg = arg.replace(r"\v", "\v")
+                e_index = arg.find(r"\e") # Escape (this argument)
+                if e_index >= 0:
+                    arg = arg[:e_index]
+                c_index = arg.find(r"\c") # Produce no further output (this command)
+                if c_index >= 0:
+                    should_print_final_newline = False
+                    arg_list[i] = arg[:c_index]
+                    arg_list = arg_list[:(i+1)]
+                    break
+                arg_list[i] = arg
+        
         if outfile == "&1":
             self.print_line_sh(" ".join(arg_list[:num_text_segments]))
         else:
@@ -251,7 +277,8 @@ class TerrameterShell(Cmd):
                 self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd, append=append)
             except OSError as e:
                 self.print_os_error("-bash", e)
-                return
+        if should_print_final_newline:
+            self.print_line_sh()
     
     def do_cd(self, args: str):
         split_args = _split_args(args)
