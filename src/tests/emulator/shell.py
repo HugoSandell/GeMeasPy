@@ -409,10 +409,6 @@ class TerrameterShell(Cmd):
         true_cmd = arg_list[true_i + 1 : false_i if false_i > true_i else None]
         false_cmd = arg_list[false_i + 1 : true_i if true_i > false_i else None]
         arg_list = arg_list[: min(true_i, false_i)]
-        
-        # Ignore closing ]
-        if "]" in arg_list:
-            arg_list.remove("]") 
 
         # implementation of test
         result = False
@@ -432,9 +428,28 @@ class TerrameterShell(Cmd):
 
     def do_left_square_bracket(self, args: str):
         split_args = _split_args(args)
-        if "]" not in split_args:
+        try:
+            right_bracket_index = split_args.index("]")
+        except ValueError:
             self.print_line_sh("-bash: [: missing `]'")
-        self.do_test(args)
+            return
+        separator_index = len(args) # >= len(args) implies none found
+        try:
+            separator_index = split_args.index("&&")
+        except:
+            pass
+        try:
+            separator_index = min(separator_index, split_args.index("||"))
+        except:
+            pass
+        if separator_index < len(args):
+            # one of || or && must immediately follow ] if they're present
+            if separator_index != right_bracket_index + 1:
+                self.print_line_sh("-bash: [: missing `]'")
+                return
+        
+        adapted_args = split_args[:right_bracket_index] + split_args[right_bracket_index+1:]
+        return self.do_test(" ".join([f'"{a}"' for a in adapted_args]))
 
     def do_help(self, args: str):
         # Will probably never be used, so print an empty line for now.
