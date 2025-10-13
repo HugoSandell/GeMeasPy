@@ -4,6 +4,7 @@ from typing import *
 import sys
 import argparse
 import re
+import io  
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
 if __name__ == '__main__' or parent_module.__name__ == '__main__':
@@ -87,9 +88,11 @@ class TerrameterShell(Cmd):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.instrument = instrument
         self.cwd: vfs.Path = vfs.Path("/home/root")
-        self.use_rawinput=False # Required to read from the provided stdin insted of sys.stdin 
+        self.use_rawinput=False 
+        """Required to read from the provided stdin insted of sys.stdin""" 
         self.prompt="root@LS123456789:~# "
-        self.terrameter_cli_active = False # Is the terrameter CLI opened
+        self.terrameter_cli_active = False 
+        """Is the terrameter CLI opened"""
         self.pty = pty is not None
         if self.pty:
             self.width = pty.width
@@ -103,9 +106,13 @@ class TerrameterShell(Cmd):
             self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
         else:
             self.print_line_sh(f"{program}: {error.strerror}")
-        
-    
+            
     def precmd(self, line: str) -> str:
+        if self.instrument.is_shut_down:
+            self.terrameter_cli_active = False
+            self.stdin = io.StringIO()
+            self.stdout = io.StringIO()
+            return ""
         if self.pty:
             self.print_line_sh(line)
         line = line.strip()
@@ -113,6 +120,12 @@ class TerrameterShell(Cmd):
         if len(line) > 1 and line.split(maxsplit=1)[0] == "[":
             return line.replace("[", "left_square_bracket", 1)
         return line
+    
+    def postcmd(self, stop: bool, line: str) -> bool:
+        if self.instrument.is_shut_down:
+            return True
+        else:
+            return stop
     
     def do_EOF(self, arg):
         """Called when EOF is read."""
@@ -210,7 +223,7 @@ class TerrameterShell(Cmd):
             case "S":
                 # Create new Terrameter station
                 raise NotImplementedError()
-            case _: 
+            case _:
                 self.print_line_sh(constants.TERRAMETER_UNKNOWN_COMMAND(command))
 
     ##########    BASH COMMANDS    ##########
@@ -454,6 +467,45 @@ class TerrameterShell(Cmd):
     def do_help(self, args: str):
         # Will probably never be used, so print an empty line for now.
         self.print_line_sh()
+        
+    def do_shutdown(self, args: str):
+        class MissingArgumentError(Exception):
+            pass
+        
+        def argparse_error(message):
+            raise MissingArgumentError("Argument parser exception")
+        
+        args_list = _split_args(args)
+
+        parser = argparse.ArgumentParser("shutdown", exit_on_error=False)
+        parser.error = argparse_error
+        
+        parser.add_argument("-r", action="store_true", dest="reboot")
+        parser.add_argument("time", nargs="?", type=str, default="+1")
+        parser.add_argument("wall", nargs="?", type=str, default=None)
+        
+        parser.parse_known_args(_split_args(args))
+        try:
+            args_namespace, _ = parser.parse_known_args(args_list)
+        except MissingArgumentError:
+            return
+        
+        time_str: str = args_namespace.time
+        if re.fullmatch(r"now", time_str, flags=re.IGNORECASE):
+            seconds = 0
+        if re.fullmatch(r"^\+?[0-9]+$", time_str):
+            seconds = int(time_str.removeprefix("+")) * 60
+        elif re.fullmatch(r"^[0-9]{1,2}:[0-9]{1,2}$", time_str):
+            hours_str, minutes_str = time_str.split(":")
+            hours = int(hours_str)
+            minutes = int(minutes_str)
+            if hours > 59 or minutes > 59:
+                self.print_line_sh(f"Failed to parse time specification: {time_str}")
+            seconds = (minutes + hours * 60) * 60
+        else:
+            self.print_line_sh(f"Failed to parse time specification: {time_str}")
+        self.instrument.initialise_shutdown(timer_seconds=seconds)
+        self.print_line_sh(f"Shutdown scheduled for {"%a %Y-%m-%d %H:%M:%S %Z"}, use 'shutdown -c' to cancel.\n") #TODO: Get timestamp 
     
     def default(self, line: str):
         if self.terrameter_cli_active:

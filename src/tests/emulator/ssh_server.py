@@ -2,13 +2,22 @@ from typing import *
 import socket
 import threading
 import os
-
-from .shell import TerrameterShell, PtyRequest
-from .sftp import EmulatorSFTPServerInterface
-from .host_key_store import get_test_host_key
-from .terrameter import TerrameterLS
+import time
 import paramiko
+import sys
 
+parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
+if __name__ == '__main__' or parent_module.__name__ == '__main__':
+    from shell import TerrameterShell, PtyRequest
+    from sftp import EmulatorSFTPServerInterface
+    from host_key_store import get_test_host_key
+    from terrameter import TerrameterLS
+else:
+    from .shell import TerrameterShell, PtyRequest
+    from .sftp import EmulatorSFTPServerInterface
+    from .host_key_store import get_test_host_key
+    from .terrameter import TerrameterLS
+    
 ShellRequest: TypeAlias = paramiko.Channel 
 """A request for a shell session. 
 Consists of a paramiko Channel to communicate through."""
@@ -96,6 +105,15 @@ class InstrumentServerEmulator():
             # Clear out closed sessions. Not the best way of doing it, but it should be fine.
             self._sessions = [s for s in self._sessions if s.is_open.is_set()]
             try:
+                if self.instrument.is_shut_down:
+                    for session in self._sessions:
+                        session.close()
+                    self._sessions.clear()
+                    time.sleep(0.1)
+                    continue
+                elif not self.instrument.allow_login:
+                    time.sleep(0.1)
+                    continue
                 self._socket.listen() 
                 client, addr = self._socket.accept()
                 self._connect(client)

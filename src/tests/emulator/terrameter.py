@@ -1,6 +1,6 @@
 import time
 from typing import *
-import pathlib
+import threading
 import xml.etree.ElementTree as ElementTree
 import sys
 from io import BytesIO
@@ -31,12 +31,33 @@ class _Variable:
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
     def __init__(self):
+        self.allow_login: bool = True
+        self.is_shut_down: bool = False
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._filesystem.load_initial_fs()
         self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: Dict[str, Project] = {} # "name": object
-        self._current_project: str = "" # Name of current project, if any 
+        self._current_project: str = "" # Name of current project, if any
+
+    def _shutdown(self):
+        # "Reboot"
+        self.allow_login = False
+        self.is_shut_down = True
+        time.sleep(10) # Reboot time
+        self.is_shut_down = False
+        self.allow_login = True
+        pass
+
+    def initialise_shutdown(self, timer_seconds: float):
+        if not self.allow_login:
+            return
+        def disable_login(self):
+            self.allow_login=False
+        # Disable logins 5 minutes beforehand
+        threading.Timer(interval=max(0, timer_seconds/60 - (5 * 60)), function=disable_login, args=(self,)).start()
+        # Perform shutdown
+        threading.Timer(interval=timer_seconds/60, function=self._shutdown).start()
 
     def set_variable(self, variable_name: str, value: _Value) -> None:
         """Write to a Terrameter variable.
