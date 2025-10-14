@@ -142,7 +142,14 @@ class TerrameterShell(Cmd):
             return ""
         if self.pty:
             self.print_line_sh(line)
-        line = line.strip()
+        
+        if self.terrameter_cli_active:
+            # Forward to parser for terrameter commands
+            cmd = line[0]
+            arg = line[1:]
+            self._do_terrameter_command(cmd, arg)
+            return ""
+        
         # Override
         if len(line) > 1 and line.split(maxsplit=1)[0] == "[":
             return line.replace("[", "left_square_bracket", 1)
@@ -535,22 +542,16 @@ class TerrameterShell(Cmd):
         self.print_line_sh(f"Shutdown scheduled for {"%a %Y-%m-%d %H:%M:%S %Z"}, use 'shutdown -c' to cancel.\n") #TODO: Get timestamp 
     
     def default(self, line: str):
-        if self.terrameter_cli_active:
-            # Forward to parser for terrameter commands
-            cmd = line[0]
-            arg = line[1:]
-            return self._do_terrameter_command(cmd, arg)
-        else:
-            # Get the name of the command
-            command = " "
-            if line != None:
-                split = line.split()
-                if len(split) > 0:
-                    command = split[0]
-            # Emulate bash
-            self.print_line_sh(f"-bash: {command}: command not found")
-            # zsh version
-            #self.print_line_sh(f"zsh: {command}: command not found")
+        # Get the name of the command
+        command = " "
+        if line != None:
+            split = line.split()
+            if len(split) > 0:
+                command = split[0]
+        # Emulate bash
+        self.print_line_sh(f"-bash: {command}: command not found")
+        # zsh version
+        #self.print_line_sh(f"zsh: {command}: command not found")
 
     def print_sh(self, chars: str):
         """Write string to stdout"""
