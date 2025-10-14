@@ -26,61 +26,6 @@ class PtyRequest:
         self.width_pixels: int = width_pixels
         self.height_pixels: int = height_pixels
 
-def _split_args(args: str) -> list[str]:
-    # Only supports single level of quotation
-    arg_list = [] # Store result here
-    part_start = -1 # Where the current argument starts in the string. Negative for no part.
-    excluded_characters = [] # Indices of which characters to exclude from the part, relative to part_start
-    quote_start = -1 # Where a quote (single or double) was opened. Negative for no open quote.
-    
-    # End the current part at the given index (exclusive) and add it to the argument list
-    def end_part(end: int):
-        nonlocal part_start, excluded_characters, arg_list
-        part = args[part_start:end]
-        excluded_characters.sort(reverse=True) # Just to be sure
-        for ec in excluded_characters:
-            part = part[:ec] + part[ec+1:]
-        excluded_characters.clear()
-        part_start = -1
-        arg_list.append(part)
-    
-    # Resolve the special character ~ for home dir. 
-    # Could be precompiled for performance, but not likely needed
-    args = re.sub(r"(^|[\s])~([/\s]|$)", r"\1/home/root\2", args)
-
-    for i, c in enumerate(args + " "):
-        match c:
-            case '"' | "'":
-                if quote_start >= 0:
-                    # Close quote if char matches opening quote
-                    if args[quote_start] == c: 
-                        quote_start = -1
-                        excluded_characters.append(i - part_start)
-                else:
-                    # Open quote
-                    quote_start = i
-                    if part_start < 0:
-                        part_start = i+1
-                    else:
-                        excluded_characters.append(i - part_start)
-            case " " | "\t" | "\n":
-                is_last_char = i == len(args) - 1
-                if (quote_start < 0 or is_last_char) and part_start >= 0:
-                    end_part(i)
-            case "<" | ">": 
-                if quote_start < 0:
-                    if arg_list[-1] == c:
-                        arg_list[-1] += c # Not accurate if bad sequence of > < is provided 
-                    else:
-                        end_part(i)
-                        arg_list.append(c)
-            case _:
-                if part_start < 0:
-                    part_start = i
-    # Add last part, even if quote isn't closed
-    if part_start >= 0 and len(arg_list) - part_start > 1:
-        arg_list.append(args[part_start:])
-    return arg_list
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
@@ -100,6 +45,88 @@ class TerrameterShell(Cmd):
             self.line_terminator = "\r\n"
         else:
             self.line_terminator = "\n"
+
+    def _split_args(self, args: str) -> list[str]:
+        # Only supports single level of quotation
+
+        # Store result here
+        arg_list = []
+        # Where the current argument starts in the string. Negative for no part.
+        part_start = -1
+        # Indices of which characters to exclude from the part, relative to part_start
+        excluded_characters = []
+        # Where a quote (single or double) was opened. Negative for no open quote.
+        quote_start = -1
+
+        # End the current part at the given index (exclusive) and add it to the argument list
+        def end_part(end: int):
+            nonlocal part_start, excluded_characters, arg_list
+            part = args[part_start:end]
+
+            # Check if we should resolve the special character ~ for home dir.
+            # Could be precompiled for performance, but not likely needed
+            expand_tilde = bool(re.match(r"~(?:/|$)", part))
+
+            excluded_characters.sort(reverse=True)  # Just to be sure
+            for ec in excluded_characters:
+                part = part[:ec] + part[ec + 1 :]
+            excluded_characters.clear()
+
+            if expand_tilde:
+                part = f"/home/root{part[1:]}"
+
+            part_start = -1
+
+            # expand wildcard at end of paths (doesn't handle quotes correctly)
+            if part.endswith("/*"):
+                folder_path = part[:-1]
+                entries = []
+                try:
+                    entries = self.instrument.list_folder(folder_path, self.cwd)
+                except OSError:
+                    pass
+                entries = [entry for entry in entries if not entry.startswith(".")]
+                # if an error occurs or folder is empty, don't expand
+                if entries:
+                    for entry in entries:
+                        arg_list.append(folder_path + entry)
+                    return
+
+            arg_list.append(part)
+
+        for i, c in enumerate(args + " "):
+            match c:
+                case '"' | "'":
+                    if quote_start >= 0:
+                        # Close quote if char matches opening quote
+                        if args[quote_start] == c:
+                            quote_start = -1
+                            excluded_characters.append(i - part_start)
+                    else:
+                        # Open quote
+                        quote_start = i
+                        if part_start < 0:
+                            part_start = i
+                        excluded_characters.append(i - part_start)
+                case " " | "\t" | "\n":
+                    is_last_char = i == len(args) - 1
+                    if (quote_start < 0 or is_last_char) and part_start >= 0:
+                        end_part(i)
+                case "<" | ">":
+                    if quote_start < 0:
+                        if arg_list[-1] == c:
+                            # Not accurate if bad sequence of > < is provided
+                            arg_list[-1] += c
+                        else:
+                            end_part(i)
+                            arg_list.append(c)
+                case _:
+                    if part_start < 0:
+                        part_start = i
+        # Add last part, even if quote isn't closed
+        if part_start >= 0 and len(arg_list) - part_start > 1:
+            arg_list.append(args[part_start:])
+        return arg_list
 
     def print_os_error(self, program: str, error: OSError):
         if error.filename != "":
@@ -177,7 +204,7 @@ class TerrameterShell(Cmd):
             case "w":
                 # Read Terrameter settings from file
                 try:
-                    self.instrument.read_settings(_split_args(args)[-1])
+                    self.instrument.read_settings(self._split_args(args)[-1])
                 except OSError as e:
                     self.print_os_error("terrameter", e)
                     return
@@ -243,8 +270,8 @@ class TerrameterShell(Cmd):
             self.prompt = "> "
             
     def do_echo(self, args: str):
-        arg_list = _split_args(args)
-        
+        arg_list = self._split_args(args)
+
         # Should we interpret e.g. \n as a newline?
         backslash_escapes = arg_list[0] == "-e"
         if backslash_escapes:
@@ -294,7 +321,7 @@ class TerrameterShell(Cmd):
             self.print_line_sh()
     
     def do_cd(self, args: str):
-        split_args = _split_args(args)
+        split_args = self._split_args(args)
         if len(split_args) > 1:
             self.print_line_sh("-bash: cd: too many arguments")
             return
@@ -310,7 +337,7 @@ class TerrameterShell(Cmd):
 
     def do_ls(self, args: str):
         # Not very accurate to the real thing
-        split_args = _split_args(args)
+        split_args = self._split_args(args)
         if len(split_args) == 0:
             split_args.append(self.cwd.as_posix())
         folders = {}
@@ -333,8 +360,8 @@ class TerrameterShell(Cmd):
     
     def do_more(self, args: str):
         # Doesn't actually allow scrolling for large files
-        paths = _split_args(args)
-        buffer: list[tuple[str, str]] = [] # [(path, text), ...]
+        paths = self._split_args(args)
+        buffer: list[tuple[str, str]] = []  # [(path, text), ...]
         for path in paths:
             try:
                 path_data = self.instrument.read_file(path, self.cwd)
@@ -363,8 +390,8 @@ class TerrameterShell(Cmd):
         
         def argparse_error(message):
             raise MissingArgumentError("Argument parser exception")
-        
-        args_list = _split_args(args)
+
+        args_list = self._split_args(args)
 
         parser = argparse.ArgumentParser("rm", exit_on_error=False)
         parser.error = argparse_error
@@ -386,7 +413,7 @@ class TerrameterShell(Cmd):
         self.print_line_sh()
         
     def do_mkdir(self, args: str):
-        args_list = _split_args(args)
+        args_list = self._split_args(args)
         for path in args_list:
             try:
                 self.instrument.make_directory(path, self.cwd)
@@ -395,7 +422,7 @@ class TerrameterShell(Cmd):
         self.print_line_sh()
 
     def do_touch(self, args: str):
-        path = _split_args(args)[0]
+        path = self._split_args(args)[0]
         try:
             self.instrument.touch(path, self.cwd)
         except OSError as e:
@@ -405,7 +432,7 @@ class TerrameterShell(Cmd):
     # Also known as `[`
     # Currently only supports testing for existence of paths.
     def do_test(self, args: str):
-        arg_list = _split_args(args)
+        arg_list = self._split_args(args)
 
         # Logic operators are not implemented at the shell level, so handle them
         # specially here. Does not work correctly if the same operator occurs twice.
@@ -440,7 +467,7 @@ class TerrameterShell(Cmd):
         self.onecmd(shlex.join(true_cmd if result else false_cmd))
 
     def do_left_square_bracket(self, args: str):
-        split_args = _split_args(args)
+        split_args = self._split_args(args)
         try:
             right_bracket_index = split_args.index("]")
         except ValueError:
@@ -474,8 +501,8 @@ class TerrameterShell(Cmd):
         
         def argparse_error(message):
             raise MissingArgumentError("Argument parser exception")
-        
-        args_list = _split_args(args)
+
+        args_list = self._split_args(args)
 
         parser = argparse.ArgumentParser("shutdown", exit_on_error=False)
         parser.error = argparse_error
@@ -483,8 +510,8 @@ class TerrameterShell(Cmd):
         parser.add_argument("-r", action="store_true", dest="reboot")
         parser.add_argument("time", nargs="?", type=str, default="+1")
         parser.add_argument("wall", nargs="?", type=str, default=None)
-        
-        parser.parse_known_args(_split_args(args))
+
+        parser.parse_known_args(self._split_args(args))
         try:
             args_namespace, _ = parser.parse_known_args(args_list)
         except MissingArgumentError:
