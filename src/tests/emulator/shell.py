@@ -128,6 +128,13 @@ class TerrameterShell(Cmd):
             arg_list.append(args[part_start:])
         return arg_list
 
+    def quit_terrameter(self):
+        if self.terrameter_cli_active:
+            self.print_line_sh(constants.TERRAMETER_OUTRO)
+            self.terrameter_cli_active = False
+            self.prompt=f"root@LS123456789:{self.cwd.as_posix()}# "
+            self.instrument.on_kill_program_instance = None
+
     def print_os_error(self, program: str, error: OSError):
         if error.filename != "":
             self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
@@ -218,9 +225,7 @@ class TerrameterShell(Cmd):
                 self.print_line_sh(f"Read settings from file: {args} 0") # assume 0
             case "Q":
                 # Quit terrameter
-                self.print_line_sh(constants.TERRAMETER_OUTRO)
-                self.terrameter_cli_active = False
-                self.prompt=f"root@LS123456789:{self.cwd.as_posix()}# "
+                self.quit_terrameter()
             case "P":
                 # Create new Terrameter project
                 try:
@@ -275,7 +280,18 @@ class TerrameterShell(Cmd):
             self.print_line_sh(constants.TERRAMETER_INTRO)
             self.terrameter_cli_active = True
             self.prompt = "> "
+            self.instrument.on_kill_program_instance = self.quit_terrameter
             
+    def do_killall(self, args: str):
+        if args == "":
+            self.print_line_sh(constants.KILLALL_HELP)
+        elif args == "terrameter" and self.instrument.on_kill_program_instance:
+            self.instrument.quit_cli()
+        else:
+            for p in self._split_args(args):
+                self.print_line_sh(f"{p}: no proccess found")
+        self.print_line_sh()
+    
     def do_echo(self, args: str):
         arg_list = self._split_args(args)
 

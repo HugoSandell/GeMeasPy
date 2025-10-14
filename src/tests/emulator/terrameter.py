@@ -18,21 +18,23 @@ else:
     
 _Value: TypeAlias = str | int | float | bool
 
-class ParseError(Exception):
-    def __init__(self, *args: object):
-        super(ParseError, self).__init__(*args)
-
 class _Variable:
     def __init__(self, value: _Value = 0, readonly: bool=True):
         self.type_ = type(value)
         self.value = value
         self.readonly = readonly
 
+class ParseError(Exception):
+    def __init__(self, *args: object):
+        super(ParseError, self).__init__(*args)
+
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
     def __init__(self):
         self.allow_login: bool = True
         self.is_shut_down: bool = False
+        self.on_kill_program_instance: Optional[Callable] = None
+        """Called when terrameter software should be shut down""" 
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._filesystem.load_initial_fs()
@@ -58,6 +60,11 @@ class TerrameterLS():
         threading.Timer(interval=max(0, timer_seconds/60 - (5 * 60)), function=disable_login, args=(self,)).start()
         # Perform shutdown
         threading.Timer(interval=timer_seconds/60, function=self._shutdown).start()
+
+    def quit_cli(self):
+        if self.on_kill_program_instance and callable(self.on_kill_program_instance):
+            self.on_kill_program_instance()
+            self.on_kill_program_instance = None
 
     def set_variable(self, variable_name: str, value: _Value) -> None:
         """Write to a Terrameter variable.
