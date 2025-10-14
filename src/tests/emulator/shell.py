@@ -62,16 +62,21 @@ class TerrameterShell(Cmd):
         def end_part(end: int):
             nonlocal part_start, excluded_characters, arg_list
             part = args[part_start:end]
+
+            # Check if we should resolve the special character ~ for home dir.
+            # Could be precompiled for performance, but not likely needed
+            expand_tilde = bool(re.match(r"~(?:/|$)", part))
+
             excluded_characters.sort(reverse=True)  # Just to be sure
             for ec in excluded_characters:
                 part = part[:ec] + part[ec + 1 :]
             excluded_characters.clear()
+
+            if expand_tilde:
+                part = f"/home/root{part[1:]}"
+
             part_start = -1
             arg_list.append(part)
-
-        # Resolve the special character ~ for home dir.
-        # Could be precompiled for performance, but not likely needed
-        args = re.sub(r"(^|[\s])~([/\s]|$)", r"\1/home/root\2", args)
 
         for i, c in enumerate(args + " "):
             match c:
@@ -85,9 +90,8 @@ class TerrameterShell(Cmd):
                         # Open quote
                         quote_start = i
                         if part_start < 0:
-                            part_start = i + 1
-                        else:
-                            excluded_characters.append(i - part_start)
+                            part_start = i
+                        excluded_characters.append(i - part_start)
                 case " " | "\t" | "\n":
                     is_last_char = i == len(args) - 1
                     if (quote_start < 0 or is_last_char) and part_start >= 0:
