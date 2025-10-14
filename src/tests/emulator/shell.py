@@ -76,6 +76,22 @@ class TerrameterShell(Cmd):
                 part = f"/home/root{part[1:]}"
 
             part_start = -1
+
+            # expand wildcard at end of paths (doesn't handle quotes correctly)
+            if part.endswith("/*"):
+                folder_path = part[:-1]
+                entries = []
+                try:
+                    entries = self.instrument.list_folder(folder_path, self.cwd)
+                except OSError:
+                    pass
+                entries = [entry for entry in entries if not entry.startswith(".")]
+                # if an error occurs or folder is empty, don't expand
+                if entries:
+                    for entry in entries:
+                        arg_list.append(folder_path + entry)
+                    return
+
             arg_list.append(part)
 
         for i, c in enumerate(args + " "):
