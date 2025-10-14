@@ -25,9 +25,10 @@ ExecRequest: TypeAlias = Tuple[paramiko.Channel, str]
 """A request for a command execution session. 
 Consists of a paramiko Channel to communicate through and a command str to execute."""
 
-class InstrumentServerEmulator():
+class InstrumentServerEmulator(paramiko.ServerInterface):
     """SSH server for testing. Emulates a server connected to a Terrameter"""
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
+        super(InstrumentServerEmulator, self).__init__()
         self.instrument: TerrameterLS = TerrameterLS()
         self.is_running: bool = threading.Event()
         self.address: Optional[tuple[str, int]] = None
@@ -37,6 +38,9 @@ class InstrumentServerEmulator():
         self._username: str = username
         self._password: str = password
         self._sessions: List[SSHTestServerSession] = [] # Handles state per connection
+        self.has_request = threading.Event()
+        self.requests: list[ShellRequest | ExecRequest] = []
+        self.pty_requests: dict[int, PtyRequest] = {} # ChannelID: Request
 
     def start(self, host: str = 'localhost', port: int = 0):
         """Run the server"""
@@ -87,13 +91,12 @@ class InstrumentServerEmulator():
             transport = paramiko.Transport(client)
             transport.add_server_key(self._host_key)
             transport.set_subsystem_handler("sftp", paramiko.SFTPServer, EmulatorSFTPServerInterface, self.instrument)
-            paramiko_interface = SSHTestServerInterface(username=self._username, password=self._password)
             try:
-                transport.start_server(server=paramiko_interface)
+                transport.start_server(server=self)
             except EOFError as e:
                 return
 
-            session = SSHTestServerSession(transport, self, paramiko_interface)
+            session = SSHTestServerSession(transport, self)
             session.open()
             self._sessions.append(session)
         except ConnectionResetError as e:
@@ -119,18 +122,8 @@ class InstrumentServerEmulator():
                 self._connect(client)
             except TimeoutError as e:
                 continue
-
-class SSHTestServerInterface(paramiko.ServerInterface):
-    """Paramiko server overrides. Stores requests for new channels."""
-    def __init__(self, username: str, password: str):
-        super(SSHTestServerInterface, self).__init__()
-        self.has_request = threading.Event()
-        self.requests: list[ShellRequest | ExecRequest] = []
-        self.pty_requests: dict[int, PtyRequest] = {} # ChannelID: Request
-        self._username = username
-        self._password = password
-        
-
+            
+    ## Paramiko Server Interface overrides
     def check_channel_request(self, kind: str, chanid: int) -> int:
         if kind == 'session':
             return paramiko.OPEN_SUCCEEDED
@@ -166,7 +159,6 @@ class SSHTestServerChannel():
     """Serves a paramiko SSH channel."""
     def __init__(self, 
                  server: InstrumentServerEmulator,
-                 server_interface: SSHTestServerInterface, 
                  paramiko_channel: paramiko.Channel,
                  exec_command: str | None = None,
                  pty: Optional[dict[str, str | int]] = None):
@@ -176,7 +168,6 @@ class SSHTestServerChannel():
         self.is_open = threading.Event()
         self._thread = threading.Thread(target=self._serve)
         self._server: InstrumentServerEmulator = server
-        self._server_interface: SSHTestServerInterface = server_interface
         self._paramiko_channel: paramiko.Channel = paramiko_channel
         self._exec_command: str = exec_command
         self._pty = pty
@@ -201,7 +192,7 @@ class SSHTestServerChannel():
 
     def _serve(self):
             """Serve channel. Either handles a single command or starts a Shell."""
-            self._server_interface.has_request.clear()
+            self._server.has_request.clear()
             if self._exec_command:
                 # Serve command execution request
                 try:
@@ -231,10 +222,9 @@ class SSHTestServerChannel():
 
 class SSHTestServerSession():
     """Stores an SSH session (paramiko Transport) and manages its SSH channels"""
-    def __init__(self, transport: paramiko.Transport, server: InstrumentServerEmulator, server_interface: SSHTestServerInterface):
+    def __init__(self, transport: paramiko.Transport, server: InstrumentServerEmulator):
         self.is_open = threading.Event()
         self._server = server
-        self.server_interface = server_interface
         self.channels: List[SSHTestServerChannel] = []
         self.pseudoterminals: list[PtyRequest] = []
         self._transport = transport
@@ -260,21 +250,21 @@ class SSHTestServerSession():
             # Clear out closed channels. Not the best way of doing it, but it should be fine.
             self.channels = [c for c in self.channels if c.is_open.is_set()]
             wait_time = 0.1 # Timeout in seconds to avoid multithreading deadlocks
-            request_exists = self.server_interface.has_request.wait(wait_time) 
+            request_exists = self._server.has_request.wait(wait_time) 
             if request_exists:
-                requests = self.server_interface.requests.copy()
-                self.server_interface.requests.clear()
-                self.server_interface.has_request.clear()
+                requests = self._server.requests.copy()
+                self._server.requests.clear()
+                self._server.has_request.clear()
                 for request in requests:
                     match request:
                         case (paramiko_channel, command): # Execution request
-                            new_channel = SSHTestServerChannel(server=self._server, server_interface=self.server_interface, paramiko_channel=paramiko_channel, exec_command=command)
+                            new_channel = SSHTestServerChannel(server=self._server, paramiko_channel=paramiko_channel, exec_command=command)
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
-                            pty = self.server_interface.pty_requests.get(paramiko_channel.chanid)
-                            self.server_interface.pty_requests.pop(paramiko_channel.chanid, None)
-                            new_channel = SSHTestServerChannel(server=self._server, server_interface=self.server_interface, paramiko_channel=paramiko_channel, pty=pty)
+                            pty = self._server.pty_requests.get(paramiko_channel.chanid)
+                            self._server.pty_requests.pop(paramiko_channel.chanid, None)
+                            new_channel = SSHTestServerChannel(server=self._server, paramiko_channel=paramiko_channel, pty=pty)
                             new_channel.start()
                             self.channels.append(new_channel)
 
