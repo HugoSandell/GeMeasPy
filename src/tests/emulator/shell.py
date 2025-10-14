@@ -452,6 +452,9 @@ class TerrameterShell(Cmd):
             self.print_os_error("-bash", e)
             return
 
+    def do_export(self, args: str):
+        raise NotImplementedError()
+
     # Also known as `[`
     # Currently only supports testing for existence of paths.
     def do_test(self, args: str):
