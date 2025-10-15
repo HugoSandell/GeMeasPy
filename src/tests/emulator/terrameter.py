@@ -16,10 +16,10 @@ else:
     from . import constants
     from .project import Project
     
-_Value: TypeAlias = str | int | float | bool
+Value: TypeAlias = str | int | float | bool
 
 class _Variable:
-    def __init__(self, value: _Value = 0, readonly: bool=True):
+    def __init__(self, value: Value = 0, readonly: bool=True):
         self.type_ = type(value)
         self.value = value
         self.readonly = readonly
@@ -66,7 +66,7 @@ class TerrameterLS():
             self.on_kill_program_instance()
             self.on_kill_program_instance = None
 
-    def set_variable(self, variable_name: str, value: _Value) -> None:
+    def set_variable(self, variable_name: str, value: Value, permission_override: bool = False) -> None:
         """Write to a Terrameter variable.
         Raises:
             TypeError if any argument is of an incorrect type.
@@ -77,7 +77,7 @@ class TerrameterLS():
         if variable_name not in self._variables:
             raise ValueError(f"Variable '{variable_name}' does not exist.")
         variable = self._variables[variable_name]
-        if variable.readonly:
+        if variable.readonly and not permission_override:
             raise PermissionError(f"Variable '{variable_name}' is read-only.")
         expected_type = variable.type_
         if type(value) != expected_type:
@@ -201,7 +201,7 @@ class TerrameterLS():
         project = self._projects[self._current_project_name]
         unfinished_tasks = [task for task in project.tasks if not task.is_complete]
         
-        self.set_variable("measure", 1)
+        self.set_variable("measure", value=1, permission_override=True)
             
         while len(unfinished_tasks) > 0:
             # Get task
@@ -218,7 +218,7 @@ class TerrameterLS():
             current_task.is_complete = True
             unfinished_tasks.pop(0)
 
-        self.set_variable("measure", 0)
+        self.set_variable("measure", 0, permission_override=True)
     
     ### Interface to the file system ###
     def canonical_absolute_path(self, path: str, relative_to: Optional[str] = None) -> Path:
