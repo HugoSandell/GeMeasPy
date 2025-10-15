@@ -29,8 +29,9 @@ class PtyRequest:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], pty: PtyRequest = None):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], stderr: IO[str], pty: PtyRequest = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
+        self.stderr: IO[str]=stderr
         self.instrument: TerrameterLS = instrument
         self.cwd: vfs.Path = vfs.Path("/home/root")
         """Current Working Directory"""
@@ -138,9 +139,9 @@ class TerrameterShell(Cmd):
 
     def print_os_error(self, program: str, error: OSError):
         if error.filename != "":
-            self.print_line_sh(f"{program}: {error.filename}: {error.strerror}")
+            self.print_error_sh(f"{program}: {error.filename}: {error.strerror}")
         else:
-            self.print_line_sh(f"{program}: {error.strerror}")
+            self.print_error_sh(f"{program}: {error.strerror}")
             
     def precmd(self, line: str) -> str:
         if self.instrument.is_shut_down:
@@ -292,12 +293,12 @@ class TerrameterShell(Cmd):
             
     def do_killall(self, args: str):
         if args == "":
-            self.print_line_sh(constants.KILLALL_HELP)
+            self.print_error_sh(constants.KILLALL_HELP)
         elif args == "terrameter" and self.instrument.on_kill_program_instance:
             self.instrument.quit_cli()
         else:
             for p in self._split_args(args):
-                self.print_line_sh(f"{p}: no proccess found")
+                self.print_error_sh(f"{p}: no proccess found")
         self.print_line_sh()
     
     def do_echo(self, args: str):
@@ -320,7 +321,7 @@ class TerrameterShell(Cmd):
                 if i+1 < len(arg_list):
                     outfile=arg_list[i+1]
                 else:
-                    self.print_line_sh("-bash: syntax error near unexpected token `newline'")
+                    self.print_error_sh("-bash: syntax error near unexpected token `newline'")
             if backslash_escapes:
                 arg = arg.replace(r"\\", "\\")
                 arg = arg.replace(r"\a", "\a")
@@ -354,7 +355,7 @@ class TerrameterShell(Cmd):
     def do_cd(self, args: str):
         split_args = self._split_args(args)
         if len(split_args) > 1:
-            self.print_line_sh("-bash: cd: too many arguments")
+            self.print_error_sh("-bash: cd: too many arguments")
             return
         elif len(split_args) == 0:
             self.cwd = vfs.Path("/home/root")
@@ -398,13 +399,13 @@ class TerrameterShell(Cmd):
                 path_data = self.instrument.read_file(path, self.cwd)
                 buffer.append((path, path_data.decode()))
             except IsADirectoryError as e:
-                self.print_line_sh(f"\n*** {path}: directory ***\n")
+                self.print_error_sh(f"\n*** {path}: directory ***\n")
             except FileNotFoundError as e:
-                self.print_line_sh(f"more: cannot open {path}: No such file or directory")
+                self.print_error_sh(f"more: cannot open {path}: No such file or directory")
             except OSError as e:
                 self.print_os_error("more", e)
             except UnicodeDecodeError as e:
-                self.print_line_sh(f"\n******** {path}: Not a text file ********\n")
+                self.print_error_sh(f"\n******** {path}: Not a text file ********\n")
         if len(buffer) == 1:
             self.print_line_sh(buffer[0][1])
         elif len(buffer) > 1:
@@ -432,15 +433,15 @@ class TerrameterShell(Cmd):
         try:
             args_namespace, _ = parser.parse_known_args(args_list)
         except MissingArgumentError:
-            self.print_line_sh("rm: missing operand")
-            self.print_line_sh("Try 'rm --help' for more information.\n")
+            self.print_error_sh("rm: missing operand")
+            self.print_error_sh("Try 'rm --help' for more information.\n")
             return
         
         for path in args_namespace.files:
             try:
                 self.instrument.remove(path, self.cwd, args_namespace.recursive)
             except OSError as e:
-                self.print_line_sh(f"rm: cannot remove '{path}': {e.strerror}")
+                self.print_error_sh(f"rm: cannot remove '{path}': {e.strerror}")
         self.print_line_sh()
         
     def do_mkdir(self, args: str):
@@ -461,7 +462,7 @@ class TerrameterShell(Cmd):
             return
 
     def do_export(self, args: str):
-        raise NotImplementedError()
+        pass#raise NotImplementedError()
 
     # Also known as `[`
     # Currently only supports testing for existence of paths.
@@ -505,7 +506,7 @@ class TerrameterShell(Cmd):
         try:
             right_bracket_index = split_args.index("]")
         except ValueError:
-            self.print_line_sh("-bash: [: missing `]'")
+            self.print_error_sh("-bash: [: missing `]'")
             return
         separator_index = len(args) # >= len(args) implies none found
         try:
@@ -519,7 +520,7 @@ class TerrameterShell(Cmd):
         if separator_index < len(args):
             # one of || or && must immediately follow ] if they're present
             if separator_index != right_bracket_index + 1:
-                self.print_line_sh("-bash: [: missing `]'")
+                self.print_error_sh("-bash: [: missing `]'")
                 return
         
         adapted_args = split_args[:right_bracket_index] + split_args[right_bracket_index+1:]
@@ -561,10 +562,10 @@ class TerrameterShell(Cmd):
             hours = int(hours_str)
             minutes = int(minutes_str)
             if hours > 59 or minutes > 59:
-                self.print_line_sh(f"Failed to parse time specification: {time_str}")
+                self.print_error_sh(f"Failed to parse time specification: {time_str}")
             seconds = (minutes + hours * 60) * 60
         else:
-            self.print_line_sh(f"Failed to parse time specification: {time_str}")
+            self.print_error_sh(f"Failed to parse time specification: {time_str}")
         self.instrument.initialise_shutdown(timer_seconds=seconds)
         self.print_line_sh(f"Shutdown scheduled for {"%a %Y-%m-%d %H:%M:%S %Z"}, use 'shutdown -c' to cancel.\n") #TODO: Get timestamp 
     
@@ -576,9 +577,9 @@ class TerrameterShell(Cmd):
             if len(split) > 0:
                 command = split[0]
         # Emulate bash
-        self.print_line_sh(f"-bash: {command}: command not found")
+        self.print_error_sh(f"-bash: {command}: command not found")
         # zsh version
-        #self.print_line_sh(f"zsh: {command}: command not found")
+        #self.print_error_sh(f"zsh: {command}: command not found")
 
     def print_sh(self, chars: str):
         """Write string to stdout"""
@@ -588,8 +589,15 @@ class TerrameterShell(Cmd):
         self.stdout.flush()
         
     def print_line_sh(self, chars: str = ""):
-        """Write string to stdout with an appended line terminator (CRLF)"""
+        """Write string to stdout with an appended line terminator"""
         self.print_sh(chars + self.line_terminator)
+
+    def print_error_sh(self, chars: str):
+        """Write string to stderr with an appended line terminator"""
+        if not self.stderr or self.stderr.closed:
+            return    
+        self.stderr.write(chars)
+        self.stderr.flush()
 
     def emptyline(self):
         # Do nothing when receiving an empty line
