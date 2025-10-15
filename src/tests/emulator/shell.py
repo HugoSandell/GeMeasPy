@@ -29,7 +29,7 @@ class PtyRequest:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], stderr: IO[str], pty: PtyRequest = None):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], stderr: Optional[IO[str]] = None, pty: Optional[PtyRequest] = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.stderr: IO[str]=stderr
         self.instrument: TerrameterLS = instrument
@@ -45,8 +45,11 @@ class TerrameterShell(Cmd):
             self.width = pty.width
             self.height = pty.height
             self.line_terminator = "\r\n"
+            self.stderr = stdout # No separate stderr channel for PTY
         else:
             self.line_terminator = "\n"
+            if not stderr:
+                self.stderr = stdout # Fallback
 
     def _split_args(self, args: str) -> list[str]:
         # Only supports single level of quotation

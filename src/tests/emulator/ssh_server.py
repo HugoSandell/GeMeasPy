@@ -199,7 +199,7 @@ class SSHTestServerChannel():
                     stdin = self._paramiko_channel.makefile_stdin('rU')
                     stdout = self._paramiko_channel.makefile('wU')
                     stderr = self._paramiko_channel.makefile_stderr('wU')
-                    shell = TerrameterShell(self._server.instrument, stdin, stdout, stderr)
+                    shell = TerrameterShell(self._server.instrument, stdin, stdout, stderr=stderr)
                     exec_command = shell.precmd(self._exec_command)
                     stop = shell.onecmd(exec_command)
                     shell.postcmd(stop, exec_command)
@@ -214,8 +214,7 @@ class SSHTestServerChannel():
                 try:
                     stdin = self._paramiko_channel.makefile_stdin('rU')
                     stdout = self._paramiko_channel.makefile('wU')
-                    stderr = self._paramiko_channel.makefile_stderr('wU')
-                    shell = TerrameterShell(self._server.instrument, stdin, stdout, stderr, self._pty)
+                    shell = TerrameterShell(self._server.instrument, stdin, stdout, pty=self._pty)
                     shell.cmdloop()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
