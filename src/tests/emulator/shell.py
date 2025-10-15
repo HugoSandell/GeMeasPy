@@ -298,8 +298,7 @@ class TerrameterShell(Cmd):
             self.instrument.quit_cli()
         else:
             for p in self._split_args(args):
-                self.print_error_sh(f"{p}: no proccess found")
-        self.print_line_sh()
+                self.print_error_sh(f"killall: {p}: no process killed")
     
     def do_echo(self, args: str):
         arg_list = self._split_args(args)
@@ -308,8 +307,7 @@ class TerrameterShell(Cmd):
         backslash_escapes = arg_list[0] == "-e"
         if backslash_escapes:
             arg_list = arg_list[1:]
-        should_print_final_newline = True # Should this command exit with a newline to console? Used for character '\c'
-        
+
         outfile = "&1" # &1 for stdout
         append = ">>" in arg_list # Append to outfile? (for >>)
         
@@ -336,7 +334,6 @@ class TerrameterShell(Cmd):
                     arg = arg[:e_index]
                 c_index = arg.find(r"\c") # Produce no further output (this command)
                 if c_index >= 0:
-                    should_print_final_newline = False
                     arg_list[i] = arg[:c_index]
                     arg_list = arg_list[:(i+1)]
                     break
@@ -349,8 +346,6 @@ class TerrameterShell(Cmd):
                 self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd, append=append)
             except OSError as e:
                 self.print_os_error("-bash", e)
-        if should_print_final_newline:
-            self.print_line_sh()
     
     def do_cd(self, args: str):
         split_args = self._split_args(args)
@@ -388,7 +383,6 @@ class TerrameterShell(Cmd):
                 self.print_sh(" ")
             for name in files:
                 self.print_line_sh(name)
-            self.print_line_sh()
     
     def do_more(self, args: str):
         # Doesn't actually allow scrolling for large files
@@ -414,7 +408,6 @@ class TerrameterShell(Cmd):
                 self.print_line_sh(path)
                 self.print_line_sh("::::::::::::::")
                 self.print_line_sh(text)
-        self.print_line_sh()
 
     def do_rm(self, args: str):
         class MissingArgumentError(Exception):
@@ -442,7 +435,6 @@ class TerrameterShell(Cmd):
                 self.instrument.remove(path, self.cwd, args_namespace.recursive)
             except OSError as e:
                 self.print_error_sh(f"rm: cannot remove '{path}': {e.strerror}")
-        self.print_line_sh()
         
     def do_mkdir(self, args: str):
         args_list = self._split_args(args)
@@ -451,7 +443,6 @@ class TerrameterShell(Cmd):
                 self.instrument.make_directory(path, self.cwd)
             except OSError as e:
                 self.print_line_sh(f"rm: cannot create directory '{path}': {e.strerror}")
-        self.print_line_sh()
 
     def do_touch(self, args: str):
         path = self._split_args(args)[0]
