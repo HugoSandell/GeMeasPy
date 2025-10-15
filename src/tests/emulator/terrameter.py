@@ -40,7 +40,7 @@ class TerrameterLS():
         self._filesystem.load_initial_fs()
         self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: Dict[str, Project] = {} # "name": object
-        self._current_project: str = "" # Name of current project, if any
+        self._current_project_name: str = "" # Name of current project, if any
 
     def _shutdown(self):
         # "Reboot"
@@ -168,7 +168,7 @@ class TerrameterLS():
                         done = False # Counter-example found
         new_project = Project(resolved_name)
         self._projects[resolved_name] = new_project
-        self._current_project = resolved_name
+        self._current_project_name = resolved_name
 
         project_path = Path(f"/media/mmcblk0p1/projects/{resolved_name}")
         project_name_path = project_path.joinpath("project_name.txt")
@@ -181,17 +181,24 @@ class TerrameterLS():
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
                     spacing: Tuple[int, int ,int], unknown: Tuple[int, int, int]):
-        if self._current_project not in self._projects:
+        if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
-        project = self._projects[self._current_project]
+        project = self._projects[self._current_project_name]
         project.create_task(name, spread_file, protocol_file, spacing, unknown)
+
+    def create_station(self, id: int):
+        #TODO: Should id be int or str? If changed, remember to change in project and shell as well
+        if self._current_project_name not in self._projects:
+            raise RuntimeError("Current project is not set or does not exist.")
+        project: Project = self._projects[self._current_project_name]
+        project.create_station(id)
 
     def measure(self):
         """Perform measurements"""        
         # Get the project and tasks to work on
-        if self._current_project not in self._projects:
+        if self._current_project_name not in self._projects:
             return
-        project = self._projects[self._current_project]
+        project = self._projects[self._current_project_name]
         unfinished_tasks = [task for task in project.tasks if not task.is_complete]
         
         self.set_variable("measure", 1)

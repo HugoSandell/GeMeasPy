@@ -13,11 +13,17 @@ class Task:
         self.unknown: Tuple[int, int, int] = unknown
         self.is_complete: bool = False
 
+class Station:
+    """A terrameter station"""
+    def __init__(self, id: int):
+        self.id: int = id
+
 class Project:
     """A terrameter project"""
     def __init__(self, name: str):
         self.name: str = name
         self.tasks: List[Task] = []
+        self.stations: List[Station] = []
 
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
@@ -36,3 +42,8 @@ class Project:
         new_task = Task(id, f"{name}_{task_name_number}", spread_file, protocol_file, spacing, unknown)
         self.tasks.append(new_task)
         return id - 1
+
+    def create_station(self, id: int):
+        """Add a station to the project."""
+        new_station = Station(id)
+        self.stations.append(new_station)

@@ -31,15 +31,16 @@ class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], pty: PtyRequest = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
-        self.instrument = instrument
+        self.instrument: TerrameterLS = instrument
         self.cwd: vfs.Path = vfs.Path("/home/root")
-        self.use_rawinput=False 
+        """Current Working Directory"""
+        self.use_rawinput = False 
         """Required to read from the provided stdin insted of sys.stdin""" 
         self.prompt="root@LS123456789:~# "
-        self.terrameter_cli_active = False 
+        self.terrameter_cli_active: bool = False 
         """Is the terrameter CLI opened"""
-        self.pty = pty is not None
-        if self.pty:
+        self.is_pty: bool = pty is not None
+        if self.is_pty:
             self.width = pty.width
             self.height = pty.height
             self.line_terminator = "\r\n"
@@ -147,7 +148,7 @@ class TerrameterShell(Cmd):
             self.stdin = io.StringIO()
             self.stdout = io.StringIO()
             return ""
-        if self.pty:
+        if self.is_pty:
             self.print_line_sh(line)
         
         if self.terrameter_cli_active:
@@ -244,7 +245,7 @@ class TerrameterShell(Cmd):
             case "T":
                 # Create new Terrameter task
                 if len(arg_split) < 9:
-                    self.print_line_sh(" Too few arguments\n")
+                    self.print_line_sh(" Too few arguments\n") # TODO: Should this have the space in the beginning?
                     return
                 name = arg_split[0]
                 spread = arg_split[1]
@@ -261,7 +262,14 @@ class TerrameterShell(Cmd):
                 # TODO: Output
             case "S":
                 # Create new Terrameter station
-                raise NotImplementedError()
+                if len(arg_split) < 1:
+                    self.print_line_sh(" Too few arguments\n") # TODO: Should this have the space in the beginning?
+                    return
+                station_id = arg_split[0]
+                try: 
+                    self.instrument.create_station(station_id)
+                except ValueError:
+                    self.print_line_sh()
             case _:
                 self.print_line_sh(constants.TERRAMETER_UNKNOWN_COMMAND(command))
 
