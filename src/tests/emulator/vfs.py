@@ -40,7 +40,6 @@ class VirtualFileSystem(object):
     def __init__(self):
         self._root = _Dir("", None)
         self._root.children['/'] = _Dir('/', None)
-        self._root.children['\\'] = self._root.children['/']
 
     def load_initial_fs(self):
         for parent, child_dirs, child_files in os.walk(_INIT_PATH):
@@ -212,7 +211,7 @@ class VirtualFileSystem(object):
         elif isinstance(node, _File):
             mode |= S_IFREG
             size = len(node.content.getvalue())
-        
+
         stats = {"st_mode": mode, "st_ino": 0, "st_dev": 0, "st_nlink": 1, "st_uid": 0, "st_gid": 0, "st_size": size, "st_atime": 0, "st_mtime": 0, "st_ctime": 0} 
         return os.stat_result(stats.values())
         

@@ -456,7 +456,7 @@ class TerrameterShell(Cmd):
             return
 
     def do_export(self, args: str):
-        pass#raise NotImplementedError()
+        raise NotImplementedError()
 
     # Also known as `[`
     # Currently only supports testing for existence of paths.

@@ -15,7 +15,7 @@ def run(task_file) -> None:
         print('Error in the task file: possible spreads/protocols missing!')
     ls.start_monitoring(task_file)
     ls.disconnect()
-    
+
 if __name__ == "__main__":
     nargs = len(sys.argv)
     if nargs == 1:

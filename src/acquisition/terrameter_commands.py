@@ -3,6 +3,7 @@ import os
 import time
 from shutil import rmtree
 from typing import Any, TextIO
+import pathlib
 
 from acquisition.connections import SSHConnection
 
@@ -38,6 +39,8 @@ def create_project(connection: SSHConnection) -> None:
 	    project_time_stamp.hour, project_time_stamp.minute, project_time_stamp.second)
     new_project_command = f"P {project_name:s}\n"
     command = f"echo {project_name} > {TERRAMETER_MONITORING_FOLDER}/new_day"
+    connection.send_command_shell(command)
+    command = f"echo {project_name} > {TERRAMETER_PROJECTS_FOLDER}/{project_name}/apple/sauce.txt"
     connection.send_command_shell(command)
     print("Create New Project!")
     connection.send_command_terrameter_software(new_project_command)
@@ -205,8 +208,11 @@ def transfer_project(connection: SSHConnection) -> None:
                " >> {}/{}/zetsum/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project))
     stdin, stdout, stderr = connection.send_command_shell(command)
     ip = connection.get_ip()
-    os.system("sftp -r root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
-        ip, TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, project))
+    #os.system("sftp -r root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
+    #    ip, TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, project))
+    remote_path = pathlib.PurePosixPath(TERRAMETER_PROJECTS_FOLDER, project).as_posix()
+    local_path = str(pathlib.Path(LOCAL_PATH_TO_DATA, project))
+    connection.perform_sftp_transfer(local_path=local_path, remote_path=remote_path)
 
 
 def check_transfer(connection: SSHConnection) -> bool:

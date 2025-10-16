@@ -1,8 +1,12 @@
 import os
 import sys
+import pathlib
 import paramiko
 from paramiko import SFTPAttributes, SFTPHandle, SFTPServerInterface, ServerInterface
 from paramiko.sftp import SFTP_NO_SUCH_FILE, SFTP_PERMISSION_DENIED, SFTP_FAILURE
+SFTP_IS_DIRECTORY = 24
+S_IFREG =   0o0100000 # regular file
+S_IFDIR =   0o0040000 # directory
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
 if __name__ == '__main__' or parent_module.__name__ == '__main__':
@@ -17,8 +21,11 @@ class EmulatorSFTPHandle(SFTPHandle):
         super(EmulatorSFTPHandle, self).__init__(flags)
         self.flags = flags
         self._instrument = instrument
-        self.readfile = self._instrument.open_file(path)
-        self.writefile = self.readfile
+        try:
+            self.readfile = self._instrument.open_file(path)
+            self.writefile = self.readfile
+        except IsADirectoryError:
+            pass
     
     def close(self):
         pass
@@ -35,7 +42,7 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
         pass
     
     def canonicalize(self, path: str) -> str:
-        if path == ".": 
+        if path == ".":
             return "/home/root"
         return super().canonicalize(path)
     
@@ -43,16 +50,18 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
         try:
             if not self._instrument.path_exists(path):
                 return SFTP_NO_SUCH_FILE
+            if not self._instrument.stat(path).st_mode & S_IFREG:
+                return SFTP_IS_DIRECTORY
             return EmulatorSFTPHandle(flags, path, self._instrument)
-        except NotADirectoryError:
+        except (NotADirectoryError, IsADirectoryError):
             return SFTP_NO_SUCH_FILE
     
-    def list_folder(self, path) -> int | list[str]:
+    def list_folder(self, path: str) -> int | list[str]:
         try:
             folder_name_list = self._instrument.list_folder(path)
             attribute_list = []
             for name in folder_name_list:
-                attr = SFTPAttributes()
+                attr = self.stat(file=pathlib.PurePosixPath(path, name).as_posix())
                 attr.filename = name
                 attribute_list.append(attr)
             return attribute_list

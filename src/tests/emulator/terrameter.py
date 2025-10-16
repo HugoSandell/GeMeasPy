@@ -212,7 +212,7 @@ class TerrameterLS():
                 continue
 
             # Perform task
-            time.sleep(2) # Pretend to measure
+            time.sleep(1) # Pretend to measure
             
             # Finish task
             current_task.is_complete = True
@@ -236,13 +236,15 @@ class TerrameterLS():
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
         Raises FileNotFoundException if the directory containing the file doesn't exist.   
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = self.canonical_absolute_path(file_path, relative_to)
         try:
+            parsed_path = self.canonical_absolute_path(file_path, relative_to)
             self._filesystem.make_file(parsed_path)
         except IsADirectoryError:
             pass
         except FileExistsError:
             pass
+        except ValueError:
+            raise FileNotFoundError()
 
     def list_folder(self, folder_path: str, relative_to: Optional[str] = None) -> list[str]:
         """Get list of files in folder.
@@ -253,7 +255,10 @@ class TerrameterLS():
         """
         if not isinstance(folder_path, str):
             raise TypeError(f"Expected 'str', but got '{type(folder_path).__name__}'")
-        parsed_path = self.canonical_absolute_path(folder_path, relative_to)
+        try:
+            parsed_path = self.canonical_absolute_path(folder_path, relative_to)
+        except ValueError:
+            raise FileNotFoundError()
         return self._filesystem.list_folder(parsed_path)
 
     def open_file(self, file_path: str, relative_to: Optional[str] = None) -> BytesIO:
@@ -264,7 +269,10 @@ class TerrameterLS():
         Raises IsADirectoryError if path points to a directory."""
         if not isinstance(file_path, str):
             raise TypeError(f"Expected 'str', but got '{type(file_path).__name__}'")
-        parsed_path = self.canonical_absolute_path(file_path, relative_to)
+        try:
+            parsed_path = self.canonical_absolute_path(file_path, relative_to)
+        except ValueError:
+            raise FileNotFoundError()
         return self._filesystem.get_file(parsed_path)
     
     def write_file(self, file_path: str, data: bytes = b'', relative_to: Optional[str] = None, append: bool = False):
@@ -273,7 +281,10 @@ class TerrameterLS():
         Raises FileNotFoundException if the directory containing the file does not exist.   
         Raises IsADirectoryError if path points to a directory.  
         Raises NotADirectoryError if part of path is not a directory."""
-        parsed_path = self.canonical_absolute_path(file_path, relative_to)
+        try:
+            parsed_path = self.canonical_absolute_path(file_path, relative_to)
+        except ValueError:
+            raise FileNotFoundError()
         if not self._filesystem.exists(parsed_path):
             self._filesystem.make_file(parsed_path)
         if append:
