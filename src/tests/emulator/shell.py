@@ -578,9 +578,12 @@ class TerrameterShell(Cmd):
     def print_sh(self, chars: str):
         """Write string to stdout"""
         if not self.stdout or self.stdout.closed:
-            return    
-        self.stdout.write(chars)
-        self.stdout.flush()
+            return
+        try:
+            self.stdout.write(chars)
+            self.stdout.flush()
+        except OSError:
+            pass
         
     def print_line_sh(self, chars: str = ""):
         """Write string to stdout with an appended line terminator"""
