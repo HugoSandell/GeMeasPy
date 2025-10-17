@@ -34,11 +34,13 @@ class TerrameterShell(Cmd):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
         self.stderr: IO[str]=stderr
         self.instrument: TerrameterLS = instrument
-        self.cwd: vfs.Path = vfs.Path("/home/root")
+        self.hostname = "LS123456789"
+        self.user = "banana"
+        self.homedir = f"/home/{self.user}"
+        self.cwd: vfs.Path = vfs.Path(self.homedir)
         """Current Working Directory"""
         self.use_rawinput = False 
         """Required to read from the provided stdin insted of sys.stdin""" 
-        self.prompt="root@LS123456789:~# "
         self.terrameter_cli_active: bool = False 
         """Is the terrameter CLI opened"""
         self._env: dict[str, str] = {}
@@ -53,6 +55,19 @@ class TerrameterShell(Cmd):
             self.line_terminator = "\n"
             if not stderr:
                 self.stderr = stdout # Fallback
+        self._update_prompt()
+
+    def _update_prompt(self):
+        if self.terrameter_cli_active:
+            self.prompt = "> "
+        else:
+            cwd_str = self.cwd.as_posix()
+            if cwd_str.startswith(self.homedir):
+                cwd_str = cwd_str.replace(self.homedir, "~", 1)
+            prompt_char = "$"
+            if self.user == "root":
+                prompt_char = "#"
+            self.prompt=f"{self.user}@{self.hostname}:{cwd_str}{prompt_char} "
 
     def _split_args(self, args: str) -> list[str]:
         # Only supports single level of quotation
@@ -81,7 +96,7 @@ class TerrameterShell(Cmd):
             excluded_characters.clear()
 
             if expand_tilde:
-                part = f"/home/root{part[1:]}"
+                part = f"{self.homedir}{part[1:]}"
 
             part_start = -1
 
@@ -140,7 +155,6 @@ class TerrameterShell(Cmd):
         if self.terrameter_cli_active:
             self.print_line_sh(constants.TERRAMETER_OUTRO)
             self.terrameter_cli_active = False
-            self.prompt=f"root@LS123456789:{self.cwd.as_posix()}# "
             self.instrument.on_kill_program_instance = None
 
     def print_os_error(self, program: str, error: OSError):
@@ -171,6 +185,7 @@ class TerrameterShell(Cmd):
         return line
     
     def postcmd(self, stop: bool, line: str) -> bool:
+        self._update_prompt()
         if self.instrument.is_shut_down:
             return True
         else:
@@ -294,7 +309,6 @@ class TerrameterShell(Cmd):
         else:
             self.print_line_sh(constants.TERRAMETER_INTRO)
             self.terrameter_cli_active = True
-            self.prompt = "> "
             self.instrument.on_kill_program_instance = self.quit_terrameter
             
     def do_killall(self, args: str):
@@ -359,7 +373,7 @@ class TerrameterShell(Cmd):
             self.print_error_sh("-bash: cd: too many arguments")
             return
         elif len(split_args) == 0:
-            self.cwd = vfs.Path("/home/root")
+            self.cwd = vfs.Path(self.homedir)
             return
         try:
             self.instrument.list_folder(split_args[0], self.cwd)
@@ -607,8 +621,9 @@ class TerrameterShell(Cmd):
     def print_error_sh(self, chars: str):
         """Write string to stderr with an appended line terminator"""
         if not self.stderr or self.stderr.closed:
-            return    
+            return
         self.stderr.write(chars)
+        self.stderr.write(self.line_terminator)
         self.stderr.flush()
 
     def emptyline(self):
@@ -619,7 +634,7 @@ def run():
     import sys
     instrument = TerrameterLS()
     pty = PtyRequest(width = 100, height = 60)
-    shell = TerrameterShell(instrument, sys.stdin, sys.stdout, pty)
+    shell = TerrameterShell(instrument, sys.stdin, sys.stdout, sys.stderr, pty)
     shell.cmdloop()
 
 if __name__ == "__main__":
