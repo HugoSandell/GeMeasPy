@@ -1,14 +1,18 @@
 import pytest
 from typing import *
 import io
-import acquisition
-import acquisition.utilities
-import main
-from tests.emulator import InstrumentServerEmulator
 from io import StringIO
 import os
 import pathlib
 import shutil
+
+# Ensure suitable working directory (src folder)
+os.chdir(os.path.dirname(os.path.dirname(__file__)))
+
+import main
+from tests.emulator import InstrumentServerEmulator
+import acquisition
+import acquisition.utilities
 
 _port = 0
 _task_list = ""
@@ -82,6 +86,7 @@ def test_server():
 def test_empty_tasks(patch_connection_parameters, patch_task_list):
     main.run("!test/task/list!")
 
+@pytest.mark.timeout(60, method="thread", func_only=True)
 def test_one(patch_connection_parameters, patch_task_list, patch_config):
     global _task_list
     _task_list = "1 0\nTask1\n2X21.xml\nGradient_2x21.xml\nCABIN.settings\n1 1 1"
