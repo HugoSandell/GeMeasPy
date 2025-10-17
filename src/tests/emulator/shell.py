@@ -2,6 +2,7 @@ import shlex
 from cmd import Cmd
 from typing import *
 import sys
+import string
 import argparse
 import re
 import io  
@@ -40,6 +41,8 @@ class TerrameterShell(Cmd):
         self.prompt="root@LS123456789:~# "
         self.terrameter_cli_active: bool = False 
         """Is the terrameter CLI opened"""
+        self._env: dict[str, str] = {}
+        """Environment variables"""
         self.is_pty: bool = pty is not None
         if self.is_pty:
             self.width = pty.width
@@ -456,7 +459,19 @@ class TerrameterShell(Cmd):
             return
 
     def do_export(self, args: str):
-        raise NotImplementedError()
+        # TODO: support flags or call with no args 
+        args=self._split_args(args)
+        ALLOWED_CHARS = string.ascii_letters + string.digits + "_"
+        for arg in args:
+            parts = arg.split("=", maxsplit=1)
+            if any([c not in ALLOWED_CHARS for c in parts[0]]):
+                self.print_error_sh(f"-bash: export: `{parts[0]}': not a valid identifier")
+                continue
+            if len(arg) == 2:
+                self._env[parts[0]] = parts[1]
+            elif not parts[0] in self._env:
+                self._env[parts[0]] = None
+        
 
     # Also known as `[`
     # Currently only supports testing for existence of paths.
