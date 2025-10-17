@@ -22,6 +22,7 @@ src/settings/config.py
 
 # data
 data/
+tmptestdata/
 
 #logs
 logs/
