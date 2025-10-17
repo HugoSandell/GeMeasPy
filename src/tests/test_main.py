@@ -4,7 +4,7 @@ import io
 import acquisition
 import acquisition.utilities
 import main
-from src.tests.emulator import InstrumentServerEmulator
+from tests.emulator import InstrumentServerEmulator
 from io import StringIO
 import os
 import pathlib
@@ -51,9 +51,9 @@ def patch_connection_parameters(monkeypatch):
 
 @pytest.fixture
 def patch_config(monkeypatch):
-    monkeypatch.setattr("src.acquisition.instruments.monitoring.tc.TERRAMETER_PROJECTS_FOLDER", r"/media/mmcblk0p1/projects")
-    #monkeypatch.setattr("src.acquisition.terrameter_commands.REMOTE_BACKUP", False)
-    monkeypatch.setattr("src.acquisition.instruments.monitoring.tc.LOCAL_PATH_TO_DATA", r"../tmptestdata")
+    monkeypatch.setattr("acquisition.instruments.monitoring.tc.TERRAMETER_PROJECTS_FOLDER", r"/media/mmcblk0p1/projects")
+    #monkeypatch.setattr("acquisition.instruments.monitoring.tc.LOCAL_PATH_TO_DATA", False)
+    monkeypatch.setattr("acquisition.instruments.monitoring.tc.LOCAL_PATH_TO_DATA", r"../tmptestdata")
     os.makedirs(r"../tmptestdata", exist_ok=True)
     yield
     local_data_path = pathlib.Path(r"../tmptestdata")
