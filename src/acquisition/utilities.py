@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, TextIO
+from typing import Any, TextIO, Optional
 
 from acquisition import subvision_relay
 from settings.config import SERVER_BACKUP_CONNECTION_FILE, TERRAMETER_CONNECTION_FILE
@@ -36,7 +36,6 @@ def time_stamp_string_from_datetime(time_stamp: datetime.datetime) -> str:
                 time_stamp.hour, time_stamp.minute, time_stamp.second)
 
 
-
 def read_ignore_comments(in_file: TextIO) -> str:
     while True:
         line = in_file.readline()
@@ -44,8 +43,59 @@ def read_ignore_comments(in_file: TextIO) -> str:
             continue
         return line.strip()
 
+def read_monitoring_tasks_json(task_file: str) -> Optional[list[dict[str, Any]]]:
+    def validate_task(task: object) -> bool:
+        """Return True if task is valid"""
+        # TODO: Implement more validation
+        if type(task) != dict:
+            return False
+        try:
+            if type(task["name"]) != str:
+                return False
+            if type(task["protocol"]) != str:
+                return False
+            if type(task["spread"]) != str:
+                return False
+            if type(task["settings"]) != str:
+                return False
+            if type(task["spacing"]) != list:
+                return False
+            if type(task["reset_relays"]) != list:
+                return False
+            if type(task["set_relays"]) != list:
+                return False
+            return True
+        except KeyError:
+            return False
+        
+    try:
+        with open(task_file) as f:
+            json_data = json.load(f)
+            if type(json_data) == dict:
+                # Single task not wrapped in list
+                if not validate_task(json_data):
+                    return None
+                json_data["id"] = 1
+                return [json_data]
+            elif type(json_data) == list:
+                # List of tasks
+                for i, task in enumerate(json_data):
+                    if not validate_task(task):
+                        return None
+                    json_data[i]["id"] = i + 1
+                return json_data
+            else:
+                return None
+    except json.JSONDecodeError:
+        return None
+    except FileNotFoundError:
+        return None
 
 def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
+    as_json = read_monitoring_tasks_json(task_file)
+    if as_json:
+        return as_json
+    
     with open(task_file, 'r') as file:
         list_of_tasks = []
         task_id = 0

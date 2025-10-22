@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Task1",
+    "protocol": "Gradient_2X21.xml",
+    "spread": "2X21.xml",
+    "settings": "CABIN.settings",
+    "spacing": [1.0, 1.0, 1.0],
+    "reset_relays": [1, 2, 3],
+    "set_relays": [1]
+  },
+  {
+    "name": "Task2",
+    "protocol": "DipoleDipole2x21.xml",
+    "spread": "2X21.xml",
+    "settings": "CABIN.settings",
+    "spacing": [1.0, 1.0, 1.0],
+    "reset_relays": [1, 2, 3],
+    "set_relays": [1]
+  }
+]

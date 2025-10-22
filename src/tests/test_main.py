@@ -89,5 +89,26 @@ def test_empty_tasks(patch_connection_parameters, patch_task_list):
 @pytest.mark.timeout(60, method="thread", func_only=True)
 def test_one(patch_connection_parameters, patch_task_list, patch_config):
     global _task_list
-    _task_list = "1 0\nTask1\n2X21.xml\nGradient_2x21.xml\nCABIN.settings\n1 1 1"
+    #_task_list = "1 0\nTask1\n2X21.xml\nGradient_2x21.xml\nCABIN.settings\n1 1 1"
+    _task_list = """[
+  {
+    "name": "Task1",
+    "protocol": "Gradient_2X21.xml",
+    "spread": "2X21.xml",
+    "settings": "CABIN.settings",
+    "spacing": [1.0, 1.0, 1.0],
+    "reset_relays": [1, 2, 3],
+    "set_relays": [1]
+  },
+  {
+    "name": "Task2",
+    "protocol": "DipoleDipole2x21.xml",
+    "spread": "2X21.xml",
+    "settings": "CABIN.settings",
+    "spacing": [1.0, 1.0, 1.0],
+    "reset_relays": [1, 2, 3],
+    "set_relays": [1]
+  }
+]
+"""
     main.run("!test/task/list!")
