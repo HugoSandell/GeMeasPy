@@ -1,9 +1,10 @@
-from typing import *
+from typing import TypeAlias, Optional
 import socket
 import threading
 import os
 import time
 import paramiko
+import paramiko.common
 import sys
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
@@ -21,7 +22,7 @@ else:
 ShellRequest: TypeAlias = paramiko.Channel 
 """A request for a shell session. 
 Consists of a paramiko Channel to communicate through."""
-ExecRequest: TypeAlias = Tuple[paramiko.Channel, str]
+ExecRequest: TypeAlias = tuple[paramiko.Channel, str]
 """A request for a command execution session. 
 Consists of a paramiko Channel to communicate through and a command str to execute."""
 
@@ -30,14 +31,14 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
     def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
         super(InstrumentServerEmulator, self).__init__()
         self.instrument: TerrameterLS = TerrameterLS()
-        self.is_running: bool = threading.Event()
-        self.address: Optional[tuple[str, int]] = None
+        self.is_running: threading.Event = threading.Event()
+        self.address: tuple[str, int] = ("", 0)
         self._socket: Optional[socket.socket] = None
         self._listen_thread: Optional[threading.Thread] = None # Thread that listens for new connections and sets up sessions
         self._host_key: paramiko.RSAKey = host_key
         self._username: str = username
         self._password: str = password
-        self._sessions: List[SSHTestServerSession] = [] # Handles state per connection
+        self._sessions: list[SSHTestServerSession] = [] # Handles state per connection
         self.has_request = threading.Event()
         self.requests: list[ShellRequest | ExecRequest] = []
         self.pty_requests: dict[int, PtyRequest] = {} # ChannelID: Request
@@ -54,8 +55,10 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # SO_REUSEPORT is not available on all systems
-        if hasattr(socket, 'SO_REUSEPORT'):
-            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        try:
+            self._socket.setsockopt(socket.SOL_SOCKET, getattr(socket, 'SO_REUSEPORT'), 1)
+        except AttributeError:
+            pass
 
         self._socket.settimeout(0.1) # Use timeout to prevent multithreading deadlocks
         self._socket.bind((host, 0))
@@ -66,8 +69,6 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
     
     def stop(self):
         # Shut down connections and stop listening
-        self.address = None
-        
         for session in self._sessions:
             session.close()
         self._sessions.clear()
@@ -103,7 +104,10 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
             return
 
     def _listen(self):
-        """Listen for new connections and """
+        """listen for new connections and set up sessions"""
+        if not self._socket:
+            return
+        
         while self.is_running.is_set():
             # Clear out closed sessions. Not the best way of doing it, but it should be fine.
             self._sessions = [s for s in self._sessions if s.is_open.is_set()]
@@ -126,10 +130,10 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
     ## Paramiko Server Interface overrides
     def check_channel_request(self, kind: str, chanid: int) -> int:
         if kind == 'session':
-            return paramiko.OPEN_SUCCEEDED
-        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+            return paramiko.common.OPEN_SUCCEEDED
+        return paramiko.common.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
-    def check_channel_pty_request(self, channel: paramiko.Channel, term: str, width: int, height: int, 
+    def check_channel_pty_request(self, channel: paramiko.Channel, term: bytes, width: int, height: int, 
                                   pixelwidth: int, pixelheight: int, modes):
         request: PtyRequest = PtyRequest(term, width, height, pixelwidth, pixelheight)
         self.pty_requests[channel.chanid] = request
@@ -137,8 +141,8 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
 
     def check_auth_password(self, username: str, password: str) -> int:
         if (username == self._username) and (password == self._password):
-            return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
+            return paramiko.common.AUTH_SUCCESSFUL
+        return paramiko.common.AUTH_FAILED
 
     def get_allowed_auths(self, username: str) -> str:
         return 'password'
@@ -161,7 +165,7 @@ class SSHTestServerChannel():
                  server: InstrumentServerEmulator,
                  paramiko_channel: paramiko.Channel,
                  exec_command: str | None = None,
-                 pty: Optional[dict[str, str | int]] = None):
+                 pty: Optional[PtyRequest] = None):
         """
             exec_command - The command to execute if serving an execute request. Opens a Shell if this is None.
         """
@@ -226,7 +230,7 @@ class SSHTestServerSession():
     def __init__(self, transport: paramiko.Transport, server: InstrumentServerEmulator):
         self.is_open = threading.Event()
         self._server = server
-        self.channels: List[SSHTestServerChannel] = []
+        self.channels: list[SSHTestServerChannel] = []
         self.pseudoterminals: list[PtyRequest] = []
         self._transport = transport
         self._thread = threading.Thread(target = self._serve)
@@ -263,8 +267,9 @@ class SSHTestServerSession():
                             new_channel.start()
                             self.channels.append(new_channel)
                         case paramiko_channel: # Shell request
-                            pty = self._server.pty_requests.get(paramiko_channel.chanid)
-                            self._server.pty_requests.pop(paramiko_channel.chanid, None)
+                            pty = self._server.pty_requests.pop(paramiko_channel.chanid, None)
+                            if not pty:
+                                continue
                             new_channel = SSHTestServerChannel(server=self._server, paramiko_channel=paramiko_channel, pty=pty)
                             new_channel.start()
                             self.channels.append(new_channel)
@@ -273,6 +278,8 @@ class SSHTestServerSession():
 def run():
     emu = InstrumentServerEmulator()
     emu.start()
+    if not emu.address:
+        return
     print("Running on port %s" % emu.address[1])
     input("Press Enter to stop the server...\n")
     emu.stop()

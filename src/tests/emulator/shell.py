@@ -1,11 +1,12 @@
 import shlex
 from cmd import Cmd
-from typing import *
+from typing import IO, Optional, cast
 import sys
 import string
 import argparse
 import re
 import io  
+import paramiko
 
 parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
 if __name__ == '__main__' or parent_module.__name__ == '__main__':
@@ -18,10 +19,10 @@ else:
 class PtyRequest:
     """A request for a pseudo terminal.
     Terminal, width, height, pixel_width, pixel_height"""
-    def __init__(self, terminal: str = "vt100", 
+    def __init__(self, terminal: bytes = b"vt100", 
                  width: int = 80, height: int = 24, 
                  width_pixels: int = 0, height_pixels: int = 0):
-        self.terminal: str = terminal
+        self.terminal: bytes = terminal
         self.width: int = width
         self.height: int = height
         self.width_pixels: int = width_pixels
@@ -30,9 +31,13 @@ class PtyRequest:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str], stdout: IO[str], stderr: Optional[IO[str]] = None, pty: Optional[PtyRequest] = None):
-        super(TerrameterShell, self).__init__(completekey="tab", stdin=stdin, stdout=stdout)
-        self.stderr: IO[str]=stderr
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile[str], stdout: IO[str] | paramiko.BufferedFile[str], stderr: Optional[IO[str] | paramiko.BufferedFile[str]] = None, pty: Optional[PtyRequest] = None):
+        super(TerrameterShell, self).__init__(completekey="tab", stdin=cast(IO[str], stdin), stdout=cast(IO[str], stdout))
+        if stderr or self.is_pty:
+            self.stderr: IO[str]=cast(IO, stderr)
+        else:
+            self.stderr: IO[str] =self.stdout # Fallback
+            
         self.instrument: TerrameterLS = instrument
         self.hostname = "LS123456789"
         self.user = "banana"
@@ -46,15 +51,12 @@ class TerrameterShell(Cmd):
         self._env: dict[str, str] = {}
         """Environment variables"""
         self.is_pty: bool = pty is not None
-        if self.is_pty:
+        if pty:
             self.width = pty.width
             self.height = pty.height
             self.line_terminator = "\r\n"
-            self.stderr = stdout # No separate stderr channel for PTY
         else:
             self.line_terminator = "\n"
-            if not stderr:
-                self.stderr = stdout # Fallback
         self._update_prompt()
 
     def _update_prompt(self):
@@ -517,7 +519,7 @@ class TerrameterShell(Cmd):
                 if arg:
                     result = True
             case ["-e", path]:
-                result = self.instrument.path_exists(path, self.cwd)
+                result = self.instrument.path_exists(path, self.cwd.as_posix())
             case _:
                 raise NotImplementedError()
 
