@@ -173,7 +173,7 @@ class SSHTestServerChannel():
         self._thread = threading.Thread(target=self._serve)
         self._server: InstrumentServerEmulator = server
         self._paramiko_channel: paramiko.Channel = paramiko_channel
-        self._exec_command: str = exec_command
+        self._exec_command: Optional[str] = exec_command
         self._pty = pty
 
     def start(self):

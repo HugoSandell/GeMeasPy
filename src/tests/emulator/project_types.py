@@ -1,5 +1,6 @@
 """Class definitions for database tables"""
 from datetime import datetime, timezone
+from typing import Optional
 
 class AcqSettingsRow:
     def __init__(self):
@@ -53,9 +54,9 @@ class DP_ABMNRow:
         self.FocusY: float = 0.0
         self.FocusZ: float = 0.0
         self.Ready: int = 0
-        self.Note: str = None
+        self.Note: Optional[str] = ""
         self.Mode: int = 0
-        self.ModeValue: float = None
+        self.ModeValue: Optional[float] = None
     
 class DP_MEASURERow:
     def __init__(self):
@@ -99,7 +100,7 @@ class ElectrodeTestDataRow:
         self.TestStatus: int = 0
         self.UserSetting: int = 0
         self.TxStatus: int = 0
-        self.Time: datetime = 0
+        self.Time: datetime = datetime.now(timezone.utc)
         self.PositionId: int = 0
 
 class ElectrodesRow:
@@ -154,8 +155,8 @@ class GPSPositionsRow:
         self.ELV: float = 0.0
         self.SPEED: float = 0.0
         self.DIRECTION: float = 0.0
-        self.INUSE: int = 0.0
-        self.INVIEW: int = 0.0
+        self.INUSE: int = 0
+        self.INVIEW: int = 0
         self.satinfo: str = ""
 
 class LogRow:
@@ -192,7 +193,7 @@ class MeasuresRow:
         self.Temp: float = 0.0
         self.Light: float = 0.0
         self.SessionID: float = -1
-        self.PositionId: int = None
+        self.PositionId: Optional[int] = None
     
 class PositionsRow:
     def __init__(self):

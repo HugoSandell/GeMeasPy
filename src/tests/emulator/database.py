@@ -4,11 +4,15 @@ from datetime import datetime, timezone
 from typing import *
 import os 
 import io
+import sys
 import tempfile
-if __name__ == "__main__":
-    from project_types import *    
+
+parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
+if __name__ == '__main__' or parent_module.__name__ == '__main__':
+    import project_types
 else:
-    from .project_types import *
+    from . import project_types
+from project_types import *
 
 Path: TypeAlias = str | bytes | os.PathLike
 File: TypeAlias = Path | io.BufferedIOBase
@@ -110,7 +114,7 @@ class ProjectDatabase:
         connection.close()
         os.remove(tmp_path)
 
-    def write(self, file: File = None):
+    def write(self, file: File | None = None):
         """Write to file. Default (file=None) is the currently opened file. file must be an existing database file"""
         if file == None:
             if not self.is_open():
@@ -121,11 +125,12 @@ class ProjectDatabase:
         if isinstance(file, (str, bytes, os.PathLike)):
             with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
                 existing_data = dbf.read()
-        else:
+        elif isinstance(file, io.BufferedIOBase):
             if file.seekable():
                 file.seek(0)
-            existing_data = file.read()        
-        
+            existing_data = file.read()
+        else:  
+            existing_data = b""
         # Create a temporary file as a middle ground between the file and sqlite3.
         # sqlite3 won't accept streams  
         tmp_fd, tmp_path = tempfile.mkstemp(prefix="gemeaspy")
@@ -173,7 +178,7 @@ class ProjectDatabase:
                 dbf.truncate(0)
                 dbf.seek(0)
                 dbf.write(new_data)
-        else:
+        elif isinstance(file, io.BufferedIOBase):
             file.truncate(0)
             file.seek(0)
             file.write(new_data)
@@ -205,7 +210,7 @@ class ProjectDatabase:
         for row in self._AcqSettings:
             if row.key1 == key1 and row.key2 == key2 and row.Setting == name:
                 if isinstance(value, list):
-                    row.Value = " ".join(value)
+                    row.Value = " ".join([str(x) for x in value])
                 else:
                     row.Value = str(value)
                 return
@@ -248,7 +253,7 @@ if __name__ == "__main__":
     print("Running with bad argument type")
     raised_correct_exception = False
     try:
-        db = ProjectDatabase([1,2,3])
+        db = ProjectDatabase([1,2,3])  # type: ignore
         db.close()
     except Exception as e:
         if isinstance(e, TypeError):

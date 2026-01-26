@@ -31,9 +31,9 @@ class PtyRequest:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile[str], stdout: IO[str] | paramiko.BufferedFile[str], stderr: Optional[IO[str] | paramiko.BufferedFile[str]] = None, pty: Optional[PtyRequest] = None):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile, stdout: IO[str] | paramiko.BufferedFile, stderr: Optional[IO[str] | paramiko.BufferedFile] = None, pty: Optional[PtyRequest] = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=cast(IO[str], stdin), stdout=cast(IO[str], stdout))
-        if stderr or self.is_pty:
+        if stderr or pty:
             self.stderr: IO[str]=cast(IO, stderr)
         else:
             self.stderr: IO[str] =self.stdout # Fallback
@@ -48,7 +48,7 @@ class TerrameterShell(Cmd):
         """Required to read from the provided stdin insted of sys.stdin""" 
         self.terrameter_cli_active: bool = False 
         """Is the terrameter CLI opened"""
-        self._env: dict[str, str] = {}
+        self._env: dict[str, Optional[str]] = {}
         """Environment variables"""
         self.is_pty: bool = pty is not None
         if pty:
@@ -107,7 +107,7 @@ class TerrameterShell(Cmd):
                 folder_path = part[:-1]
                 entries = []
                 try:
-                    entries = self.instrument.list_folder(folder_path, self.cwd)
+                    entries = self.instrument.list_folder(folder_path, self.cwd.as_posix())
                 except OSError:
                     pass
                 entries = [entry for entry in entries if not entry.startswith(".")]
@@ -275,8 +275,8 @@ class TerrameterShell(Cmd):
                 spread = arg_split[1]
                 protocol = arg_split[2]
                 try: 
-                    spacing = tuple([float(x) for x in arg_split[3:6]])
-                    unknown = tuple([float(x) for x in arg_split[6:9]]) # TODO: What is this?
+                    spacing = (float(arg_split[3]), float(arg_split[4]), float(arg_split[5]))
+                    unknown = (float(arg_split[6]), float(arg_split[7]), float(arg_split[8])) # TODO: What is this?
                     self.instrument.create_task(name, spread, protocol, spacing, unknown)
                 except ValueError:
                     self.print_line_sh()
@@ -365,7 +365,7 @@ class TerrameterShell(Cmd):
             self.print_line_sh(" ".join(arg_list[:num_text_segments]))
         else:
             try:
-                self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd, append=append)
+                self.instrument.write_file_utf8(file_path=outfile, data=" ".join(arg_list[:num_text_segments]), relative_to=self.cwd.as_posix(), append=append)
             except OSError as e:
                 self.print_os_error("-bash", e)
     
@@ -378,11 +378,11 @@ class TerrameterShell(Cmd):
             self.cwd = vfs.Path(self.homedir)
             return
         try:
-            self.instrument.list_folder(split_args[0], self.cwd)
+            self.instrument.list_folder(split_args[0], self.cwd.as_posix())
         except OSError as e:
             self.print_os_error("-bash: cd", e)
             return
-        self.cwd = self.instrument.canonical_absolute_path(self.cwd.joinpath(split_args[0]), self.cwd)
+        self.cwd = self.instrument.canonical_absolute_path(self.cwd.joinpath(split_args[0]).as_posix(), self.cwd.as_posix())
 
     def do_ls(self, args: str):
         # Not very accurate to the real thing
@@ -393,7 +393,7 @@ class TerrameterShell(Cmd):
         
         for path in split_args:
             try:
-                folders[path] = self.instrument.list_folder(path, self.cwd)
+                folders[path] = self.instrument.list_folder(path, self.cwd.as_posix())
             except OSError as e:
                 self.print_os_error("-bash: ls", e)
                 return
@@ -412,7 +412,7 @@ class TerrameterShell(Cmd):
         buffer: list[tuple[str, str]] = []  # [(path, text), ...]
         for path in paths:
             try:
-                path_data = self.instrument.read_file(path, self.cwd)
+                path_data = self.instrument.read_file(path, self.cwd.as_posix())
                 buffer.append((path, path_data.decode()))
             except IsADirectoryError as e:
                 self.print_error_sh(f"\n*** {path}: directory ***\n")
@@ -454,7 +454,7 @@ class TerrameterShell(Cmd):
         
         for path in args_namespace.files:
             try:
-                self.instrument.remove(path, self.cwd, args_namespace.recursive)
+                self.instrument.remove(path, self.cwd.as_posix(), args_namespace.recursive)
             except OSError as e:
                 self.print_error_sh(f"rm: cannot remove '{path}': {e.strerror}")
         
@@ -462,32 +462,31 @@ class TerrameterShell(Cmd):
         args_list = self._split_args(args)
         for path in args_list:
             try:
-                self.instrument.make_directory(path, self.cwd)
+                self.instrument.make_directory(path, self.cwd.as_posix())
             except OSError as e:
                 self.print_line_sh(f"rm: cannot create directory '{path}': {e.strerror}")
 
     def do_touch(self, args: str):
         path = self._split_args(args)[0]
         try:
-            self.instrument.touch(path, self.cwd)
+            self.instrument.touch(path, self.cwd.as_posix())
         except OSError as e:
             self.print_os_error("-bash", e)
             return
 
     def do_export(self, args: str):
         # TODO: support flags or call with no args 
-        args=self._split_args(args)
+        args_list=self._split_args(args)
         ALLOWED_CHARS = string.ascii_letters + string.digits + "_"
-        for arg in args:
+        for arg in args_list:
             parts = arg.split("=", maxsplit=1)
             if any([c not in ALLOWED_CHARS for c in parts[0]]):
                 self.print_error_sh(f"-bash: export: `{parts[0]}': not a valid identifier")
                 continue
             if len(arg) == 2:
                 self._env[parts[0]] = parts[1]
-            elif not parts[0] in self._env:
+            elif parts[0] not in self._env and parts[0] not in self._env:
                 self._env[parts[0]] = None
-        
 
     # Also known as `[`
     # Currently only supports testing for existence of paths.
@@ -551,18 +550,18 @@ class TerrameterShell(Cmd):
         adapted_args = split_args[:right_bracket_index] + split_args[right_bracket_index+1:]
         return self.do_test(" ".join([f'"{a}"' for a in adapted_args]))
 
-    def do_help(self, args: str):
+    def do_help(self, arg: str):
         # Will probably never be used, so print an empty line for now.
         self.print_line_sh()
         
-    def do_shutdown(self, args: str):
+    def do_shutdown(self, arg: str):
         class MissingArgumentError(Exception):
             pass
         
         def argparse_error(message):
             raise MissingArgumentError("Argument parser exception")
 
-        args_list = self._split_args(args)
+        args_list = self._split_args(arg)
 
         parser = argparse.ArgumentParser("shutdown", exit_on_error=False)
         parser.error = argparse_error
@@ -571,7 +570,7 @@ class TerrameterShell(Cmd):
         parser.add_argument("time", nargs="?", type=str, default="+1")
         parser.add_argument("wall", nargs="?", type=str, default=None)
 
-        parser.parse_known_args(self._split_args(args))
+        parser.parse_known_args(self._split_args(arg))
         try:
             args_namespace, _ = parser.parse_known_args(args_list)
         except MissingArgumentError:
@@ -591,6 +590,7 @@ class TerrameterShell(Cmd):
             seconds = (minutes + hours * 60) * 60
         else:
             self.print_error_sh(f"Failed to parse time specification: {time_str}")
+            return
         self.instrument.initialise_shutdown(timer_seconds=seconds)
         self.print_line_sh(f"Shutdown scheduled for {"%a %Y-%m-%d %H:%M:%S %Z"}, use 'shutdown -c' to cancel.\n") #TODO: Get timestamp 
     
@@ -628,9 +628,9 @@ class TerrameterShell(Cmd):
         self.stderr.write(self.line_terminator)
         self.stderr.flush()
 
-    def emptyline(self):
+    def emptyline(self) -> bool:
         # Do nothing when receiving an empty line
-        pass
+        return False
 
 def run():
     import sys

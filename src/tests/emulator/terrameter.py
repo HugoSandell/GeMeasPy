@@ -38,7 +38,7 @@ class TerrameterLS():
         self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._filesystem.load_initial_fs()
-        self._settings: Dict[str, str | int | float | bool] = constants.TERRAMETER_DEFAULT_SETTINGS
+        self._settings: Dict[str, str | int | float | bool | list[float]] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: Dict[str, Project] = {} # "name": object
         self._current_project_name: str = "" # Name of current project, if any
 
@@ -123,6 +123,8 @@ class TerrameterLS():
             raise ParseError("Root tag is not <Settings>")
         for child in xml_root:
             text = child.text
+            if not text:
+                text = ""
             # IP_WindowSecList is a special case
             if child.tag == "IP_WindowSecList":
                 try:
@@ -135,12 +137,17 @@ class TerrameterLS():
                     )
             if child.tag in self._settings:
                 try:
-                    type(self._settings[child.tag])(text)
+                    tag_type = type(self._settings[child.tag])
+                    if issubclass(tag_type, list): # Assume only floats
+                        values = [float(x) for x in text.split()]
+                        self._settings[child.tag] = values
+                    else:
+                        self._settings[child.tag] = tag_type(text)
                 except Exception:
+                    self._settings[child.tag] = text
                     raise ParseError(
                         f"Failed to parse {child.tag} '{text}' as {type(self._settings[child.tag])}"
                     )
-                self._settings[child.tag] = text
 
     def create_project(self, name: str=""):
         """Create a new project. 
@@ -180,13 +187,13 @@ class TerrameterLS():
 
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
-                    spacing: Tuple[int, int ,int], unknown: Tuple[int, int, int]):
+                    spacing: Tuple[float, float , float], unknown: Tuple[float, float, float]):
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project = self._projects[self._current_project_name]
         project.create_task(name, spread_file, protocol_file, spacing, unknown)
 
-    def create_station(self, id: int):
+    def create_station(self, id: str):
         #TODO: Should id be int or str? If changed, remember to change in project and shell as well
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")

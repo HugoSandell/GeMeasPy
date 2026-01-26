@@ -4,19 +4,19 @@ class Task:
     """A terrameter task"""
     def __init__(self, id: int, name: str, 
                  spread_file: str, protocol_file: str, 
-                 spacing: Tuple[int, int, int], unknown: Tuple[int, int, int]):
+                 spacing: tuple[float, float, float], unknown: tuple[float, float, float]):
         self.id: int = id
         self.name: str = name
         self.spread_file: str = spread_file
         self.protocol_file: str = protocol_file
-        self.spacing: Tuple[int, int, int] = spacing
-        self.unknown: Tuple[int, int, int] = unknown
+        self.spacing: tuple[float, float, float] = spacing
+        self.unknown: tuple[float, float, float] = unknown
         self.is_complete: bool = False
 
 class Station:
     """A terrameter station"""
-    def __init__(self, id: int):
-        self.id: int = id
+    def __init__(self, id: str):
+        self.id: str = id
 
 class Project:
     """A terrameter project"""
@@ -27,7 +27,7 @@ class Project:
 
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
-                    spacing: Tuple[int, int ,int], unknown: Tuple[int, int, int]) -> int:
+                    spacing: Tuple[float, float, float], unknown: Tuple[float, float, float]) -> int:
         """Add a task to the project. Returns the index of the task"""
         task_name_number = 1
         done = False
@@ -43,7 +43,7 @@ class Project:
         self.tasks.append(new_task)
         return id - 1
 
-    def create_station(self, id: int):
+    def create_station(self, id: str):
         """Add a station to the project."""
         new_station = Station(id)
         self.stations.append(new_station)

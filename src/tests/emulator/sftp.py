@@ -2,8 +2,10 @@ import os
 import sys
 import pathlib
 import paramiko
+import paramiko.common
 from paramiko import SFTPAttributes, SFTPHandle, SFTPServerInterface, ServerInterface
 from paramiko.sftp import SFTP_NO_SUCH_FILE, SFTP_PERMISSION_DENIED, SFTP_FAILURE
+
 SFTP_IS_DIRECTORY = 24
 S_IFREG =   0o0100000 # regular file
 S_IFDIR =   0o0040000 # directory
@@ -56,12 +58,14 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
         except (NotADirectoryError, IsADirectoryError):
             return SFTP_NO_SUCH_FILE
     
-    def list_folder(self, path: str) -> int | list[str]:
+    def list_folder(self, path: str) -> list[SFTPAttributes] | int:
         try:
             folder_name_list = self._instrument.list_folder(path)
             attribute_list = []
             for name in folder_name_list:
-                attr = self.stat(file=pathlib.PurePosixPath(path, name).as_posix())
+                attr = self.stat(path=pathlib.PurePosixPath(path, name).as_posix())
+                if isinstance(attr, int): # error code
+                    continue
                 attr.filename = name
                 attribute_list.append(attr)
             return attribute_list
@@ -74,10 +78,10 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
         except Exception as e:
             return SFTP_FAILURE
     
-    def stat(self, file: str) -> int | SFTPAttributes:
+    def stat(self, path: str) -> int | SFTPAttributes:
         try:
-            filename = os.path.basename(file)
-            return SFTPAttributes.from_stat(self._instrument.stat(file), filename)
+            filename = os.path.basename(path)
+            return SFTPAttributes.from_stat(self._instrument.stat(path), filename)
         except FileNotFoundError:
             return SFTP_NO_SUCH_FILE
         except NotADirectoryError:
@@ -87,24 +91,25 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
         except Exception as e:
             return SFTP_FAILURE
     
-    def lstat(self, file: str) -> int | SFTPAttributes:
-        return self.stat(file)
+    def lstat(self, path: str) -> int | SFTPAttributes:
+        return self.stat(path)
 
 if __name__ == "__main__":
     from paramiko import SFTPServer, Transport
+    from threading import Event
     import socket
-    from threading import *
 
     class TestServerInterface(ServerInterface):
         def __init__(self):
             super(TestServerInterface, self).__init__()
         def check_auth_password(self, username, password):
-            return paramiko.AUTH_SUCCESSFUL
+            return paramiko.common.AUTH_SUCCESSFUL
         def get_allowed_auths(self, username):
             return "password"
         def check_channel_request(self, kind, chanid):
             if kind == "session":
-                return paramiko.OPEN_SUCCEEDED
+                return paramiko.common.OPEN_SUCCEEDED
+            return paramiko.common.OPEN_FAILED_UNKNOWN_CHANNEL_TYPE
             
     instrument = terrameter.TerrameterLS()
     instrument.write_file_utf8("/home/root/test.txt", "testdata")
@@ -112,8 +117,10 @@ if __name__ == "__main__":
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # SO_REUSEPORT is not available on all systems
-    if hasattr(socket, 'SO_REUSEPORT'):
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, getattr(socket, "SO_REUSEPORT"), 1)
+    except AttributeError:
+        pass
     sock.settimeout(0.1) # Use timeout to prevent multithreading deadlocks
     sock.bind(("localhost", 24444))
     address = sock.getsockname()

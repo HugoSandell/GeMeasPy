@@ -9,25 +9,23 @@ from collections import deque
 
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
 
-_Dir = object # To suppress warnings
-
 class _Node:
-    def __init__(self, name: str, parent: _Dir):
+    def __init__(self, name: str, parent):
         self.name: str = name
         self.is_dir: bool = False
         self.is_file: bool = False
-        self.parent: _Dir = parent
+        self.parent: _Node = parent
         if not self.parent:
             self.parent = self
 
 class _File(_Node):
-    def __init__(self, name: str, parent: _Dir, content: bytes = b''):
+    def __init__(self, name: str, parent: Optional[_Node], content: bytes = b''):
         super(_File, self).__init__(name, parent)
         self.content: BytesIO = BytesIO(content)
         self.is_file = True
 
 class _Dir(_Node):
-    def __init__(self, name: str, parent: _Dir):
+    def __init__(self, name: str, parent: Optional[_Node]):
         super(_Dir, self).__init__(name, parent)
         self.children: Dict[str, _Node] = {}
         self.is_dir = True
@@ -75,7 +73,7 @@ class VirtualFileSystem(object):
         current_node = self._root
         while len(parts) > 0:
             next_name = parts.pop(0)
-            if not current_node.is_dir:
+            if not isinstance(current_node, _Dir):
                 raise NotADirectoryError(
                     errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix()
                 )
@@ -113,7 +111,7 @@ class VirtualFileSystem(object):
         Raises IsADirectoryError if path points to a directory.   
         Raises PermissionError if file cannot be read."""
         file = self._traverse(path) 
-        if hasattr(file, 'content'):
+        if isinstance(file, _File):
             return file.content
         else:
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
@@ -124,7 +122,7 @@ class VirtualFileSystem(object):
         Raises IsADirectoryError if path points to a directory.   
         Raises PermissionError if file cannot be read."""
         file = self._traverse(path) 
-        if hasattr(file, 'content'):
+        if isinstance(file, _File):
             io: BytesIO = file.content
             io.seek(0)
             return io.getvalue()
@@ -143,7 +141,7 @@ class VirtualFileSystem(object):
             raise TypeError(f"Expected type 'bytes', but got '{type(data).__name__}'")
         
         file = self._traverse(path) 
-        if hasattr(file, 'content'):
+        if isinstance(file, _File):
             io: BytesIO = file.content
             io.truncate(0)
             io.seek(0)
@@ -160,7 +158,8 @@ class VirtualFileSystem(object):
         node = self._traverse(path)
         if not recursive and isinstance(node, _Dir):
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
-        node.parent.children.pop(node.name)
+        if isinstance(node.parent, _Dir):
+            node.parent.children.pop(node.name)
 
     def _make_node(self, path: Path, node_type: type[_File | _Dir]):
         if node_type not in {_File, _Dir}:

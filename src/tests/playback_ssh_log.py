@@ -23,9 +23,15 @@ if __name__ == "__main__":
 
     entries = ssh_log_format.parse_ssh_log_file(args.log_file)
     start_log_time = entries[0]["timestamp"]
+    if not isinstance(start_log_time, int):
+        exit(1)
     start_time = time.monotonic()
 
     for entry in entries:
+        if not isinstance(entry["timestamp"], int):
+            continue
+        if not isinstance(entry["data"], bytes):
+            continue
         sleep_duration = (
             start_time
             + (entry["timestamp"] - start_log_time) / 1000 / args.speed
