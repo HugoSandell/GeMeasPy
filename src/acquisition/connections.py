@@ -51,6 +51,9 @@ class SSHConnection():
         S_IFREG =   0o0100000 # regular file
         S_IFDIR =   0o0040000 # directory
         
+        if self.ssh is None:
+            raise Exception("No Active Connection")
+        
         active_transfers = 0
         def complete_transfer(*args):
             nonlocal active_transfers
@@ -66,6 +69,8 @@ class SSHConnection():
                 dir_path_local.mkdir(exist_ok=True)
                 attrs = sftp.listdir_attr(dir_path_remote.as_posix())
                 for attr in attrs:
+                    if attr.st_mode is None:
+                        continue
                     if attr.st_mode & S_IFREG:
                         local = str(dir_path_local.joinpath(attr.filename))
                         remote = dir_path_remote.joinpath(attr.filename).as_posix()
