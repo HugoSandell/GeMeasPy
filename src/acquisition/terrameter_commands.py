@@ -40,8 +40,6 @@ def create_project(connection: SSHConnection) -> None:
     new_project_command = f"P {project_name:s}\n"
     command = f"echo {project_name} > {TERRAMETER_MONITORING_FOLDER}/new_day"
     connection.send_command_shell(command)
-    command = f"echo {project_name} > {TERRAMETER_PROJECTS_FOLDER}/{project_name}/apple/sauce.txt"
-    connection.send_command_shell(command)
     print("Create New Project!")
     connection.send_command_terrameter_software(new_project_command)
 
