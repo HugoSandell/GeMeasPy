@@ -188,8 +188,9 @@ def remove_control_files(connection: SSHConnection, task_list: list[dict[str, An
     connection.send_command_shell(command)
     return project
 
-
 def transfer_project(connection: SSHConnection) -> None:
+    if not connection or not connection.ssh:
+        raise Exception("No Active Connection")
     print("Transferring files...")
     # get project name
     command = "more /monitoring/new_day"
@@ -203,10 +204,13 @@ def transfer_project(connection: SSHConnection) -> None:
                "ALL data have been successfully transfered!!\""
                " >> {}/{}/zetsum/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project))
     stdin, stdout, stderr = connection.send_command_shell(command)
-    ip = connection.get_ip()
-    os.system("sftp -r root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
-        ip, TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, project))
 
+    transport = connection.ssh.get_transport()
+    if not transport:
+        raise Exception("Connection is missing transport")
+    ip, port = transport.getpeername()
+    os.system("sftp -r -P {4:} root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
+        ip, TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, project, port))
 
 def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
