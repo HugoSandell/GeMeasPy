@@ -2,22 +2,23 @@ import socket
 import subprocess
 import time
 from collections import namedtuple
+from acquisition import utilities
 
 Config = namedtuple('config', ['address', 'port', 'com', 'mux'])
 
 def main() -> None:
     delay = 1
-    time.sleep(delay)
+    utilities.sleep_unless_testing(delay)
     sock = connect()
-    time.sleep(delay)
+    utilities.sleep_unless_testing(delay)
     #sock.send(b'ResetAll(1A)')
-    #time.sleep(delay)
+    #utilities.sleep_unless_testing(delay)
     sock.send(b'SetAll(5A)')
-    time.sleep(delay)
+    utilities.sleep_unless_testing(delay)
     #sock.send(b'ResetAll(5A)')
-    time.sleep(delay)
+    utilities.sleep_unless_testing(delay)
     sock.close()
-    time.sleep(delay)
+    utilities.sleep_unless_testing(delay)
 
 
 def connect() -> socket.socket:  # This needs to be a contex manager
@@ -71,9 +72,9 @@ if __name__ == "__main__":
     #main()
     start_server()
     print('Do something for a minute')
-    time.sleep(60)
+    utilities.sleep_unless_testing(60)
     print('Do something else for another minute')
-    time.sleep(60)
+    utilities.sleep_unless_testing(60)
     print('Save something to somewhere')
 
 

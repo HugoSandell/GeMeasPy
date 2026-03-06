@@ -19,7 +19,7 @@ def progress_bar(wait_time_seconds: int, ticks=20) -> None:
         sys.stdout.write('\r    ')
         sys.stdout.write(n * '#' + spaces * ' ' + '{:2.1f}%'.format((i + 1) / max_time * 100))
         sys.stdout.flush()
-        time.sleep(0.25)
+        sleep_unless_testing(0.25)
     sys.stdout.write('\n')
     sys.stdout.flush()
 
@@ -100,34 +100,34 @@ def switch_relay(task: dict[str, Any]) -> None:
         for com in task["reset"]:
             print("reset switch c/{}".format(com))
             os.system("RSW16.EXE r/0,0 c/{}".format(com))
-            time.sleep(1)
+            sleep_unless_testing(1)
         for com in task["set"]:
             print("set switch c/{}".format(com))
             os.system("RSW16.EXE s/0,0 c/{}".format(com))
-            time.sleep(1)
+            sleep_unless_testing(1)
     if isinstance(task["reset"][0], str):
         socket = subvision_relay.connect()
         for com in task["reset"]:
             print("ResetAll({})".format(com))
             socket.send(bytes("ResetAll({})".format(com), 'utf-8'))
-            time.sleep(5)
+            sleep_unless_testing(5)
         for com in task["set"]:
             if len(com) == 2:
             # SetAll Command
                 print("SetAll({})".format(com))
                 socket.send(bytes("SetAll({})".format(com), 'utf-8'))
-                time.sleep(5)
+                sleep_unless_testing(5)
             elif len(com) == 3:
                 if com[2] == 'o':
                     # SetOdd
                     print("SetOdd({})".format(com[:2]))
                     socket.send(bytes("SetOdd({})".format(com[:2]), 'utf-8'))
-                    time.sleep(5)
+                    sleep_unless_testing(5)
                 elif com[2] == 'e':
                     # SetEven
                     print("SetEven({})".format(com[:2]))
                     socket.send(bytes("SetEven({})".format(com[:2]), 'utf-8'))
-                    time.sleep(5)
+                    sleep_unless_testing(5)
             elif len(com) > 3:
                 # Switch individual electrodes
                 print('Function needs to be implemented')
@@ -166,4 +166,9 @@ def wait(start_time: str) -> None:
     if minutes > start_time_minutes:
         start_time_minutes += 24 * 60
     wait_time = start_time_minutes - minutes
-    time.sleep(wait_time*60)
+    if "GEMEASPY_TESTING" not in os.environ:
+        sleep_unless_testing(wait_time*60)
+
+def sleep_unless_testing(time_seconds: float) -> None:
+    if "GEMEASPY_TESTING" not in os.environ:
+        time.sleep(time_seconds)

@@ -30,7 +30,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
             tc.measure(connection, task, logfile)
             logfile.write("Waiting for measurement to finish...\n")
             while tc.is_measuring(connection):
-                time.sleep(is_meas_delay)
+                utilities.sleep_unless_testing(is_meas_delay)
             tc.task_completed(connection, task["id"], logfile)
     else:
         # find which task was interupted and finish that task
@@ -51,7 +51,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 logfile.write("Resuming Task #{0:02d}\n".format(task["id"]))
                 tc.measure(connection, task, logfile, False)
                 while tc.is_measuring(connection):
-                    time.sleep(10)
+                    utilities.sleep_unless_testing(10)
                 tc.task_completed(connection, task["id"], logfile)
                 break
         else:
@@ -67,7 +67,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 # tc.create_station(connection)
                 tc.measure(connection, task, logfile)
                 while tc.is_measuring(connection):
-                    time.sleep(10)
+                    utilities.sleep_unless_testing(10)
                 tc.task_completed(connection, task["id"], logfile)
     tc.terminate_terrameter_software(connection)
     utilities.reset_relay(task_list[0])

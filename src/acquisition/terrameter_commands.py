@@ -177,7 +177,7 @@ def remove_control_files(connection: SSHConnection, task_list: list[dict[str, An
     print("Removing Monitoring Control Files..")
     command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
-    time.sleep(1)
+    utilities.sleep_unless_testing(1)
     project = stdout.readline().strip()
     for task in task_list:
         command = "rm /monitoring/task_{0:02d}_completed".format(task["id"])

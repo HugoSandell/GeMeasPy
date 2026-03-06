@@ -2,7 +2,7 @@ import time
 from typing import Any
 
 import paramiko
-
+from acquisition import utilities
 
 class SSHConnection():
 
@@ -21,14 +21,14 @@ class SSHConnection():
             raise Exception("No Active Connection")
         stdin, stdout, stderr = self.ssh.exec_command(command)
         _ = stdout.channel.recv_exit_status()  # wait for exit status
-        time.sleep(time_to_sleep)
+        utilities.sleep_unless_testing(time_to_sleep)
         return stdin, stdout, stderr
 
     def send_command_terrameter_software(self, command: str, time_to_sleep: int = 5) -> None:
         if self.channel is None:
             raise Exception("No Active Connection")
         self.channel.send(command.encode(encoding="UTF-8"))
-        time.sleep(time_to_sleep)
+        utilities.sleep_unless_testing(time_to_sleep)
             
 
     def read_channel_buffer(self, chars) -> str:
