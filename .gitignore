@@ -2,6 +2,7 @@
 *.bat
 *.sh
 *.po 
+*.lck
 
 # Git
 .git/
@@ -11,6 +12,7 @@
 
 # log file
 src/logs.txt
+*.log
 
 # settings and task list files
 src/settings/connection_settings.json
@@ -28,3 +30,7 @@ data/
 .venv/
 .python-version
 uv.lock
+
+#ACTS
+bin/ACTS/acts.log.lck
+bin/ACTS/LastOpenedFiles.xml
