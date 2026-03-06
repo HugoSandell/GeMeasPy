@@ -1,7 +1,7 @@
 import time
 from typing import TextIO
 
-from connections import SSHConnection
+from acquisition.connections import SSHConnection
 
 from acquisition import terrameter_commands as tc
 from acquisition import utilities

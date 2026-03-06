@@ -4,7 +4,7 @@ import time
 from shutil import rmtree
 from typing import Any, TextIO
 
-from connections import SSHConnection
+from acquisition.connections import SSHConnection
 
 from acquisition import utilities
 from settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER
