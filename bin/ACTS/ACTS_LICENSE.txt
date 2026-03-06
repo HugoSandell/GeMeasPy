@@ -1,0 +1,2 @@
+ACTS is distributed without any license at
+https://csrc.nist.gov/projects/automated-combinatorial-testing-for-software/downloadable-tools
