@@ -8,7 +8,8 @@ class SSHConnection():
 
 
     def __init__(self, params: dict[str, Any]) -> None:
-        if ["hostname", "username", "password"] not in params.keys():
+        required_params = ("hostname", "username", "password")
+        if not all(key in params.keys() for key in required_params):
             raise Exception("Invalid Parameters")
         self.params = params
         self.ssh = None
