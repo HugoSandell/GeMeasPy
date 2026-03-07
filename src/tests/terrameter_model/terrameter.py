@@ -47,7 +47,7 @@ class TerrameterLS():
         # "Reboot"
         self.allow_login = False
         self.is_shut_down = True
-        time.sleep(5) # Reboot time
+        time.sleep(0.1) # Reboot time
         self.is_shut_down = False
         self.allow_login = True
         pass
@@ -220,7 +220,7 @@ class TerrameterLS():
                 continue
 
             # Perform task
-            time.sleep(1) # Pretend to measure
+            time.sleep(0.1) # Pretend to measure
             
             # Finish task
             current_task.is_complete = True

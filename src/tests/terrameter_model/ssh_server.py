@@ -116,10 +116,10 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
                     for session in self._sessions:
                         session.close()
                     self._sessions.clear()
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     continue
                 elif not self.instrument.allow_login:
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     continue
                 self._socket.listen() 
                 client, addr = self._socket.accept()
@@ -277,7 +277,7 @@ class SSHTestServerSession():
 
 # Run server. For manual testing.
 def run():
-    emu = InstrumentServerEmulator()
+    emu = InstrumentServerEmulator(password="pass")
     emu.start()
     if not emu.address:
         return
