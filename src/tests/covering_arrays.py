@@ -13,7 +13,8 @@ ALGORITHM = "ipog"
 
 def generate_array(acts_config_path: str, strength: int = 2) -> CoveringArray:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
-    out_file_path = os.path.join(tempfile.mkdtemp("gemeaspytest"), "acts_output.csv")
+    out_file_dir = tempfile.mkdtemp("gemeaspytest")
+    out_file_path = os.path.join(out_file_dir, "acts_output.csv")
     
     def path_escape(path: str) -> str:
         return path.replace("\\", "/")
@@ -31,9 +32,15 @@ def generate_array(acts_config_path: str, strength: int = 2) -> CoveringArray:
             row = out_file.readline()
         csv_rows.append(row)
         csv_rows.extend(out_file)
-        
+
+    # Cleanup
+    if os.path.exists(out_file_path):
+        os.remove(out_file_path)
+    if os.path.exists(out_file_dir):
+        os.rmdir(out_file_dir)
+
     return list(csv.DictReader(csv_rows))
 
 if __name__ == "__main__":
     # For manual testing
-    print(generate_array("tests/data/acts_config.xml", 7))
+    print(generate_array("tests/data/acts_config.xml", 3))
