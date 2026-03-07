@@ -1,4 +1,4 @@
-from typing import *
+import typing
 
 class Task:
     """A terrameter task"""
@@ -22,12 +22,12 @@ class Project:
     """A terrameter project"""
     def __init__(self, name: str):
         self.name: str = name
-        self.tasks: List[Task] = []
-        self.stations: List[Station] = []
+        self.tasks: list[Task] = []
+        self.stations: list[Station] = []
 
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
-                    spacing: Tuple[float, float, float], unknown: Tuple[float, float, float]) -> int:
+                    spacing: tuple[float, float, float], unknown: tuple[float, float, float]) -> int:
         """Add a task to the project. Returns the index of the task"""
         task_name_number = 1
         done = False
