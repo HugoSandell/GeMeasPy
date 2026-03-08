@@ -43,7 +43,7 @@ def generate_acts_file(parameter_domains: ParameterSpec) -> str:
 def generate_array(acts_config_path: str, strength: int = 2) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     out_file_dir = tempfile.mkdtemp("gemeaspytest")
-    out_file_path = "acts_output.csv"#os.path.join(out_file_dir, "acts_output.csv")
+    out_file_path = os.path.join(out_file_dir, "acts_output.csv")
     
     def path_escape(path: str) -> str:
         return path.replace("\\", "/")
