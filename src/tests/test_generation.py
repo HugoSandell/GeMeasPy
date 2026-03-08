@@ -19,15 +19,15 @@ _PARAMETER_TYPE_NUM = 0
 _PARAMETER_TYPE_ENUM = 1
 _PARAMETER_TYPE_BOOLEAN = 2
 
-def generate_acts_file(parameter_domains: ParameterSpec) -> str:
+def generate_acts_file(parameter_spec: ParameterSpec) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
     elem_system = Element("System", attrib={"name": "GeMeasPy"})
     elem_parameters = SubElement(elem_system, "Parameters")
     
-    for id, param_name in enumerate(parameter_domains):
+    for id, param_name in enumerate(parameter_spec):
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib={"id": str(id), "name": param_name, "type": "1"})
         elem_values = SubElement(elem_parameter, "values")
-        for value in parameter_domains[param_name]:
+        for value in parameter_spec[param_name]:
             SubElement(elem_values, "value").text = str(value)
         SubElement(elem_parameter, "basechoices")
         SubElement(elem_parameter, "invalidValues")
