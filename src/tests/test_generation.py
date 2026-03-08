@@ -40,7 +40,7 @@ def generate_acts_file(parameter_domains: ParameterSpec) -> str:
     os.close(fd)
     return path
 
-def generate_array(acts_config_path: str, strength: int = 2) -> list[TestCase]:
+def generate_covering_array(acts_config_path: str, strength: int = 2) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     
     if not os.path.exists(_ACTS_JAR):
@@ -114,8 +114,8 @@ def generate_random_data(parameter_spec: ParameterSpec, max_case_count: int, see
 
     return test_data
 
-if __name__ == "__main__":
-    # For manual testing
+# For manual testing
+def _main():
     argc = len(sys.argv)
     if argc < 2 or argc > 3:
         print(f"Usage: {sys.argv[0]} <comb_strength> [rng_seed]")
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     if interaction_strength > len(param_spec):
         interaction_strength = len(param_spec)
     
-    combinatorial_tests = generate_array(acts_file, interaction_strength)
+    combinatorial_tests = generate_covering_array(acts_file, interaction_strength)
     random_tests = generate_random_data(param_spec, len(combinatorial_tests), rng_seed)
     
     # Print results
@@ -173,3 +173,6 @@ if __name__ == "__main__":
         print()
     print_centered(padding="=")
     os.remove(acts_file)
+
+if __name__ == "__main__":
+    _main()
