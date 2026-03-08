@@ -160,7 +160,7 @@ def _main():
 
     def print_test_cases(tests, name):
         print_centered(padding="=+")
-        input("...")
+        input("Press Enter to continue...")
         print("\r\033[F", end="")
         print_centered(f"{name}\n")
         for i, test in enumerate(tests):
