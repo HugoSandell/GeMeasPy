@@ -42,6 +42,10 @@ def generate_acts_file(parameter_domains: ParameterSpec) -> str:
 
 def generate_array(acts_config_path: str, strength: int = 2) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
+    
+    if not os.path.exists(_ACTS_JAR):
+        raise FileNotFoundError(f"ACTS was not found at {_ACTS_JAR}")
+    
     out_file_dir = tempfile.mkdtemp("gemeaspytest")
     out_file_path = os.path.join(out_file_dir, "acts_output.csv")
     
