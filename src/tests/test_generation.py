@@ -157,24 +157,22 @@ def _main():
     for i, param_name in enumerate(param_spec):
         print(f"{param_name}:\t", end="")
         print(", ".join([str(value) for value in param_spec[param_name]]))
-    print_centered(padding="=+")
-    input("...")
-    print("\r\033[F", end="")
-    print_centered(f"{interaction_strength}-way Combinatorial tests\n")
-    for i, test in enumerate(combinatorial_tests):
-        print(f"{i+1})\t", end="")
-        for param_name in test:
-            print(f"{param_name} = {test[param_name]}\t", end="")
-        print()
-    print_centered(padding="=+")
-    input("...")
-    print("\r\033[F", end="")
-    print_centered("Random tests\n")
-    for i, test in enumerate(random_tests):
-        print(f"{i+1})\t", end="")
-        for param_name in test:
-            print(f"{param_name} = {test[param_name]}\t", end="")
-        print()
+
+    def print_test_cases(tests, name):
+        print_centered(padding="=+")
+        input("...")
+        print("\r\033[F", end="")
+        print_centered(f"{name}\n")
+        for i, test in enumerate(tests):
+            print(f"{i + 1})\t", end="")
+            for param_name in test:
+                print(f"{param_name} = {test[param_name]}\t", end="")
+            print()
+
+    print_test_cases(
+        combinatorial_tests, f"{interaction_strength}-way Combinatorial tests"
+    )
+    print_test_cases(random_tests, "Random tests")
     print_centered(padding="=")
     os.remove(acts_file)
 
