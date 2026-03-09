@@ -277,7 +277,7 @@ class SSHTestServerSession():
 
 # Run server. For manual testing.
 def run():
-    emu = InstrumentServerEmulator(password="pass")
+    emu = InstrumentServerEmulator()
     emu.start()
     if not emu.address:
         return
