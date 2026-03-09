@@ -1,12 +1,13 @@
-from typing import TypeAlias
+from typing import Any, TypeAlias
+from types import NoneType
 import itertools
-import enum
 
 from tests.terrameter_model.behaviours import TerrameterBehaviour
 
-ParameterSpec: TypeAlias = dict[str, list[str | int | bool | None | list[str | int | bool | None] | TerrameterBehaviour]]
+type _ParameterBasicType = str | int | bool | NoneType
+type ParameterValue = _ParameterBasicType | list[_ParameterBasicType]
+type ParameterSpec = dict[str, list[ParameterValue]]
 
-ABSENT = ""
 INVALID_FILE = "N" # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "V1"
 VALID_TASKFILE2 = "V2"
@@ -64,13 +65,22 @@ PARAM_SPEC: ParameterSpec = {
     "connection_port": ["", 0, -1, 65536, None],
     "connection_password": ["", "X", None],
     # emulator
-    "emulator_behaviour": [*TerrameterBehaviour]
+    "emulator_behaviour": [b.name for b in TerrameterBehaviour]
 }
 
 # Add tasks programatically
-for file, taskid in [itertools.permutations(range(1,3))]:
+for file, taskid in [(a, b) for a in range(1,3) for b in range(1,3)]:
     PARAM_SPEC[f"taskfile{file}_task{taskid}_name"] = ["", f"Task{taskid}", "#TaskX"]
     PARAM_SPEC[f"taskfile{file}_task{taskid}_spread"] = ["", INVALID_FILE, VALID_SPREADFILE]
     PARAM_SPEC[f"taskfile{file}_task{taskid}_protocol"] = ["", INVALID_FILE, VALID_PROTOCOLFILE]
     PARAM_SPEC[f"taskfile{file}_task{taskid}_settings"] = ["", INVALID_FILE, VALID_SETTINGSFILE]
     PARAM_SPEC[f"taskfile{file}_task{taskid}_spacing"] = ["", "1 1 1", "1 1 1 1", "I I I"]
+
+# Must be updated together if spec changes
+def validate_parameter(name: str, value: Any) -> NoneType | NameError | ValueError:
+    """Return None iff the value is a valid ParameterValue, otherwise an Exception"""
+    if name not in PARAM_SPEC:
+        return NameError(f"Parameter name '{name}' is invalid")
+    if not any(value == known_good_value for known_good_value in PARAM_SPEC[name]):
+        return ValueError(f"Parameter value {repr(value)} is invalid for parameter '{name}'")
+    return None

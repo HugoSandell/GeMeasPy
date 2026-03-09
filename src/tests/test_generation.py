@@ -6,22 +6,20 @@ import os
 import itertools
 import sys
 import csv
+import json
 from xml.etree.ElementTree import ElementTree, Element, SubElement
 import random
 
-from parameter_spec import ParameterSpec
+from tests import parameter_spec
+from tests.parameter_spec import ParameterSpec, ParameterValue
 
 sys.path.insert(
     1, _SRC_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 )
 from tests.test_case import TestCase
 
-_ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_basic_1.0 3.jar"
+_ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_basic_1.0.jar"
 _ACTS_ALGORITHM = "ipog"
-
-_PARAMETER_TYPE_NUM = 0
-_PARAMETER_TYPE_ENUM = 1
-_PARAMETER_TYPE_BOOLEAN = 2
 
 def generate_acts_file(parameter_spec: ParameterSpec) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
@@ -32,7 +30,7 @@ def generate_acts_file(parameter_spec: ParameterSpec) -> str:
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib={"id": str(id), "name": param_name, "type": "1"})
         elem_values = SubElement(elem_parameter, "values")
         for value in parameter_spec[param_name]:
-            SubElement(elem_values, "value").text = str(value)
+            SubElement(elem_values, "value").text = json.dumps(value)
         SubElement(elem_parameter, "basechoices")
         SubElement(elem_parameter, "invalidValues")
     SubElement(elem_system, "OutputParameters")
@@ -90,8 +88,21 @@ def generate_covering_array(acts_config_path: str, strength: int = 2) -> list[Te
         os.remove(out_file_path)
     if os.path.exists(out_file_dir):
         os.rmdir(out_file_dir)
-
-    return list(csv.DictReader(csv_rows))
+    
+    def json_to_parameter_value(name, value_json) -> ParameterValue:
+        value = json.loads(value_json)
+        validation_result = parameter_spec.validate_parameter(name, value)
+        if validation_result != None:
+            raise validation_result
+        return value
+    
+    test_data: list[TestCase] = []
+    for raw_case in list(csv.DictReader(csv_rows)):
+        case = {}
+        for parameter_name in raw_case:
+            case[parameter_name] = json_to_parameter_value(parameter_name, raw_case[parameter_name])
+        test_data.append(case)
+    return test_data
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(parameter_spec: ParameterSpec, max_case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
@@ -115,7 +126,7 @@ def generate_random_data(parameter_spec: ParameterSpec, max_case_count: int, see
     # Verify uniqueness
     for case_a, case_b in itertools.combinations(range(case_count), 2):
         assert not is_duplicate(case_a, case_b)
-
+        
     return test_data
 
 # For manual testing
