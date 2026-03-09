@@ -40,6 +40,8 @@ def _create_connection_settings(test: TestCase):
     match test["password"]:
         case True:
             connection_settings["password"] = ""
+        case False:
+            connection_settings["password"] = _random_string()
         case None:
             pass
 
