@@ -9,12 +9,12 @@ import csv
 from xml.etree.ElementTree import ElementTree, Element, SubElement
 import random
 
+from parameter_spec import ParameterSpec
+
 sys.path.insert(
     1, _SRC_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 )
 from tests.test_case import TestCase
-
-ParameterSpec: TypeAlias = dict[str, list[str] | list[int] | list[bool]]
 
 _ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_basic_1.0 3.jar"
 _ACTS_ALGORITHM = "ipog"
