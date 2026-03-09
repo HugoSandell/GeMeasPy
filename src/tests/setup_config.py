@@ -8,6 +8,7 @@ import tempfile
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from settings import config
+from tests import parameter_spec
 from tests.test_case import TestCase
 
 
@@ -21,30 +22,31 @@ def _create_connection_settings(test: TestCase):
         "username": "root",
     }
 
-    match test["hostname"]:
-        case True:
-            connection_settings["hostname"] = "127.0.0.1"
-        case False:
+    match test["connection_hostname"]:
+        case parameter_spec.INVALID_HOSTNAME:
             connection_settings["hostname"] = f"{_random_string()}.invalid"
         case None:
             pass
+        case x:
+            connection_settings["hostname"] = x
 
-    match test["port"]:
-        case True:
+    match test["connection_port"]:
+        case "":
             connection_settings["port"] = 2222
         case None:
             pass
         case x:
             connection_settings["port"] = x
 
-    match test["password"]:
-        case True:
-            connection_settings["password"] = ""
-        case False:
+    match test["connection_password"]:
+        case "X":
             connection_settings["password"] = _random_string()
         case None:
             pass
+        case x:
+            connection_settings["password"] = x
 
+    # TODO remove?
     match test["look_for_keys"]:
         case None:
             pass
@@ -63,32 +65,41 @@ def _create_connection_settings(test: TestCase):
 
 
 def setup(test: TestCase):
-    config.TERRAMETER_PROJECTS_FOLDER = (
-        "/media/mmcblk0p1/projects"
-        if test["TERRAMETER_PROJECTS_FOLDER"]
-        else f"/media/mmcblk0p1/{_random_string()}"
-    )
-    config.LOCAL_PATH_TO_DATA = (
-        tempfile.mkdtemp(prefix="gemeaspytest_data_")  # TODO cleanup
-        if test["LOCAL_PATH_TO_DATA"]
-        else f"{_random_string()}/{_random_string()}"
-    )
-    config.TERRAMETER_CONNECTION_FILE = (
-        _create_connection_settings(test)
-        if test["TERRAMETER_CONNECTION_FILE"]
-        else _random_string()
-    )
+    match test["config_projects_folder"]:
+        case parameter_spec.VALID_PROJECTS_FOLDER:
+            config.TERRAMETER_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
+        case parameter_spec.INVALID_FILE:
+            config.TERRAMETER_PROJECTS_FOLDER = f"/media/mmcblk0p1/{_random_string()}"
+        case _:
+            raise ValueError("invalid config_projects_folder")
+
+    match test["config_local_data_path"]:
+        case parameter_spec.VALID_LOCAL_DATA_PATH:
+            # TODO cleanup
+            config.LOCAL_PATH_TO_DATA = tempfile.mkdtemp(prefix="gemeaspytest_data_")
+        case parameter_spec.INVALID_FILE:
+            config.LOCAL_PATH_TO_DATA = f"{_random_string()}/{_random_string()}"
+        case _:
+            raise ValueError("invalid config_local_data_path")
+
+    match test["config_connection_file"]:
+        case parameter_spec.VALID_CONNECTION_FILE:
+            config.TERRAMETER_CONNECTION_FILE = _create_connection_settings(test)
+        case parameter_spec.INVALID_FILE:
+            config.TERRAMETER_CONNECTION_FILE = _random_string()
+        case _:
+            raise ValueError("invalid config_connection_file")
 
 
 if __name__ == "__main__":
     setup(
         {
-            "TERRAMETER_PROJECTS_FOLDER": True,
-            "LOCAL_PATH_TO_DATA": True,
-            "TERRAMETER_CONNECTION_FILE": True,
-            "hostname": False,
-            "port": -1,
-            "password": None,
+            "config_projects_folder": parameter_spec.VALID_PROJECTS_FOLDER,
+            "config_local_data_path": parameter_spec.VALID_LOCAL_DATA_PATH,
+            "config_connection_file": parameter_spec.VALID_CONNECTION_FILE,
+            "connection_hostname": parameter_spec.INVALID_HOSTNAME,
+            "connection_port": -1,
+            "connection_password": None,
             "look_for_keys": None,
         }
     )
