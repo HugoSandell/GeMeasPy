@@ -1,19 +1,13 @@
 import json
 import os
-import random
-import string
 import sys
 import tempfile
 
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from settings import config
 from tests import parameter_spec
 from tests.test_case import TestCase
-
-
-def _random_string():
-    return "".join(random.choices(string.ascii_letters + string.digits, k=22))
+from tests.util import random_string
 
 
 def _create_connection_settings(test: TestCase):
@@ -24,7 +18,7 @@ def _create_connection_settings(test: TestCase):
 
     match test["connection_hostname"]:
         case parameter_spec.INVALID_HOSTNAME:
-            connection_settings["hostname"] = f"{_random_string()}.invalid"
+            connection_settings["hostname"] = f"{random_string()}.invalid"
         case None:
             pass
         case x:
@@ -40,7 +34,7 @@ def _create_connection_settings(test: TestCase):
 
     match test["connection_password"]:
         case "X":
-            connection_settings["password"] = _random_string()
+            connection_settings["password"] = random_string()
         case None:
             pass
         case x:
@@ -69,7 +63,7 @@ def setup(test: TestCase):
         case parameter_spec.VALID_PROJECTS_FOLDER:
             config.TERRAMETER_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
         case parameter_spec.INVALID_FILE:
-            config.TERRAMETER_PROJECTS_FOLDER = f"/media/mmcblk0p1/{_random_string()}"
+            config.TERRAMETER_PROJECTS_FOLDER = f"/media/mmcblk0p1/{random_string()}"
         case _:
             raise ValueError("invalid config_projects_folder")
 
@@ -78,7 +72,7 @@ def setup(test: TestCase):
             # TODO cleanup
             config.LOCAL_PATH_TO_DATA = tempfile.mkdtemp(prefix="gemeaspytest_data_")
         case parameter_spec.INVALID_FILE:
-            config.LOCAL_PATH_TO_DATA = f"{_random_string()}/{_random_string()}"
+            config.LOCAL_PATH_TO_DATA = f"{random_string()}/{random_string()}"
         case _:
             raise ValueError("invalid config_local_data_path")
 
@@ -86,7 +80,7 @@ def setup(test: TestCase):
         case parameter_spec.VALID_CONNECTION_FILE:
             config.TERRAMETER_CONNECTION_FILE = _create_connection_settings(test)
         case parameter_spec.INVALID_FILE:
-            config.TERRAMETER_CONNECTION_FILE = _random_string()
+            config.TERRAMETER_CONNECTION_FILE = random_string()
         case _:
             raise ValueError("invalid config_connection_file")
 
