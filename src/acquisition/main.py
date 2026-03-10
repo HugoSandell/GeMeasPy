@@ -14,15 +14,19 @@ def run(task_file) -> None:
     ls.disconnect()
 
 
+def main(argv: list[str]):
+    nargs = len(argv)
+    if nargs == 1:
+        task_file = None
+        raise Exception("No task file provided")
+    elif nargs == 2:
+        task_file = argv[1]
+        run(task_file)
+    else:
+        task_files = argv[1:]
+        for task_file in task_files:
+            run(task_file)
+
+
 if __name__ == "__main__":
-	nargs = len(sys.argv)
-	if nargs == 1:
-		task_file = None
-		raise Exception("No task file provided")
-	elif nargs == 2:
-		task_file = sys.argv[1]
-		run(task_file)
-	else:
-		task_files = sys.argv[1:]
-		for task_file in task_files:
-			run(task_file)
+    main(sys.argv)
