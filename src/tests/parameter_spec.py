@@ -1,12 +1,17 @@
-from typing import Any, TypeAlias
+from dataclasses import dataclass, field
+from typing import Any
 from types import NoneType
-import itertools
 
 from tests.terrameter_model.behaviours import TerrameterBehaviour
 
 type _ParameterBasicType = str | int | bool | NoneType
 type ParameterValue = _ParameterBasicType | list[_ParameterBasicType]
 type ParameterSpec = dict[str, list[ParameterValue]]
+
+@dataclass
+class Constraint:
+    text: str = ""
+    parameters: list[str] = field(default_factory=list)
 
 INVALID_FILE = "N" # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "V1"
@@ -20,7 +25,11 @@ VALID_LOCAL_DATA_PATH = "V"
 VALID_CONNECTION_FILE = "V"
 
 VALID_HOSTNAME = "127.0.0.1"
-INVALID_HOSTNAME = "&%¤(#"
+INVALID_HOSTNAME = "bad.host.name"
+
+CONSTRAINTS: list[Constraint] = [
+    Constraint("", []),
+]
 
 PARAM_SPEC: ParameterSpec = {
     # CLI Arguments

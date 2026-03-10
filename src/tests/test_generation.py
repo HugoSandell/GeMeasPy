@@ -11,7 +11,7 @@ from xml.etree.ElementTree import ElementTree, Element, SubElement
 import random
 
 from tests import parameter_spec
-from tests.parameter_spec import ParameterSpec, ParameterValue
+from tests.parameter_spec import ParameterSpec, ParameterValue, Constraint
 
 sys.path.insert(
     1, _SRC_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -25,15 +25,28 @@ _PARAMETER_TYPE_BOOLEAN = "2"
 _ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
 
+# It is unfortunately necessary to replace some characters for ACTS
+ACTS_ENUM_UNSAFE_CHARS = ["\"", ",", "&", "%", "+", "<", ">", "="]
+def string_to_acts_enum(s: str) -> str:
+    """Replace unsafe characters for processing in ACTS"""
+    for char in ACTS_ENUM_UNSAFE_CHARS:
+        s = s.replace(char, f"@{char.encode("ascii").hex()}@")
+    return s
+def acts_enum_to_string(s: str) -> str:
+    """Recover unsafe characters from ACTS"""
+    for char in ACTS_ENUM_UNSAFE_CHARS:
+        s = s.replace(f"@{char.encode("ascii").hex()}@", char)
+    return s
+
 def acts_type(parameter_values: list[ParameterValue]) -> str:
     """Determine the appropriate ACTS type for the given parameter"""
-    if all(isinstance(v, int) for v in parameter_values):
-        return _PARAMETER_TYPE_NUM
     if all(isinstance(v, bool) for v in parameter_values):
         return _PARAMETER_TYPE_BOOLEAN
+    if all(isinstance(v, int) for v in parameter_values):
+        return _PARAMETER_TYPE_NUM
     return _PARAMETER_TYPE_ENUM
 
-def generate_acts_file(parameter_spec: ParameterSpec) -> str:
+def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
     elem_system = Element("System", attrib={"name": "GeMeasPy"})
     elem_parameters = SubElement(elem_system, "Parameters")
@@ -44,19 +57,25 @@ def generate_acts_file(parameter_spec: ParameterSpec) -> str:
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
         for value in parameter_spec[param_name]:
-            SubElement(elem_values, "value").text = json.dumps(value)
+            SubElement(elem_values, "value").text = string_to_acts_enum(json.dumps(value))
         SubElement(elem_parameter, "basechoices")
         SubElement(elem_parameter, "invalidValues")
     SubElement(elem_system, "OutputParameters")
     SubElement(elem_system, "Relations")
-    SubElement(elem_system, "Constraints")
+    
+    elem_constraints = SubElement(elem_system, "Constraints")
+    for constraint in constraints:
+        elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.text})
+        elem_constraint_parameters = SubElement(elem_constraint, "Parameters")
+        for parameter in constraint.parameters:
+            SubElement(elem_constraint_parameters, "Parameter", attrib={"name": parameter})
     
     fd, path = tempfile.mkstemp(suffix=".xml", prefix="gemeaspytest", text=True)
     ElementTree(elem_system).write(path, xml_declaration=True)
     os.close(fd)
     return path
 
-def generate_covering_array(acts_config_path: str, strength: int = 2) -> list[TestCase]:
+def generate_covering_array(acts_config_path: str, strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     
     if not os.path.exists(_ACTS_JAR):
@@ -82,7 +101,8 @@ def generate_covering_array(acts_config_path: str, strength: int = 2) -> list[Te
         e.add_note("ACTS could not be executed!")
         raise
     
-    if acts_out.find("Exception") >= 0 or acts_out.find("error") >= 0:
+    error_hints = ["generation is cancelled", "Exception", "error", "Please modify the file and retry."]
+    if any(acts_out.find(search_string) >= 0 for search_string in error_hints):
         e = Exception("ACTS failed but exited normally")
         e.add_note(f"Command: {" ".join(acts_arguments)}")
         e.add_note(f"Output: \n{acts_out}")
@@ -105,16 +125,18 @@ def generate_covering_array(acts_config_path: str, strength: int = 2) -> list[Te
     
     def json_to_parameter_value(name, value_json) -> ParameterValue:
         value = json.loads(value_json)
-        validation_result = parameter_spec.validate_parameter(name, value)
-        if validation_result != None:
-            raise validation_result
+        if validate:
+            validation_result = parameter_spec.validate_parameter(name, value)
+            if validation_result != None:
+                raise validation_result
         return value
     
     test_data: list[TestCase] = []
     for raw_case in list(csv.DictReader(csv_rows)):
         case = {}
         for parameter_name in raw_case:
-            case[parameter_name] = json_to_parameter_value(parameter_name, raw_case[parameter_name])
+            value_json = acts_enum_to_string(raw_case[parameter_name])
+            case[parameter_name] = json_to_parameter_value(parameter_name, value_json)
         test_data.append(case)
     return test_data
 
@@ -154,17 +176,20 @@ def _main():
         exit(1)
     
     param_spec: ParameterSpec = {"param_a": ["a", "b", "c"], "param_b": [1, 2, 3], "param_c": [True, False]}
+    constraints: list[Constraint] = [
+        Constraint("param_b<3=>param_c=true", parameters=["param_b", "param_c"])
+    ]
     
     rng_seed = None
     if argc == 4:
         rng_seed = sys.argv[2]
-    acts_file = generate_acts_file(param_spec)
+    acts_file = generate_acts_file(param_spec, constraints=constraints)
     interaction_strength = int(sys.argv[1])
     
     if interaction_strength > len(param_spec):
         interaction_strength = len(param_spec)
     
-    combinatorial_tests = generate_covering_array(acts_file, interaction_strength)
+    combinatorial_tests = generate_covering_array(acts_file, interaction_strength, validate=False)
     random_tests = generate_random_data(param_spec, len(combinatorial_tests), rng_seed)
     
     # Print results
