@@ -64,6 +64,9 @@ def resolve_task_files(test: TestCase):
             created_task_files[file_no] = _create_task_file(test, file_no)
         return created_task_files[file_no]
 
+    if not type(test["arg_task_files"]) is list:
+        raise TypeError("Parameter 'arg_task_files' has an invalid type")
+
     for task_file in test["arg_task_files"]:
         match task_file:
             case parameter_spec.INVALID_FILE:
