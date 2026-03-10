@@ -47,18 +47,20 @@ def _create_connection_settings(test: TestCase):
         case x:
             connection_settings["look_for_keys"] = x
 
-    # TODO cleanup
-    fd, path = tempfile.mkstemp(
-        prefix="gemeaspytest_connection_settings_", suffix=".json"
+    f = tempfile.NamedTemporaryFile(
+        mode="w",
+        prefix="gemeaspytest_connection_settings_",
+        suffix=".json",
+        delete_on_close=False,
     )
-
-    with open(fd, "w") as f:
-        json.dump(connection_settings, f)
-
-    return path
+    json.dump(connection_settings, f)
+    f.close()
+    return f
 
 
 def setup(test: TestCase):
+    tempfiles = []
+
     match test["config_projects_folder"]:
         case parameter_spec.VALID_PROJECTS_FOLDER:
             config.TERRAMETER_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
@@ -69,8 +71,9 @@ def setup(test: TestCase):
 
     match test["config_local_data_path"]:
         case parameter_spec.VALID_LOCAL_DATA_PATH:
-            # TODO cleanup
-            config.LOCAL_PATH_TO_DATA = tempfile.mkdtemp(prefix="gemeaspytest_data_")
+            f = tempfile.TemporaryDirectory(prefix="gemeaspytest_data_")
+            tempfiles.append(f)
+            config.LOCAL_PATH_TO_DATA = f.name
         case parameter_spec.INVALID_FILE:
             config.LOCAL_PATH_TO_DATA = f"{random_string()}/{random_string()}"
         case _:
@@ -78,11 +81,19 @@ def setup(test: TestCase):
 
     match test["config_connection_file"]:
         case parameter_spec.VALID_CONNECTION_FILE:
-            config.TERRAMETER_CONNECTION_FILE = _create_connection_settings(test)
+            f = _create_connection_settings(test)
+            tempfiles.append(f)
+            config.TERRAMETER_CONNECTION_FILE = f.name
         case parameter_spec.INVALID_FILE:
             config.TERRAMETER_CONNECTION_FILE = random_string()
         case _:
             raise ValueError("invalid config_connection_file")
+
+    def _cleanup():
+        for f in tempfiles:
+            f.__exit__(None, None, None)
+
+    return _cleanup
 
 
 if __name__ == "__main__":
