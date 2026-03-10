@@ -18,9 +18,9 @@ sys.path.insert(
 )
 from tests.test_case import TestCase
 
-_PARAMETER_TYPE_NUM = "0"
-_PARAMETER_TYPE_ENUM = "1"
-_PARAMETER_TYPE_BOOLEAN = "2"
+_ACTS_PARAMETER_TYPE_NUM = "0"
+_ACTS_PARAMETER_TYPE_ENUM = "1"
+_ACTS_PARAMETER_TYPE_BOOLEAN = "2"
 
 _ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
@@ -41,10 +41,10 @@ def acts_enum_to_string(s: str) -> str:
 def acts_type(parameter_values: list[ParameterValue]) -> str:
     """Determine the appropriate ACTS type for the given parameter"""
     if all(isinstance(v, bool) for v in parameter_values):
-        return _PARAMETER_TYPE_BOOLEAN
+        return _ACTS_PARAMETER_TYPE_BOOLEAN
     if all(isinstance(v, int) for v in parameter_values):
-        return _PARAMETER_TYPE_NUM
-    return _PARAMETER_TYPE_ENUM
+        return _ACTS_PARAMETER_TYPE_NUM
+    return _ACTS_PARAMETER_TYPE_ENUM
 
 def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
