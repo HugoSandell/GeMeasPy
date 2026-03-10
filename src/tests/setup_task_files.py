@@ -19,9 +19,7 @@ def _create_task_file(test: TestCase, file_no: int):
     with open(fd, "w") as f:
         f.write(f"{number_of_tasks} {relay_type}\n")
 
-        try:
-            number_of_tasks = int(number_of_tasks)
-        except ValueError:
+        if type(number_of_tasks) is not int:
             number_of_tasks = 0
 
         for taskid in range(1, number_of_tasks + 1):
