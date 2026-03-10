@@ -6,7 +6,7 @@ from tests.parameter_spec import PARAM_SPEC
 from tests import test_generation
 
 def pytest_addoption(parser: pytest.Parser):
-    parser.addoption("--generator", "-G", dest="generator", type=str, default="random", help="Specify which test case generator to use ('random' or 'combinatorial')")
+    parser.addoption("--generator", "-G", dest="generator", type=str, default="random", help="Specify which test case generator to use ('random' or 'acts')")
     parser.addoption("--size", "-I", dest="size", default=-1, type=int, help="Specify the size of the test suite (interaction strength or number of test cases). Negative values ")
 
 def pytest_generate_tests(metafunc: pytest.Metafunc):
@@ -21,7 +21,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
             i = max_i
         test_data = test_generation.generate_random_data(parameter_spec=PARAM_SPEC, max_case_count=i, seed = None)
         metafunc.parametrize("test_case", test_data)
-    elif generator_name == "combinatorial":  
+    elif generator_name == "acts":  
         acts_file = test_generation.generate_acts_file(parameter_spec=PARAM_SPEC)
         test_data = test_generation.generate_covering_array(acts_config_path=acts_file, strength=i)
         os.remove(acts_file)

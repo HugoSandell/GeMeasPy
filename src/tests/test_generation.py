@@ -189,8 +189,8 @@ def _main():
     if interaction_strength > len(param_spec):
         interaction_strength = len(param_spec)
     
-    combinatorial_tests = generate_covering_array(acts_file, interaction_strength, validate=False)
-    random_tests = generate_random_data(param_spec, len(combinatorial_tests), rng_seed)
+    acts_tests = generate_covering_array(acts_file, interaction_strength, validate=False)
+    random_tests = generate_random_data(param_spec, len(acts_tests), rng_seed)
     
     # Print results
     def print_centered(msg: str="", padding: str=" "):
@@ -220,7 +220,7 @@ def _main():
             print()
 
     print_test_cases(
-        combinatorial_tests, f"{interaction_strength}-way Combinatorial tests"
+        acts_tests, f"{interaction_strength}-way Combinatorial tests"
     )
     print_test_cases(random_tests, "Random tests")
     print_centered(padding="=")
