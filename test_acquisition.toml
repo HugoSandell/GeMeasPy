@@ -2,7 +2,7 @@
 module-path = ["src/acquisition"]
 timeout = 5.0
 excluded-modules = []
-test-command = "python -m pytest --size=50 --generator=random -c tests/pytest_random.toml src/tests/randtest.py"
+test-command = "python -m pytest --size=50 --generator=random -c tests/pytest_random.toml tests/test_main.py"
 
 [cosmic-ray.distributor]
 name = "local"
