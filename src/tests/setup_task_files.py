@@ -13,55 +13,58 @@ def _create_task_file(test: TestCase, file_no: int):
     number_of_tasks = test[f"{prefix}number_of_tasks"]
     relay_type = test[f"{prefix}relay_type"]
 
-    # TODO cleanup
-    fd, path = tempfile.mkstemp(prefix="gemeaspytest_task_file_")
+    f = tempfile.NamedTemporaryFile(
+        mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
+    )
+    f.write(f"{number_of_tasks} {relay_type}\n")
 
-    with open(fd, "w") as f:
-        f.write(f"{number_of_tasks} {relay_type}\n")
+    if type(number_of_tasks) is not int:
+        number_of_tasks = 0
 
-        if type(number_of_tasks) is not int:
-            number_of_tasks = 0
+    for taskid in range(1, number_of_tasks + 1):
+        task_prefix = f"{prefix}task{taskid}_"
+        f.write(f"{test[f'{task_prefix}name']}\n")
 
-        for taskid in range(1, number_of_tasks + 1):
-            task_prefix = f"{prefix}task{taskid}_"
-            f.write(f"{test[f'{task_prefix}name']}\n")
+        match test[f"{task_prefix}spread"]:
+            case parameter_spec.INVALID_FILE:
+                f.write(f"{random_string()}\n")
+            case parameter_spec.VALID_SPREADFILE:
+                f.write("2X21.xml\n")
+            case x:
+                f.write(f"{x}\n")
 
-            match test[f"{task_prefix}spread"]:
-                case parameter_spec.INVALID_FILE:
-                    f.write(f"{random_string()}\n")
-                case parameter_spec.VALID_SPREADFILE:
-                    f.write("2X21.xml\n")
-                case x:
-                    f.write(f"{x}\n")
+        match test[f"{task_prefix}protocol"]:
+            case parameter_spec.INVALID_FILE:
+                f.write(f"{random_string()}\n")
+            case parameter_spec.VALID_PROTOCOLFILE:
+                f.write("Gradient_2x21.xml\n")
+            case x:
+                f.write(f"{x}\n")
 
-            match test[f"{task_prefix}protocol"]:
-                case parameter_spec.INVALID_FILE:
-                    f.write(f"{random_string()}\n")
-                case parameter_spec.VALID_PROTOCOLFILE:
-                    f.write("Gradient_2x21.xml\n")
-                case x:
-                    f.write(f"{x}\n")
+        match test[f"{task_prefix}settings"]:
+            case parameter_spec.INVALID_FILE:
+                f.write(f"{random_string()}\n")
+            case parameter_spec.VALID_SETTINGSFILE:
+                f.write("testing1s.settings\n")
+            case x:
+                f.write(f"{x}\n")
 
-            match test[f"{task_prefix}settings"]:
-                case parameter_spec.INVALID_FILE:
-                    f.write(f"{random_string()}\n")
-                case parameter_spec.VALID_SETTINGSFILE:
-                    f.write("testing1s.settings\n")
-                case x:
-                    f.write(f"{x}\n")
+        f.write(f"{test[f'{task_prefix}spacing']}\n")
 
-            f.write(f"{test[f'{task_prefix}spacing']}\n")
-
-    return path
+    f.close()
+    return f
 
 
 def resolve_task_files(test: TestCase):
+    tempfiles = []
     created_task_files = {}
     task_files = []
 
     def _get_or_create_task_file(file_no: int):
         if file_no not in created_task_files:
-            created_task_files[file_no] = _create_task_file(test, file_no)
+            f = _create_task_file(test, file_no)
+            tempfiles.append(f)
+            created_task_files[file_no] = f.name
         return created_task_files[file_no]
 
     if not type(test["arg_task_files"]) is list:
@@ -78,7 +81,11 @@ def resolve_task_files(test: TestCase):
             case x:
                 task_files.append(x)
 
-    return task_files
+    def _cleanup():
+        for f in tempfiles:
+            f.__exit__(None, None, None)
+
+    return task_files, _cleanup
 
 
 if __name__ == "__main__":
