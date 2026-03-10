@@ -4,7 +4,9 @@ log_level = "WARNING"
 log_file = "../test_data/pytest_acts.log"
 addopts = [
     "--generator=acts",
-    "--maxfail=10"
+    "--maxfail=10",
+    "--capture=tee-sys",
+    "--cache-clear",
 ]
 testpaths = [
     "tests",
