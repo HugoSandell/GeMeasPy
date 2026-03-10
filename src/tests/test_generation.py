@@ -18,8 +18,20 @@ sys.path.insert(
 )
 from tests.test_case import TestCase
 
-_ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_basic_1.0.jar"
-_ACTS_ALGORITHM = "ipog"
+_PARAMETER_TYPE_NUM = "0"
+_PARAMETER_TYPE_ENUM = "1"
+_PARAMETER_TYPE_BOOLEAN = "2"
+
+_ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_3.3.jar"
+_ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
+
+def acts_type(parameter_values: list[ParameterValue]) -> str:
+    """Determine the appropriate ACTS type for the given parameter"""
+    if all(isinstance(v, int) for v in parameter_values):
+        return _PARAMETER_TYPE_NUM
+    if all(isinstance(v, bool) for v in parameter_values):
+        return _PARAMETER_TYPE_BOOLEAN
+    return _PARAMETER_TYPE_ENUM
 
 def generate_acts_file(parameter_spec: ParameterSpec) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
@@ -27,7 +39,9 @@ def generate_acts_file(parameter_spec: ParameterSpec) -> str:
     elem_parameters = SubElement(elem_system, "Parameters")
     
     for id, param_name in enumerate(parameter_spec):
-        elem_parameter = SubElement(elem_parameters, "Parameter", attrib={"id": str(id), "name": param_name, "type": "1"})
+        param_type = acts_type(parameter_spec[param_name])
+        elem_parameter_attrib = {"id": str(id), "name": param_name, "type": param_type}
+        elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
         for value in parameter_spec[param_name]:
             SubElement(elem_values, "value").text = json.dumps(value)
