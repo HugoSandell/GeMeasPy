@@ -2,7 +2,7 @@
 module-path = ["acquisition"]
 timeout = 5.0
 excluded-modules = []
-test-command = "python -m pytest --size=3 --generator=acts -c tests/pytest_acts.toml tests/test_main.py"
+test-command = "python -m pytest --cache-clear --maxfail=10 --size=3 --generator=acts -c tests/pytest_acts.toml tests/test_main.py"
 
 [cosmic-ray.distributor]
 name = "local"
