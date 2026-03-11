@@ -8,6 +8,14 @@ from tests.test_case import AcquisitionTestCase
 from tests.util import random_string
 
 
+def _replace_file_placeholder(value: str):
+    match value:
+        case parameter_spec.INVALID_FILE:
+            return random_string()
+        case x:
+            return x
+
+
 def _create_task_file(test: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
     number_of_tasks = test[f"{prefix}number_of_tasks"]
@@ -26,31 +34,9 @@ def _create_task_file(test: AcquisitionTestCase, file_no: int):
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
         f.write(f"{test[f'{task_prefix}name']}\n")
-
-        match test[f"{task_prefix}spread"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_SPREADFILE:
-                f.write("2X21.xml\n")
-            case x:
-                f.write(f"{x}\n")
-
-        match test[f"{task_prefix}protocol"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_PROTOCOLFILE:
-                f.write("Gradient_2x21.xml\n")
-            case x:
-                f.write(f"{x}\n")
-
-        match test[f"{task_prefix}settings"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_SETTINGSFILE:
-                f.write("testing1s.settings\n")
-            case x:
-                f.write(f"{x}\n")
-
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}spread'])}\n")
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}protocol'])}\n")
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}settings'])}\n")
         f.write(f"{test[f'{task_prefix}spacing']}\n")
 
     f.close()

@@ -16,7 +16,7 @@ def emulator():
 
 @pytest.fixture
 def config(test_case: AcquisitionTestCase, emulator):
-    cleanup = setup_config.setup(test_case)
+    cleanup = setup_config.setup(test_case, emulator.address[1])
     yield
     cleanup()
 
