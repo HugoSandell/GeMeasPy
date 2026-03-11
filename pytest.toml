@@ -1,0 +1,11 @@
+[pytest]
+minversion = "9.0.2"
+log_level = "WARNING"
+testpaths = [
+    "src/tests",
+]
+addopts = [
+    "--capture=tee-sys",
+    "--cache-clear",
+    "--maxfail=15",
+]
