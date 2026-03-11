@@ -22,5 +22,11 @@ The module uses a computer (Windows or LINUX) to control the Terrameter LS and a
 **How to run data collection module**   
 `python -m src.acquisition.main <task_list_file> [task_list_file...]`
 
-**How to run tests**  
-`python -m src.tests.mutate`
+**How to run mutation analysis**    
+`python -m src.tests.mutate [generator...]`    
+Where valid inputs for `generator` is `acts` or `random`. If no generator is specified, all available generators will be run.   
+
+Finally the result can be displayed with   
+`cr-report test_data/cosmicray_<generator>.sqlite`   
+Where `<generator>` is the specific generator you want to see the results for.  
+See [cosmic-ray documentation](https://cosmic-ray.readthedocs.io/en/latest/tutorials/intro/index.html) for more information.
