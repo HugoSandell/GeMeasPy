@@ -4,7 +4,6 @@ log_level = "WARNING"
 log_file = "../test_data/pytest_random.log"
 addopts = [
     "--generator=random",
-    "--maxfail=10",
     "--capture=tee-sys",
     "--cache-clear",
 ]
