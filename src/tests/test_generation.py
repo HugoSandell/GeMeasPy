@@ -223,10 +223,14 @@ def _main():
     print_centered(padding="=")
     print_centered("Parameters")
     print_centered("name : values")
-    for i, param_name in enumerate(param_spec):
+    for param_name in param_spec:
         print(f"{param_name}:\t", end="")
         print(", ".join([str(value) for value in param_spec[param_name]]))
-
+    print_centered(padding="-")
+    print_centered("Constraints")
+    for i, constraint in enumerate(constraints):
+        print(f"{i+1}) {constraint.text}")
+    
     def print_test_cases(tests, name):
         print_centered(padding="=+")
         input("Press Enter to continue...")
