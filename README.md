@@ -10,11 +10,17 @@ The module uses a computer (Windows or LINUX) to control the Terrameter LS and a
 
 **Setup procedure**
 1. Create the neccesary files
-1. The "settings/connection_settings.json" file should contain the Terrameters ssh connection (hostname, port, username, password, look_for_keys)
-2. The "settings/server_backup_settings.json" file should contain the backup's server ssh connection (hostname, port, username, password, look_for_keys)
-3. The "settings/config.py" should contain the variables: TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, REMOTE_BACKUP, SERVER_BACKUP_FOLDER, FILE_TRANSFER_DICTIONARY
-4. The "settings/monitoring_task_list.txt should contain the name, spread and protocol files for each Task.
-2. Use a scheduler to run the scripts every X minutes
-1. On windows you call a batch file from taskscheduler
-2. On LINUX you can call a bash file with crontab
-3. Ensure there is enough space on the local pc and if needed setup procedures to remove the data frequently.
+2. The "settings/connection_settings.json" file should contain the Terrameters ssh connection (hostname, port, username, password, look_for_keys)
+3. The "settings/server_backup_settings.json" file should contain the backup's server ssh connection (hostname, port, username, password, look_for_keys)
+4. The "settings/config.py" should contain the variables: TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, REMOTE_BACKUP, SERVER_BACKUP_FOLDER, FILE_TRANSFER_DICTIONARY
+5. The "settings/monitoring_task_list.txt should contain the name, spread and protocol files for each Task.
+6. Use a scheduler to run the scripts every X minutes
+7. On windows you call a batch file from taskscheduler
+8. On LINUX you can call a bash file with crontab
+9. Ensure there is enough space on the local pc and if needed setup procedures to remove the data frequently.
+
+**How to run data collection module**   
+`python -m src.acquisition.main <task_list_file> [task_list_file...]`
+
+**How to run tests**  
+`python -m src.tests.mutate`
