@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Any, Iterator 
+from typing import Any, Iterator
 from types import NoneType
 
+from tests.parameters import ParameterValue
+from tests.test_case import AcquisitionTestCase, TestCase
 from tests.terrameter_model.behaviours import TerrameterBehaviour
-
-type _ParameterBasicType = str | int | bool | NoneType
-type ParameterValue = _ParameterBasicType | list[_ParameterBasicType]
 
 INVALID_FILE = "N" # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "V1"
@@ -23,25 +22,42 @@ INVALID_HOSTNAME = "bad.host.name"
 
 @dataclass
 class ParameterSpec:
+    TestCaseType: type = TestCase
+
     def __iter__(self) -> Iterator[str]:
-        return iter(vars(self))
+        return iter(filter(lambda key: key != "TestCaseType", vars(self))) # _TestCaseType is a metavariable
+    
     def __setitem__(self, name: str, value: list[ParameterValue]) -> None:
         if name not in vars(self):
             raise KeyError(f"{self.__class__.__name__} has no attribute '{name}'")
         self.__setattr__(name, value)
+        
     def __getitem__(self, name: str) -> list[ParameterValue]:
         if name not in vars(self):
             raise KeyError(f"{self.__class__.__name__} has no attribute '{name}'")
         return vars(self)[name]
+    
     def __len__(self) -> int:
-        return len(vars(self))
+        return len(vars(self)) - 1 # -1 for TestCaseType
+    
     def __str__(self) -> str:
         return str(vars(self))
+    
     def __repr__(self) -> str:
         return repr(vars(self))
+    
+    def validate_parameter(self, name: str, value: Any) -> NoneType | NameError | ValueError:
+        """Return None iff the value is a valid ParameterValue, otherwise an Exception"""
+        if name not in vars(self):
+            return NameError(f"Parameter name '{name}' is invalid")
+        if not any(value == known_good_value for known_good_value in self[name]):
+            return ValueError(f"Parameter value {repr(value)} is invalid for parameter '{name}'")
+        return None
 
 @dataclass
 class AcquisitionParameterSpec(ParameterSpec):
+    TestCaseType: type = AcquisitionTestCase
+    
     arg_task_files: list[list[str]] = field(default_factory=lambda:[
         [], 
         [""], 
@@ -115,17 +131,8 @@ class Constraint:
     parameters: list[str] = field(default_factory=list)
 
 
-CONSTRAINTS: list[Constraint] = [
+# TODO: Roll constraints into parameter spec?
+ACQUISITION_CONSTRAINTS: list[Constraint] = [
     Constraint("", []),
 ]
-
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
-
-# Must be updated together if spec changes
-def validate_parameter(name: str, value: Any) -> NoneType | NameError | ValueError:
-    """Return None iff the value is a valid ParameterValue, otherwise an Exception"""
-    if name not in vars(ACQUISITION_PARAM_SPEC):
-        return NameError(f"Parameter name '{name}' is invalid")
-    if not any(value == known_good_value for known_good_value in vars(ACQUISITION_PARAM_SPEC)[name]):
-        return ValueError(f"Parameter value {repr(value)} is invalid for parameter '{name}'")
-    return None

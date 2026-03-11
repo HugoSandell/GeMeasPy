@@ -19,12 +19,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
         max_i: int = reduce(lambda x, p: x * len(vars(ACQUISITION_PARAM_SPEC)[p]), vars(ACQUISITION_PARAM_SPEC), 1)
         if i > max_i:
             i = max_i
-        test_data = test_generation.generate_random_data(parameter_spec=ACQUISITION_PARAM_SPEC, max_case_count=i, seed = None)
+        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, max_case_count=i, seed = None)
         metafunc.parametrize("test_case", test_data)
     elif generator_name == "acts":  
-        acts_file = test_generation.generate_acts_file(parameter_spec=ACQUISITION_PARAM_SPEC)
-        test_data = test_generation.generate_covering_array(acts_config_path=acts_file, strength=i)
-        os.remove(acts_file)
+        test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=[], strength=i)
         metafunc.parametrize("test_case", test_data)
     else:
         raise ValueError(f"{generator_name} is not the name of a supported generator")

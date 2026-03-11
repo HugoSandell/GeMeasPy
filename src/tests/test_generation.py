@@ -76,7 +76,7 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     os.close(fd)
     return path
 
-def generate_covering_array(acts_config_path: str, strength: int = 2, validate: bool = True) -> list[TestCase]:
+def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     
     if not os.path.exists(_ACTS_JAR):
@@ -87,6 +87,8 @@ def generate_covering_array(acts_config_path: str, strength: int = 2, validate: 
     
     def path_escape(path: str) -> str:
         return path.replace("\\", "/")
+    
+    acts_config_path = generate_acts_file(param_spec, constraints)
     
     acts_arguments = ["java", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, "-Doutput=csv",
                       "-jar", _ACTS_JAR, path_escape(acts_config_path), path_escape(out_file_path)]
@@ -101,6 +103,8 @@ def generate_covering_array(acts_config_path: str, strength: int = 2, validate: 
     except Exception as e:
         e.add_note("ACTS could not be executed!")
         raise
+    finally:
+        os.remove(acts_config_path)
     
     error_hints = ["generation is cancelled", "Exception", "error", "Please modify the file and retry."]
     if any(acts_out.find(search_string) >= 0 for search_string in error_hints):
@@ -127,14 +131,14 @@ def generate_covering_array(acts_config_path: str, strength: int = 2, validate: 
     def json_to_parameter_value(name, value_json) -> ParameterValue:
         value = json.loads(value_json)
         if validate:
-            validation_result = parameter_spec.validate_parameter(name, value)
+            validation_result = param_spec.validate_parameter(name, value)
             if validation_result != None:
                 raise validation_result
         return value
     
     test_data: list[TestCase] = []
     for raw_case in list(csv.DictReader(csv_rows)):
-        case = {}
+        case = param_spec.TestCaseType()
         for parameter_name in raw_case:
             value_json = acts_enum_to_string(raw_case[parameter_name])
             case[parameter_name] = json_to_parameter_value(parameter_name, value_json)
@@ -142,11 +146,11 @@ def generate_covering_array(acts_config_path: str, strength: int = 2, validate: 
     return test_data
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
-def generate_random_data(parameter_spec: ParameterSpec, max_case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
+def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
     random.seed(seed)
     
     def is_duplicate(case_a: int, case_b: int):
-        for param_name in parameter_spec:
+        for param_name in param_spec:
             if test_data[case_a][param_name] != test_data[case_b][param_name]:
                 return False
         return True
@@ -154,11 +158,11 @@ def generate_random_data(parameter_spec: ParameterSpec, max_case_count: int, see
     # TODO: make sure this won't loop endlessly if there are more cases than combinations 
     case_count = max_case_count
     
-    test_data: list[TestCase] = [dict() for _ in range(case_count)]
+    test_data: list[TestCase] = [param_spec.TestCaseType() for _ in range(case_count)]
     for case_index in range(case_count):
         while len(test_data[case_index]) == 0 or any([is_duplicate(case_index, x) for x in range(case_index)]):
-            for param_name in parameter_spec:
-                test_data[case_index][param_name] = random.choice(parameter_spec[param_name])
+            for param_name in param_spec:
+                test_data[case_index][param_name] = random.choice(param_spec[param_name])
 
     # Verify uniqueness
     for case_a, case_b in itertools.combinations(range(case_count), 2):
@@ -175,31 +179,39 @@ def _main():
     if not sys.argv[1].isnumeric():
         sys.stderr.write("Error: Combinatorial strength must be a positive integer!\n")
         exit(1)
+        
+        
+    @dataclass
+    class TestTestCase(TestCase):
+        param_a: str = ""
+        param_b: int = 0
+        param_c: bool = False
 
     @dataclass
-    class TestParamterSpec(ParameterSpec):
+    class TestParameterSpec(ParameterSpec):
+        TestCaseType: type = TestTestCase
         param_a: list[str] = field(default_factory=lambda: ["a", "b", "c"])
         param_b: list[int] = field(default_factory=lambda: [1, 2, 3])
         param_c: list[bool] = field(default_factory=lambda: [True, False])
-    param_spec: ParameterSpec = TestParamterSpec()
+    param_spec: ParameterSpec = TestParameterSpec()
     
     constraints: list[Constraint] = [
-        Constraint("param_b<3=>param_c=true", parameters=["param_b", "param_c"])
+        Constraint("param_b < 3 => param_c = true", parameters=["param_b", "param_c"])
     ]
     
     rng_seed = None
     if argc == 4:
         rng_seed = sys.argv[2]
-    acts_file = generate_acts_file(param_spec, constraints=constraints)
     interaction_strength = int(sys.argv[1])
     
     if interaction_strength > len(param_spec):
         interaction_strength = len(param_spec)
     
-    acts_tests = generate_covering_array(acts_file, interaction_strength, validate=False)
+    acts_tests: list[TestCase] = generate_covering_array(param_spec, constraints, interaction_strength, validate=False)
     random_tests = generate_random_data(param_spec, len(acts_tests), rng_seed)
     
-    # Print results
+    # Print results 
+    # TODO: Print constraints
     def print_centered(msg: str="", padding: str=" "):
         total_length = os.get_terminal_size().columns
         padding_per_side = total_length / 2 / len(padding) - len(msg) / 2
@@ -231,7 +243,6 @@ def _main():
     )
     print_test_cases(random_tests, "Random tests")
     print_centered(padding="=")
-    os.remove(acts_file)
 
 if __name__ == "__main__":
     _main()

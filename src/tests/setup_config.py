@@ -6,17 +6,17 @@ import tempfile
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from settings import config
 from tests import parameter_spec
-from tests.test_case import TestCase
+from tests.test_case import AcquisitionTestCase
 from tests.util import random_string
 
 
-def _create_connection_settings(test: TestCase):
+def _create_connection_settings(test: AcquisitionTestCase):
     # TODO: ensure values are correct
-    connection_settings = {
+    connection_settings: dict[str, str | int | bool | None] = {
         "username": "root",
     }
 
-    match test["connection_hostname"]:
+    match test.connection_hostname:
         case parameter_spec.INVALID_HOSTNAME:
             connection_settings["hostname"] = f"{random_string()}.invalid"
         case None:
@@ -24,7 +24,7 @@ def _create_connection_settings(test: TestCase):
         case x:
             connection_settings["hostname"] = x
 
-    match test["connection_port"]:
+    match test.connection_port:
         case "":
             connection_settings["port"] = 2222
         case None:
@@ -32,7 +32,7 @@ def _create_connection_settings(test: TestCase):
         case x:
             connection_settings["port"] = x
 
-    match test["connection_password"]:
+    match test.connection_password:
         case "X":
             connection_settings["password"] = random_string()
         case None:
@@ -53,7 +53,7 @@ def _create_connection_settings(test: TestCase):
     return f
 
 
-def setup(test: TestCase):
+def setup(test: AcquisitionTestCase):
     tempfiles = []
 
     match test["config_projects_folder"]:
@@ -92,17 +92,15 @@ def setup(test: TestCase):
 
 
 if __name__ == "__main__":
-    setup(
-        {
-            "config_projects_folder": parameter_spec.VALID_PROJECTS_FOLDER,
-            "config_local_data_path": parameter_spec.VALID_LOCAL_DATA_PATH,
-            "config_connection_file": parameter_spec.VALID_CONNECTION_FILE,
-            "connection_hostname": parameter_spec.INVALID_HOSTNAME,
-            "connection_port": -1,
-            "connection_password": None,
-            "look_for_keys": None,
-        }
+    test_case = AcquisitionTestCase(
+        config_projects_folder=parameter_spec.VALID_PROJECTS_FOLDER,
+        config_local_data_path=parameter_spec.VALID_LOCAL_DATA_PATH,
+        config_connection_file=parameter_spec.VALID_CONNECTION_FILE,
+        connection_hostname=parameter_spec.INVALID_HOSTNAME,
+        connection_port=-1,
+        connection_password=None,
     )
+    setup(test_case)
     print(config.TERRAMETER_PROJECTS_FOLDER)
     print(config.LOCAL_PATH_TO_DATA)
     print(config.TERRAMETER_CONNECTION_FILE)
