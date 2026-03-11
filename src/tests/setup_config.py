@@ -14,6 +14,7 @@ def _create_connection_settings(test: AcquisitionTestCase):
     # TODO: ensure values are correct
     connection_settings: dict[str, str | int | bool | None] = {
         "username": "root",
+        "look_for_keys": False,
     }
 
     match test.connection_hostname:
@@ -39,8 +40,6 @@ def _create_connection_settings(test: AcquisitionTestCase):
             pass
         case x:
             connection_settings["password"] = x
-
-    connection_settings["look_for_keys"] = ""
 
     f = tempfile.NamedTemporaryFile(
         mode="w",
