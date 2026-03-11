@@ -1,6 +1,8 @@
+from dataclasses import dataclass, field
 from typing import Iterator
-from dataclasses import dataclass
+
 from tests.parameters import ParameterValue
+
 
 class TestCase:
     def __iter__(self) -> Iterator[str]:
@@ -22,7 +24,7 @@ class TestCase:
 
 @dataclass
 class AcquisitionTestCase(TestCase):
-    arg_task_files: str = ""
+    arg_task_files: list[str] = field(default_factory=list)
     # Task file headers
     taskfile1_number_of_tasks: str = ""
     taskfile1_relay_type: str = ""

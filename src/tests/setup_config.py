@@ -10,8 +10,7 @@ from tests.test_case import AcquisitionTestCase
 from tests.util import random_string
 
 
-def _create_connection_settings(test: AcquisitionTestCase):
-    # TODO: ensure values are correct
+def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
     connection_settings: dict[str, str | int | bool | None] = {
         "username": "root",
         "look_for_keys": False,
@@ -26,15 +25,15 @@ def _create_connection_settings(test: AcquisitionTestCase):
             connection_settings["hostname"] = x
 
     match test.connection_port:
-        case "":
-            connection_settings["port"] = 2222
+        case parameter_spec.VALID_PORT:
+            connection_settings["port"] = server_port
         case None:
             pass
         case x:
             connection_settings["port"] = x
 
     match test.connection_password:
-        case "X":
+        case parameter_spec.INVALID_PASSWORD:
             connection_settings["password"] = random_string()
         case None:
             pass
@@ -52,18 +51,16 @@ def _create_connection_settings(test: AcquisitionTestCase):
     return f
 
 
-def setup(test: AcquisitionTestCase):
+def setup(test: AcquisitionTestCase, server_port: int):
     tempfiles = []
 
-    match test["config_projects_folder"]:
-        case parameter_spec.VALID_PROJECTS_FOLDER:
-            config.TERRAMETER_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
+    match test.config_projects_folder:
         case parameter_spec.INVALID_FILE:
             config.TERRAMETER_PROJECTS_FOLDER = f"/media/mmcblk0p1/{random_string()}"
-        case _:
-            raise ValueError("invalid config_projects_folder")
+        case x:
+            config.TERRAMETER_PROJECTS_FOLDER = x
 
-    match test["config_local_data_path"]:
+    match test.config_local_data_path:
         case parameter_spec.VALID_LOCAL_DATA_PATH:
             f = tempfile.TemporaryDirectory(prefix="gemeaspytest_data_")
             tempfiles.append(f)
@@ -73,9 +70,9 @@ def setup(test: AcquisitionTestCase):
         case _:
             raise ValueError("invalid config_local_data_path")
 
-    match test["config_connection_file"]:
+    match test.config_connection_file:
         case parameter_spec.VALID_CONNECTION_FILE:
-            f = _create_connection_settings(test)
+            f = _create_connection_settings(test, server_port)
             tempfiles.append(f)
             config.TERRAMETER_CONNECTION_FILE = f.name
         case parameter_spec.INVALID_FILE:
@@ -99,7 +96,7 @@ if __name__ == "__main__":
         connection_port=-1,
         connection_password=None,
     )
-    setup(test_case)
+    setup(test_case, 2222)
     print(config.TERRAMETER_PROJECTS_FOLDER)
     print(config.LOCAL_PATH_TO_DATA)
     print(config.TERRAMETER_CONNECTION_FILE)

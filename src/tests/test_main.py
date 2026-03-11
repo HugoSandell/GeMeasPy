@@ -2,12 +2,21 @@ import pytest
 
 from acquisition import main
 from tests import setup_config, setup_task_files
+from tests.terrameter_model import InstrumentServerEmulator
 from tests.test_case import AcquisitionTestCase
 
 
 @pytest.fixture
-def config(test_case: AcquisitionTestCase):
-    cleanup = setup_config.setup(test_case)
+def emulator():
+    instrument = InstrumentServerEmulator()
+    instrument.start()
+    yield instrument
+    instrument.stop()
+
+
+@pytest.fixture
+def config(test_case: AcquisitionTestCase, emulator):
+    cleanup = setup_config.setup(test_case, emulator.address[1])
     yield
     cleanup()
 

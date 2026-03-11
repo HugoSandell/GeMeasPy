@@ -8,6 +8,14 @@ from tests.test_case import AcquisitionTestCase
 from tests.util import random_string
 
 
+def _replace_file_placeholder(value: str):
+    match value:
+        case parameter_spec.INVALID_FILE:
+            return random_string()
+        case x:
+            return x
+
+
 def _create_task_file(test: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
     number_of_tasks = test[f"{prefix}number_of_tasks"]
@@ -26,31 +34,9 @@ def _create_task_file(test: AcquisitionTestCase, file_no: int):
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
         f.write(f"{test[f'{task_prefix}name']}\n")
-
-        match test[f"{task_prefix}spread"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_SPREADFILE:
-                f.write("2X21.xml\n")
-            case x:
-                f.write(f"{x}\n")
-
-        match test[f"{task_prefix}protocol"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_PROTOCOLFILE:
-                f.write("Gradient_2x21.xml\n")
-            case x:
-                f.write(f"{x}\n")
-
-        match test[f"{task_prefix}settings"]:
-            case parameter_spec.INVALID_FILE:
-                f.write(f"{random_string()}\n")
-            case parameter_spec.VALID_SETTINGSFILE:
-                f.write("testing1s.settings\n")
-            case x:
-                f.write(f"{x}\n")
-
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}spread'])}\n")
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}protocol'])}\n")
+        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}settings'])}\n")
         f.write(f"{test[f'{task_prefix}spacing']}\n")
 
     f.close()
@@ -69,7 +55,7 @@ def resolve_task_files(test: AcquisitionTestCase):
             created_task_files[file_no] = f.name
         return created_task_files[file_no]
 
-    if not type(test["arg_task_files"]) is list:
+    if type(test.arg_task_files) is not list:
         raise TypeError("Parameter 'arg_task_files' has an invalid type")
 
     for task_file in test.arg_task_files:
@@ -92,18 +78,18 @@ def resolve_task_files(test: AcquisitionTestCase):
 
 if __name__ == "__main__":
     test_case = AcquisitionTestCase(
-        arg_task_files= f"{parameter_spec.VALID_TASKFILE1} {parameter_spec.INVALID_FILE}",
-        taskfile1_number_of_tasks= "2",
-        taskfile1_relay_type= "",
-        taskfile1_task1_name= "Task1",
-        taskfile1_task1_spread= parameter_spec.VALID_SPREADFILE,
-        taskfile1_task1_protocol= parameter_spec.VALID_PROTOCOLFILE,
-        taskfile1_task1_settings= parameter_spec.VALID_SETTINGSFILE,
-        taskfile1_task1_spacing= "1 1 1",
-        taskfile1_task2_name= "#TaskX",
-        taskfile1_task2_spread= parameter_spec.INVALID_FILE,
-        taskfile1_task2_protocol= parameter_spec.INVALID_FILE,
-        taskfile1_task2_settings= parameter_spec.INVALID_FILE,
-        taskfile1_task2_spacing= "1 1 1 1",
+        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        taskfile1_number_of_tasks="2",
+        taskfile1_relay_type="",
+        taskfile1_task1_name="Task1",
+        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+        taskfile1_task1_spacing="1 1 1",
+        taskfile1_task2_name="#TaskX",
+        taskfile1_task2_spread=parameter_spec.INVALID_FILE,
+        taskfile1_task2_protocol=parameter_spec.INVALID_FILE,
+        taskfile1_task2_settings=parameter_spec.INVALID_FILE,
+        taskfile1_task2_spacing="1 1 1 1",
     )
     print(resolve_task_files(test_case))

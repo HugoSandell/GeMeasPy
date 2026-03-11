@@ -6,19 +6,22 @@ from tests.parameters import ParameterValue
 from tests.test_case import AcquisitionTestCase, TestCase
 from tests.terrameter_model.behaviours import TerrameterBehaviour
 
-INVALID_FILE = "N" # A path to a file that doesn't exist neither locally nor remotely
-VALID_TASKFILE1 = "V1"
-VALID_TASKFILE2 = "V2"
-VALID_SPREADFILE = "V"
-VALID_PROTOCOLFILE = "V"
-VALID_SETTINGSFILE = "V"
+INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
+VALID_TASKFILE1 = "__VALID_TASKFILE1__"
+VALID_TASKFILE2 = "__VALID_TASKFILE2__"
+VALID_SPREADFILE = "2X21.xml"
+VALID_PROTOCOLFILE = "Gradient_2x21.xml"
+VALID_SETTINGSFILE = "testing1s.settings"
 
-VALID_PROJECTS_FOLDER = "V"
-VALID_LOCAL_DATA_PATH = "V"
-VALID_CONNECTION_FILE = "V"
+VALID_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
+VALID_LOCAL_DATA_PATH = "__VALID_LOCAL_DATA_PATH__"
+VALID_CONNECTION_FILE = "__VALID_CONNECTION_FILE__"
 
 VALID_HOSTNAME = "127.0.0.1"
-INVALID_HOSTNAME = "bad.host.name"
+INVALID_HOSTNAME = "__INVALID_HOSTNAME__"
+VALID_PORT = "__VALID_PORT__"
+INVALID_PASSWORD = "__INVALID_PASSWORD__"
+
 
 @dataclass
 class ParameterSpec:
@@ -95,9 +98,15 @@ class AcquisitionParameterSpec(ParameterSpec):
     config_local_data_path: list[str] = field(default_factory=lambda:[INVALID_FILE, VALID_LOCAL_DATA_PATH])
     config_connection_file: list[str] = field(default_factory=lambda:[INVALID_FILE, VALID_CONNECTION_FILE]) 
     # connection_settings.json
-    connection_hostname: list[str | None] = field(default_factory=lambda:["", VALID_HOSTNAME, INVALID_HOSTNAME, None])
-    connection_port: list[str | int | None] = field(default_factory=lambda:["", 0, -1, 65536, None])
-    connection_password: list[str | None] = field(default_factory=lambda:["", "X", None])
+    connection_hostname: list[str | None] = field(
+        default_factory=lambda: ["", VALID_HOSTNAME, INVALID_HOSTNAME, None]
+    )
+    connection_port: list[str | int | None] = field(
+        default_factory=lambda: ["", VALID_PORT, 0, -1, 65536, None]
+    )
+    connection_password: list[str | None] = field(
+        default_factory=lambda: ["", INVALID_PASSWORD, None]
+    )
     # emulator
     emulator_behaviour: list[str] = field(default_factory=lambda:[b.name for b in TerrameterBehaviour])
     
