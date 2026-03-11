@@ -6,6 +6,7 @@ addopts = [
     "--generator=random",
     "--capture=tee-sys",
     "--cache-clear",
+    "--maxfail=15",
 ]
 testpaths = [
     "tests",
