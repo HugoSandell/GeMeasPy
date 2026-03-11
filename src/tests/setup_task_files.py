@@ -69,7 +69,7 @@ def resolve_task_files(test: AcquisitionTestCase):
             created_task_files[file_no] = f.name
         return created_task_files[file_no]
 
-    if not type(test["arg_task_files"]) is list:
+    if type(test.arg_task_files) is not list:
         raise TypeError("Parameter 'arg_task_files' has an invalid type")
 
     for task_file in test.arg_task_files:
@@ -92,18 +92,18 @@ def resolve_task_files(test: AcquisitionTestCase):
 
 if __name__ == "__main__":
     test_case = AcquisitionTestCase(
-        arg_task_files= f"{parameter_spec.VALID_TASKFILE1} {parameter_spec.INVALID_FILE}",
-        taskfile1_number_of_tasks= "2",
-        taskfile1_relay_type= "",
-        taskfile1_task1_name= "Task1",
-        taskfile1_task1_spread= parameter_spec.VALID_SPREADFILE,
-        taskfile1_task1_protocol= parameter_spec.VALID_PROTOCOLFILE,
-        taskfile1_task1_settings= parameter_spec.VALID_SETTINGSFILE,
-        taskfile1_task1_spacing= "1 1 1",
-        taskfile1_task2_name= "#TaskX",
-        taskfile1_task2_spread= parameter_spec.INVALID_FILE,
-        taskfile1_task2_protocol= parameter_spec.INVALID_FILE,
-        taskfile1_task2_settings= parameter_spec.INVALID_FILE,
-        taskfile1_task2_spacing= "1 1 1 1",
+        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        taskfile1_number_of_tasks="2",
+        taskfile1_relay_type="",
+        taskfile1_task1_name="Task1",
+        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+        taskfile1_task1_spacing="1 1 1",
+        taskfile1_task2_name="#TaskX",
+        taskfile1_task2_spread=parameter_spec.INVALID_FILE,
+        taskfile1_task2_protocol=parameter_spec.INVALID_FILE,
+        taskfile1_task2_settings=parameter_spec.INVALID_FILE,
+        taskfile1_task2_spacing="1 1 1 1",
     )
     print(resolve_task_files(test_case))
