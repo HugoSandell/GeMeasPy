@@ -16,7 +16,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
     generator_name = str(metafunc.config.getoption("generator")).lower().strip()
     
     if generator_name == "random":
-        max_i: int = reduce(lambda x, p: x * len(vars(ACQUISITION_PARAM_SPEC)[p]), vars(ACQUISITION_PARAM_SPEC), 1)
+        max_i: int = reduce(lambda x, p: x * len(ACQUISITION_PARAM_SPEC[p]), ACQUISITION_PARAM_SPEC, 1)
         if i > max_i:
             i = max_i
         test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, max_case_count=i, seed = None)
