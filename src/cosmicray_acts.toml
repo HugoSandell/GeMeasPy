@@ -1,7 +1,7 @@
 [cosmic-ray]
 module-path = ["acquisition"]
-timeout = 5.0
-excluded-modules = []
+timeout = 120
+excluded-modules = ["tests"]
 test-command = "python -m pytest --size=3 -c tests/pytest_acts.toml tests/test_main.py"
 
 [cosmic-ray.distributor]
