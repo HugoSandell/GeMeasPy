@@ -40,12 +40,7 @@ def _create_connection_settings(test: TestCase):
         case x:
             connection_settings["password"] = x
 
-    # TODO remove?
-    match test["look_for_keys"]:
-        case None:
-            pass
-        case x:
-            connection_settings["look_for_keys"] = x
+    connection_settings["look_for_keys"] = ""
 
     f = tempfile.NamedTemporaryFile(
         mode="w",
