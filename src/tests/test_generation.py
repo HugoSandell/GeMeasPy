@@ -9,6 +9,7 @@ import csv
 import json
 from xml.etree.ElementTree import ElementTree, Element, SubElement
 import random
+from dataclasses import dataclass, field
 
 from tests import parameter_spec
 from tests.parameter_spec import ParameterSpec, ParameterValue, Constraint
@@ -174,8 +175,14 @@ def _main():
     if not sys.argv[1].isnumeric():
         sys.stderr.write("Error: Combinatorial strength must be a positive integer!\n")
         exit(1)
+
+    @dataclass
+    class TestParamterSpec(ParameterSpec):
+        param_a: list[str] = field(default_factory=lambda: ["a", "b", "c"])
+        param_b: list[int] = field(default_factory=lambda: [1, 2, 3])
+        param_c: list[bool] = field(default_factory=lambda: [True, False])
+    param_spec: ParameterSpec = TestParamterSpec()
     
-    param_spec: ParameterSpec = {"param_a": ["a", "b", "c"], "param_b": [1, 2, 3], "param_c": [True, False]}
     constraints: list[Constraint] = [
         Constraint("param_b<3=>param_c=true", parameters=["param_b", "param_c"])
     ]
