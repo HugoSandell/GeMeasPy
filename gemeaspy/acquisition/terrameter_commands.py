@@ -1,13 +1,11 @@
 import datetime
 import os
-import time
 from shutil import rmtree
 from typing import Any, TextIO
 
-from gemeaspy.acquisition.connections import SSHConnection
-
 from gemeaspy.acquisition import utilities
-from gemeaspy.settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER
+from gemeaspy.acquisition.connections import SSHConnection
+from gemeaspy.settings import config
 
 
 def start_terrameter_software(connection: SSHConnection, display=0) -> None:
@@ -197,34 +195,42 @@ def transfer_project(connection: SSHConnection) -> None:
     stdin, stdout, stderr = connection.send_command_shell(command)
     project = stdout.readline().strip()
     # create 'zetsum' file
-    command = "mkdir {}/{}/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project)
+    command = "mkdir {}/{}/zetsum".format(config.TERRAMETER_PROJECTS_FOLDER, project)
     stdin, stdout, stderr = connection.send_command_shell(command)
-    command = ("echo -e \"This file will be transfered last\n"
-               "If this file exists on pc\n"
-               "ALL data have been successfully transfered!!\""
-               " >> {}/{}/zetsum/zetsum".format(TERRAMETER_PROJECTS_FOLDER, project))
+    command = (
+        'echo -e "This file will be transfered last\n'
+        "If this file exists on pc\n"
+        'ALL data have been successfully transfered!!"'
+        " >> {}/{}/zetsum/zetsum".format(config.TERRAMETER_PROJECTS_FOLDER, project)
+    )
     stdin, stdout, stderr = connection.send_command_shell(command)
 
     transport = connection.ssh.get_transport()
     if not transport:
         raise Exception("Connection is missing transport")
     ip, port = transport.getpeername()
-    os.system("sftp -r -P {4:} root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
-        ip, TERRAMETER_PROJECTS_FOLDER, LOCAL_PATH_TO_DATA, project, port))
+    os.system(
+        "sftp -r -P {4:} root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
+            ip,
+            config.TERRAMETER_PROJECTS_FOLDER,
+            config.LOCAL_PATH_TO_DATA,
+            project,
+            port,
+        )
+    )
+
 
 def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
     command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     project = stdout.readline().strip()
-    zetsum = "{}/{}/zetsum/zetsum".format(LOCAL_PATH_TO_DATA, project)
+    zetsum = "{}/{}/zetsum/zetsum".format(config.LOCAL_PATH_TO_DATA, project)
     return os.path.isfile(zetsum)
 
 
 def delete_project(connection: SSHConnection, project: str) -> None:
     print("Deleting project from the terrameter..")
-    command = "rm -r {}/{}".format(TERRAMETER_PROJECTS_FOLDER, project)
+    command = "rm -r {}/{}".format(config.TERRAMETER_PROJECTS_FOLDER, project)
     stdin, stdout, stderr = connection.send_command_shell(command, time_to_sleep=60)
-    rmtree("{}/{}/zetsum".format(LOCAL_PATH_TO_DATA, project))
-
-
+    rmtree("{}/{}/zetsum".format(config.LOCAL_PATH_TO_DATA, project))

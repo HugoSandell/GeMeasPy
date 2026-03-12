@@ -7,12 +7,7 @@ from typing import Any, Callable
 import paramiko
 
 from gemeaspy.acquisition.utilities import read_server_connection_parameters
-
-from gemeaspy.settings.config import (
-    FILE_TRANSFER_DICTIONARY,
-    LOCAL_PATH_TO_DATA,
-    SERVER_BACKUP_FOLDER,
-)
+from gemeaspy.settings import config
 
 
 def timer(some_function: Callable[..., Any]) -> Callable[[], None]:
@@ -32,10 +27,9 @@ def main() -> None:
     time_started = time.time()
     settings = read_server_connection_parameters()
 
-    root_path_local = LOCAL_PATH_TO_DATA
-    root_remote_path = SERVER_BACKUP_FOLDER
-    file_dictionary_name = FILE_TRANSFER_DICTIONARY
-
+    root_path_local = config.LOCAL_PATH_TO_DATA
+    root_remote_path = config.SERVER_BACKUP_FOLDER
+    file_dictionary_name = config.FILE_TRANSFER_DICTIONARY
 
     if not os.path.isfile(file_dictionary_name):
         file_dictionary = dict()

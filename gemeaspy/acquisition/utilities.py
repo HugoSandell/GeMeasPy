@@ -6,7 +6,7 @@ import time
 from typing import Any, TextIO
 
 from gemeaspy.acquisition import subvision_relay
-from gemeaspy.settings.config import SERVER_BACKUP_CONNECTION_FILE, TERRAMETER_CONNECTION_FILE
+from gemeaspy.settings import config
 
 
 def progress_bar(wait_time_seconds: int, ticks=20) -> None:
@@ -147,13 +147,13 @@ def reset_relay(task: dict[str, Any], coms: list[int]|None = None) -> None:
 
 
 def read_terrameter_connection_parameters() -> dict[str, Any]:
-    with open(TERRAMETER_CONNECTION_FILE, 'r') as file:
+    with open(config.TERRAMETER_CONNECTION_FILE, "r") as file:
         instrument_settings = json.load(file)
         return instrument_settings
 
 
 def read_server_connection_parameters() -> dict[str, Any]:
-    with open(SERVER_BACKUP_CONNECTION_FILE, 'r') as file:
+    with open(config.SERVER_BACKUP_CONNECTION_FILE, "r") as file:
         server_backup_settings = json.load(file)
         return server_backup_settings
 
