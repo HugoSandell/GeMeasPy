@@ -166,8 +166,8 @@ def wait(start_time: str) -> None:
     if minutes > start_time_minutes:
         start_time_minutes += 24 * 60
     wait_time = start_time_minutes - minutes
-    if "USETERRAMETEREMULATOR" not in os.environ:
-        sleep_unless_testing(wait_time*60)
+    sleep_unless_testing(wait_time * 60)
+
 
 def sleep_unless_testing(time_seconds: float) -> None:
     if "USETERRAMETEREMULATOR" not in os.environ:
