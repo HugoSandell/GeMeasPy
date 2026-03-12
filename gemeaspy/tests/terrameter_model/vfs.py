@@ -1,5 +1,5 @@
 """ Provides a virtual file system for the Terrameter emulator"""
-from typing import  Dict, Optional
+from typing import Self, TypeVar
 from pathlib import PurePath as _HostPlatformPath
 from pathlib import PurePosixPath as Path
 import errno
@@ -10,24 +10,24 @@ from collections import deque
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
 
 class _Node:
-    def __init__(self, name: str, parent):
+    def __init__(self, name: str, parent: "_Node | None"):
         self.name: str = name
         self.is_dir: bool = False
         self.is_file: bool = False
-        self.parent: _Node = parent
-        if not self.parent:
-            self.parent = self
+        self.parent: _Node = self
+        if parent:
+            self.parent = parent
 
 class _File(_Node):
-    def __init__(self, name: str, parent: Optional[_Node], content: bytes = b''):
+    def __init__(self, name: str, parent: _Node | None, content: bytes = b''):
         super(_File, self).__init__(name, parent)
         self.content: BytesIO = BytesIO(content)
         self.is_file = True
 
 class _Dir(_Node):
-    def __init__(self, name: str, parent: Optional[_Node]):
+    def __init__(self, name: str, parent: _Node | None):
         super(_Dir, self).__init__(name, parent)
-        self.children: Dict[str, _Node] = {}
+        self.children: dict[str, _Node] = {}
         self.is_dir = True
     def __contains__(self, name: str):
         return name in self.children

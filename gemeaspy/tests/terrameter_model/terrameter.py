@@ -4,13 +4,14 @@ import threading
 import time
 import xml.etree.ElementTree as ElementTree
 from io import BytesIO
-from typing import Callable, Dict, Optional, Tuple, TypeAlias
+from collections.abc import Callable
 
 from . import constants
 from .project import Project
 from .vfs import Path, VirtualFileSystem
 
-Value: TypeAlias = str | int | float | bool
+
+type Value = str | int | float | bool
 
 class _Variable:
     def __init__(self, value: Value = 0, readonly: bool=True):
@@ -27,13 +28,13 @@ class TerrameterLS():
     def __init__(self):
         self.allow_login: bool = True
         self.is_shut_down: bool = False
-        self.on_kill_program_instance: Optional[Callable] = None
+        self.on_kill_program_instance: Callable | None = None
         """Called when terrameter software should be shut down""" 
-        self._variables: Dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
+        self._variables: dict[str, _Variable] = {"measure": _Variable(value=0), "unattendedmode": _Variable(0, readonly=False)}
         self._filesystem: VirtualFileSystem = VirtualFileSystem()
         self._filesystem.load_initial_fs()
-        self._settings: Dict[str, str | int | float | bool | list[float]] = constants.TERRAMETER_DEFAULT_SETTINGS
-        self._projects: Dict[str, Project] = {} # "name": object
+        self._settings: dict[str, int | float | bool | list[float]] = constants.TERRAMETER_DEFAULT_SETTINGS
+        self._projects: dict[str, Project] = {} # "name": object
         self._current_project_name: str = "" # Name of current project, if any
 
     def _shutdown(self):
@@ -138,7 +139,6 @@ class TerrameterLS():
                     else:
                         self._settings[child.tag] = tag_type(text)
                 except Exception:
-                    self._settings[child.tag] = text
                     raise ParseError(
                         f"Failed to parse {child.tag} '{text}' as {type(self._settings[child.tag])}"
                     )
@@ -181,7 +181,7 @@ class TerrameterLS():
 
     def create_task(self, name: str, 
                     spread_file: str, protocol_file: str, 
-                    spacing: Tuple[float, float , float], unknown: Tuple[float, float, float]):
+                    spacing: tuple[float, float , float], unknown: tuple[float, float, float]):
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project = self._projects[self._current_project_name]
@@ -222,7 +222,7 @@ class TerrameterLS():
         self.set_variable("measure", 0, permission_override=True)
     
     ### Interface to the file system ###
-    def canonical_absolute_path(self, path: str, relative_to: Optional[str] = None) -> Path:
+    def canonical_absolute_path(self, path: str, relative_to: str | None = None) -> Path:
         """Raises ValueError if path is relative and relative_to is relative or None"""
         parsed_path = Path(path)
         if not parsed_path.is_absolute():
@@ -233,7 +233,7 @@ class TerrameterLS():
                 raise ValueError(f"'{relative_to}' is not an absolute path.")
         return self._filesystem.canonical_path(parsed_path)
     
-    def touch(self, file_path: str, relative_to: Optional[str] = None):
+    def touch(self, file_path: str, relative_to: str | None = None):
         """Approximates the Unix `touch` command. Creates a file at path if it does not exist.  
         Raises FileNotFoundException if the directory containing the file doesn't exist.   
         Raises NotADirectoryError if part of path is not a directory."""
@@ -247,7 +247,7 @@ class TerrameterLS():
         except ValueError:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
 
-    def list_folder(self, folder_path: str, relative_to: Optional[str] = None) -> list[str]:
+    def list_folder(self, folder_path: str, relative_to: str | None = None) -> list[str]:
         """Get list of files in folder.
         Raises TypeError if the path is of the wrong type  
         Raises FileNotFoundException if the path does not exist.   
@@ -262,7 +262,7 @@ class TerrameterLS():
             raise FileNotFoundError()
         return self._filesystem.list_folder(parsed_path)
 
-    def open_file(self, file_path: str, relative_to: Optional[str] = None) -> BytesIO:
+    def open_file(self, file_path: str, relative_to: str | None = None) -> BytesIO:
         """Get BytesIO object for file at path.  
         Raises TypeError if the path is of the wrong type  
         Raises FileNotFoundException if the file does not exist.   
@@ -276,7 +276,7 @@ class TerrameterLS():
             raise FileNotFoundError()
         return self._filesystem.get_file(parsed_path)
     
-    def write_file(self, file_path: str, data: bytes = b'', relative_to: Optional[str] = None, append: bool = False):
+    def write_file(self, file_path: str, data: bytes = b'', relative_to: str | None = None, append: bool = False):
         """Writes data to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -295,7 +295,7 @@ class TerrameterLS():
         else:
             self._filesystem.write(parsed_path, data)
         
-    def write_file_utf8(self, file_path: str, data: str = '', relative_to: Optional[str] = None, append: bool = False):
+    def write_file_utf8(self, file_path: str, data: str = '', relative_to: str | None = None, append: bool = False):
         """Writes string to file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -303,7 +303,7 @@ class TerrameterLS():
         Raises NotADirectoryError if part of path is not a directory."""
         self.write_file(file_path, data=data.encode("utf-8"), relative_to=relative_to, append=append)
 
-    def read_file(self, file_path: str, relative_to: Optional[str] = None) -> bytes:
+    def read_file(self, file_path: str, relative_to: str | None = None) -> bytes:
         """Read data from file at path.  
         Raises TypeError if any argument is of the wrong type
         Raises FileNotFoundException if the directory containing the file does not exist.   
@@ -312,11 +312,11 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(file_path, relative_to)
         return self._filesystem.read(parsed_path)
 
-    def make_directory(self, path: str, relative_to: Optional[str] = None):
+    def make_directory(self, path: str, relative_to: str | None = None):
         parsed_path = self.canonical_absolute_path(path, relative_to)
         self._filesystem.make_dir(parsed_path)
 
-    def remove(self, path: str, relative_to: Optional[str] = None, recursive: bool = False):
+    def remove(self, path: str, relative_to: str | None = None, recursive: bool = False):
         """Removes a file.    
         If recursive is True and the target is a directory, removes directory and all subdirectories and files.  
         Raises IsADirectoryError if recursive is False and the target is a directory.   
@@ -325,13 +325,13 @@ class TerrameterLS():
         parsed_path = self.canonical_absolute_path(path, relative_to)
         self._filesystem.remove(parsed_path, recursive)
 
-    def path_exists(self, path: str, relative_to: Optional[str] = None) -> bool:
+    def path_exists(self, path: str, relative_to: str | None = None) -> bool:
         """Checks if a file or directory exists at a path.
         Returns True if it exists and False if it does not.
         Raises NotADirectoryError if part of path is not a directory."""
         parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.exists(parsed_path)
 
-    def stat(self, path, relative_to: Optional[str] = None) -> os.stat_result:
+    def stat(self, path, relative_to: str | None = None) -> os.stat_result:
         parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.stat(parsed_path)

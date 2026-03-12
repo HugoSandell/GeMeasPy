@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Iterator
+import typing
+from collections.abc import Iterator
 
 from gemeaspy.tests.parameters import ParameterValue
 

@@ -4,7 +4,7 @@ import re
 import shlex
 import string
 from cmd import Cmd
-from typing import IO, Optional, cast
+from typing import IO, cast
 
 import paramiko
 
@@ -27,7 +27,7 @@ class PtyRequest:
 
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
-    def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile, stdout: IO[str] | paramiko.BufferedFile, stderr: Optional[IO[str] | paramiko.BufferedFile] = None, pty: Optional[PtyRequest] = None):
+    def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile, stdout: IO[str] | paramiko.BufferedFile, stderr: IO[str] | paramiko.BufferedFile | None = None, pty: PtyRequest | None = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=cast(IO[str], stdin), stdout=cast(IO[str], stdout))
         if stderr or pty:
             self.stderr: IO[str]=cast(IO, stderr)
@@ -44,7 +44,7 @@ class TerrameterShell(Cmd):
         """Required to read from the provided stdin insted of sys.stdin""" 
         self.terrameter_cli_active: bool = False 
         """Is the terrameter CLI opened"""
-        self._env: dict[str, Optional[str]] = {}
+        self._env: dict[str, str | None] = {}
         """Environment variables"""
         self.is_pty: bool = pty is not None
         if pty:

@@ -1,9 +1,11 @@
 import sys
 import os
+import typing
 
 import gemeaspy
 import cosmic_ray.config
 import cosmic_ray.work_db
+
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.work_db import WorkDB

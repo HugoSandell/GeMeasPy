@@ -1,4 +1,5 @@
 import tempfile
+import typing
 
 from gemeaspy.tests import parameter_spec
 from gemeaspy.tests.test_case import AcquisitionTestCase

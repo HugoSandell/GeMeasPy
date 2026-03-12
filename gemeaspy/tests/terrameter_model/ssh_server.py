@@ -2,7 +2,7 @@ import os
 import socket
 import threading
 import time
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 
 import paramiko
 import paramiko.common
@@ -11,6 +11,7 @@ from .host_key_store import get_test_host_key
 from .sftp import EmulatorSFTPServerInterface
 from .shell import PtyRequest, TerrameterShell
 from .terrameter import TerrameterLS
+
 
 ShellRequest: TypeAlias = paramiko.Channel 
 """A request for a shell session. 
@@ -26,8 +27,8 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
         self.instrument: TerrameterLS = TerrameterLS()
         self.is_running: threading.Event = threading.Event()
         self.address: tuple[str, int] = ("", 0)
-        self._socket: Optional[socket.socket] = None
-        self._listen_thread: Optional[threading.Thread] = None # Thread that listens for new connections and sets up sessions
+        self._socket: socket.socket | None = None
+        self._listen_thread: threading.Thread | None = None # Thread that listens for new connections and sets up sessions
         self._host_key: paramiko.RSAKey = host_key
         self._username: str = username
         self._password: str = password
@@ -158,7 +159,7 @@ class SSHTestServerChannel():
                  server: InstrumentServerEmulator,
                  paramiko_channel: paramiko.Channel,
                  exec_command: str | None = None,
-                 pty: Optional[PtyRequest] = None):
+                 pty: PtyRequest | None = None):
         """
             exec_command - The command to execute if serving an execute request. Opens a Shell if this is None.
         """
@@ -166,7 +167,7 @@ class SSHTestServerChannel():
         self._thread = threading.Thread(target=self._serve)
         self._server: InstrumentServerEmulator = server
         self._paramiko_channel: paramiko.Channel = paramiko_channel
-        self._exec_command: Optional[str] = exec_command
+        self._exec_command: str | None = exec_command
         self._pty = pty
 
     def start(self):

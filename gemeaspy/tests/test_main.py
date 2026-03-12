@@ -1,5 +1,5 @@
 import os
-    
+
 import pytest
 
 from gemeaspy.acquisition import run_acquisition

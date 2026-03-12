@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
-from gemeaspy.tests.parameter_spec import Constraint, ParameterSpec, ParameterValue
+from gemeaspy.tests.parameter_spec import (Constraint, ParameterSpec,
+                                           ParameterValue)
 from gemeaspy.tests.test_case import TestCase
 
 _ROOTPKG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
