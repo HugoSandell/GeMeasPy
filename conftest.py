@@ -8,9 +8,9 @@ from gemeaspy.tests.parameter_spec import ACQUISITION_PARAM_SPEC
 
 
 def pytest_addoption(parser: pytest.Parser):
-    parser.addoption("--generator", "-G", dest="generator", type=str, default="random", help="Specify which test case generator to use ('random' or 'acts')")
-    parser.addoption("--size", "-N", dest="size", default=-1, type=int, help="Specify the number of test cases. (random only)")
-    parser.addoption("--strength", "-T", dest="strength", default=-1, type=int, help="Specify the test suite interaction strength. (ACTS only)")
+    parser.addoption("--generator", "-G", dest="generator", type=str, default="acts", help="Specify which test case generator to use ('random' or 'acts')")
+    parser.addoption("--size", "-N", dest="size", default=100, type=int, help="Specify the number of test cases. (random only)")
+    parser.addoption("--strength", "-T", dest="strength", default=3, type=int, help="Specify the test suite interaction strength. (ACTS only)")
 
 def pytest_generate_tests(metafunc: pytest.Metafunc):
     if "test_case" not in metafunc.fixturenames:
