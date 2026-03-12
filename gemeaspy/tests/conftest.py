@@ -2,8 +2,8 @@ import pytest
 import os
 from functools import reduce
 
-from tests.parameter_spec import ACQUISITION_PARAM_SPEC
-from tests import test_generation
+from gemeaspy.tests.parameter_spec import ACQUISITION_PARAM_SPEC
+from gemeaspy.tests import test_generation
 
 def pytest_addoption(parser: pytest.Parser):
     parser.addoption("--generator", "-G", dest="generator", type=str, default="random", help="Specify which test case generator to use ('random' or 'acts')")

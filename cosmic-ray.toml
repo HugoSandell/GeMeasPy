@@ -1,7 +1,7 @@
 [cosmic-ray]
-module-path = ["src/acquisition"]
+module-path = ["gemeaspy/acquisition"]
 timeout = 120
-excluded-modules = ["src/tests"]
+excluded-modules = ["gemeaspy/tests"]
 
 [cosmic-ray.distributor]
 name = "local"

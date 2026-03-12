@@ -1,7 +1,6 @@
 import sys
 
-from acquisition import instruments, utilities
-
+from gemeaspy.acquisition import instruments, utilities
 
 def run(task_file: str) -> None:
     # read connection and measurement settings
@@ -10,7 +9,6 @@ def run(task_file: str) -> None:
     task_list = utilities.read_monitoring_tasks(task_file)
     ls.check_input_report(task_list)
     ls.disconnect()
-        
 
 if __name__ == "__main__":
 	nargs = len(sys.argv)

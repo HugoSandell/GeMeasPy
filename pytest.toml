@@ -2,7 +2,7 @@
 minversion = "9.0.2"
 log_level = "WARNING"
 testpaths = [
-    "src/tests",
+    "gemeaspy/tests",
 ]
 addopts = [
     "--capture=tee-sys",

@@ -4,10 +4,10 @@ import time
 from shutil import rmtree
 from typing import Any, TextIO
 
-from acquisition.connections import SSHConnection
+from gemeaspy.acquisition.connections import SSHConnection
 
-from acquisition import utilities
-from settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER
+from gemeaspy.acquisition import utilities
+from gemeaspy.settings.config import LOCAL_PATH_TO_DATA, TERRAMETER_PROJECTS_FOLDER
 
 
 def start_terrameter_software(connection: SSHConnection, display=0) -> None:

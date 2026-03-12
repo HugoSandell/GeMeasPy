@@ -3,9 +3,9 @@ import sys
 import tempfile
 
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from tests import parameter_spec
-from tests.test_case import AcquisitionTestCase
-from tests.util import random_string
+from gemeaspy.tests import parameter_spec
+from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.util import random_string
 
 
 def _replace_file_placeholder(value: str):

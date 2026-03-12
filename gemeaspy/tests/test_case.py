@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Iterator
 
-from tests.parameters import ParameterValue
+from gemeaspy.tests.parameters import ParameterValue
 
 
 class TestCase:

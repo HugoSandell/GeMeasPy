@@ -4,10 +4,10 @@ import sys
 import tempfile
 
 sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from settings import config
-from tests import parameter_spec
-from tests.test_case import AcquisitionTestCase
-from tests.util import random_string
+from gemeaspy.settings import config
+from gemeaspy.tests import parameter_spec
+from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.util import random_string
 
 
 def _create_connection_settings(test: AcquisitionTestCase, server_port: int):

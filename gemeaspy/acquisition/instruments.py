@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from acquisition import connections, utilities
-from acquisition import monitoring_terrameter as monitoring
+from gemeaspy.acquisition import connections, utilities
+from gemeaspy.acquisition import monitoring_terrameter as monitoring
 
 
 class Instrument(ABC):

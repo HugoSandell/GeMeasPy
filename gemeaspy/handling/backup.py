@@ -6,7 +6,8 @@ from typing import Any, Callable
 
 import paramiko
 
-from acquisition.utilities import read_server_connection_parameters
+from gemeaspy.acquisition.utilities import read_server_connection_parameters
+
 from settings.config import (
     FILE_TRANSFER_DICTIONARY,
     LOCAL_PATH_TO_DATA,

@@ -2,7 +2,7 @@ import socket
 import subprocess
 import time
 from collections import namedtuple
-from acquisition import utilities
+from gemeaspy.acquisition import utilities
 
 Config = namedtuple('config', ['address', 'port', 'com', 'mux'])
 

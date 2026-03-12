@@ -2,7 +2,7 @@ import time
 from typing import Any
 
 import paramiko
-from acquisition import utilities
+from gemeaspy.acquisition import utilities
 
 class SSHConnection():
 

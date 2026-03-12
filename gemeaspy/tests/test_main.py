@@ -1,9 +1,9 @@
 import pytest
 
-from acquisition import main
-from tests import setup_config, setup_task_files
-from tests.terrameter_model import InstrumentServerEmulator
-from tests.test_case import AcquisitionTestCase
+from gemeaspy.acquisition import main
+from gemeaspy.tests import setup_config, setup_task_files
+from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
+from gemeaspy.tests.test_case import AcquisitionTestCase
 
 
 @pytest.fixture

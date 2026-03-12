@@ -1,7 +1,7 @@
 import sys
 
-from acquisition.instruments import Terrameter
-from acquisition.utilities import read_monitoring_tasks
+from gemeaspy.acquisition.instruments import Terrameter
+from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
 
 def run(task_file) -> None:

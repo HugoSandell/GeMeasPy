@@ -11,19 +11,19 @@ from xml.etree.ElementTree import ElementTree, Element, SubElement
 import random
 from dataclasses import dataclass, field
 
-from tests import parameter_spec
-from tests.parameter_spec import ParameterSpec, ParameterValue, Constraint
+from gemeaspy.tests import parameter_spec
+from gemeaspy.tests.parameter_spec import ParameterSpec, ParameterValue, Constraint
 
 sys.path.insert(
-    1, _SRC_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    1, _ROOTPKG_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 )
-from tests.test_case import TestCase
+from gemeaspy.tests.test_case import TestCase
 
 _ACTS_PARAMETER_TYPE_NUM = "0"
 _ACTS_PARAMETER_TYPE_ENUM = "1"
 _ACTS_PARAMETER_TYPE_BOOLEAN = "2"
 
-_ACTS_JAR = f"{_SRC_PATH}/../bin/ACTS/acts_3.3.jar"
+_ACTS_JAR = f"{_ROOTPKG_PATH}/../bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
 
 # It is unfortunately necessary to replace some characters for ACTS

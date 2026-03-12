@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 from typing import Any, Iterator
 from types import NoneType
 
-from tests.parameters import ParameterValue
-from tests.test_case import AcquisitionTestCase, TestCase
-from tests.terrameter_model.behaviours import TerrameterBehaviour
+from gemeaspy.tests.parameters import ParameterValue
+from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"

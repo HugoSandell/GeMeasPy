@@ -1,5 +1,5 @@
-from acquisition.instruments import Terrameter
-from acquisition.terrameter_commands import (
+from gemeaspy.acquisition.instruments import Terrameter
+from gemeaspy.acquisition.terrameter_commands import (
     check_transfer,
     delete_project,
     transfer_project,

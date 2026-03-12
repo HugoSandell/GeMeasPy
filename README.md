@@ -20,10 +20,10 @@ The module uses a computer (Windows or LINUX) to control the Terrameter LS and a
 9. Ensure there is enough space on the local pc and if needed setup procedures to remove the data frequently.
 
 **How to run data collection module**   
-`python -m src.acquisition.main <task_list_file> [task_list_file...]`
+`python -m gemeaspy.acquisition.main <task_list_file> [task_list_file...]`
 
 **How to run mutation analysis**    
-`python -m src.tests.mutate [generator...]`    
+`python -m gemeaspy.tests.mutate [generator...]`    
 Where valid inputs for `generator` is `acts` or `random`. If no generator is specified, all available generators will be run.   
 
 Finally the result can be displayed with   

@@ -1,7 +1,7 @@
 import sys
 import os
 
-import src
+import gemeaspy
 import cosmic_ray.config
 import cosmic_ray.work_db
 from cosmic_ray.distribution.local import LocalDistributor as CRLocalDistributor
@@ -11,9 +11,9 @@ from cosmic_ray.work_db import WorkDB
 from cosmic_ray.work_item import WorkItem
 
 def main():
-    SRC_DIR = os.path.split(src.__file__)[0]
-    TEST_DIR = os.path.join(SRC_DIR, "tests")
-    ROOT_DIR = os.path.split(SRC_DIR)[0]
+    ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
+    TEST_DIR = os.path.join(ROOTPKG_DIR, "tests")
+    ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
     DATA_DIR = os.path.join(ROOT_DIR, "test_data")
     PYTEST_CONFIG_FILE = os.path.join(ROOT_DIR, "pytest.toml")
     CR_CONFIG_FILE = os.path.join(ROOT_DIR, "cosmic-ray.toml")
@@ -25,9 +25,9 @@ def main():
     PYTHON_PATH = sys.executable
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
-    config["module-path"] = ["src/acquisition"]
+    config["module-path"] = ["gemeaspy/acquisition"]
     config["timeout"] = 120.0
-    config["excluded-modules"] = ["src/tests"]
+    config["excluded-modules"] = ["gemeaspy/tests"]
     config["distributor"]["name"] = "local"
 
     config["test-command"] = f"\"{PYTHON_PATH}\" -m pytest --size=3 --generator=acts " \

@@ -5,8 +5,8 @@ import sys
 import time
 from typing import Any, TextIO
 
-from acquisition import subvision_relay
-from settings.config import SERVER_BACKUP_CONNECTION_FILE, TERRAMETER_CONNECTION_FILE
+from gemeaspy.acquisition import subvision_relay
+from gemeaspy.settings.config import SERVER_BACKUP_CONNECTION_FILE, TERRAMETER_CONNECTION_FILE
 
 
 def progress_bar(wait_time_seconds: int, ticks=20) -> None:

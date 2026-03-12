@@ -11,16 +11,16 @@
 .vscode/
 
 # log file
-src/logs.txt
+gemeaspy/logs.txt
 *.log
 
 # settings and task list files
-src/settings/connection_settings.json
-src/settings/server_backup_settings.json
-src/settings/monitoring_task_list.txt
+gemeaspy/settings/connection_settings.json
+gemeaspy/settings/server_backup_settings.json
+gemeaspy/settings/monitoring_task_list.txt
 
 # global variables
-src/settings/config.py
+gemeaspy/settings/config.py
 
 # data
 data/
