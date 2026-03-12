@@ -4,9 +4,10 @@
 *.po 
 *.lck
 
-# Build files
+# Build and cache files
 dist
 *.egg-info
+**/__pycache__
 
 # Git
 .git/
