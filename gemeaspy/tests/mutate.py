@@ -23,6 +23,14 @@ def main():
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray 
     # executes the wrong python executable 
     PYTHON_PATH = sys.executable
+    
+    VALID_GENERATORS = ("random", "acts")
+    requested_generators = [g.strip().lower() for g in sys.argv[1:]]
+    
+    invalid_generators = [g for g in requested_generators if g not in VALID_GENERATORS]
+    if len(invalid_generators) > 0:
+        print(f"Invalid generator{"s" if len(invalid_generators) > 1 else ""}: {", ".join(invalid_generators)}", file=sys.stderr)
+        exit(1)
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["module-path"] = ["gemeaspy/acquisition"]
