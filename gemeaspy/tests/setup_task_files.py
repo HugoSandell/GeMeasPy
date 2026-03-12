@@ -4,7 +4,6 @@ from gemeaspy.tests import parameter_spec
 from gemeaspy.tests.test_case import AcquisitionTestCase
 from gemeaspy.tests.util import random_string
 
-
 def _replace_file_placeholder(value: str):
     match value:
         case parameter_spec.INVALID_FILE:
@@ -13,10 +12,15 @@ def _replace_file_placeholder(value: str):
             return x
 
 
-def _create_task_file(test: AcquisitionTestCase, file_no: int):
+def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
-    number_of_tasks = test[f"{prefix}number_of_tasks"]
-    relay_type = test[f"{prefix}relay_type"]
+    
+    def param_as_str(param: str, prefix: str = prefix) -> str:
+        """Get the given attribute of test case as str or throw an exception."""
+        return str(getattr(test_case, prefix + param))
+            
+    number_of_tasks = param_as_str("number_of_tasks")
+    relay_type = param_as_str("relay_type")
 
     f = tempfile.NamedTemporaryFile(
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
@@ -30,12 +34,12 @@ def _create_task_file(test: AcquisitionTestCase, file_no: int):
 
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
-        f.write(f"{test[f'{task_prefix}name']}\n")
-        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}spread'])}\n")
-        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}protocol'])}\n")
-        f.write(f"{_replace_file_placeholder(test[f'{task_prefix}settings'])}\n")
-        f.write(f"{test[f'{task_prefix}spacing']}\n")
-
+        f.write(f"{param_as_str('name', task_prefix)}\n")
+        f.write(f"{_replace_file_placeholder(param_as_str('spread', task_prefix))}\n")
+        f.write(f"{_replace_file_placeholder(param_as_str('protocol', task_prefix))}\n")
+        f.write(f"{_replace_file_placeholder(param_as_str('settings', task_prefix))}\n")
+        f.write(f"{param_as_str('spacing', task_prefix)}\n")
+        
     f.close()
     return f
 
