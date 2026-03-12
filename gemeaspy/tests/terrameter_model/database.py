@@ -4,7 +4,7 @@ import io
 import os
 import sqlite3
 import tempfile
-from typing import *
+from typing import Any, TypeAlias
 
 from .project_types import *
 

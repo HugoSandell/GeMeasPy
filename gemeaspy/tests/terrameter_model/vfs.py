@@ -1,5 +1,5 @@
 """ Provides a virtual file system for the Terrameter emulator"""
-from typing import  *
+from typing import  Dict, Optional
 from pathlib import PurePath as _HostPlatformPath
 from pathlib import PurePosixPath as Path
 import errno

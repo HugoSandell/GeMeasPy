@@ -4,7 +4,7 @@ import threading
 import time
 import xml.etree.ElementTree as ElementTree
 from io import BytesIO
-from typing import *
+from typing import Callable, Dict, Optional, Tuple, TypeAlias
 
 from . import constants
 from .project import Project
