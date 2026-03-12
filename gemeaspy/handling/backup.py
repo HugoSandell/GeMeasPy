@@ -8,7 +8,7 @@ import paramiko
 
 from gemeaspy.acquisition.utilities import read_server_connection_parameters
 
-from settings.config import (
+from gemeaspy.settings.config import (
     FILE_TRANSFER_DICTIONARY,
     LOCAL_PATH_TO_DATA,
     SERVER_BACKUP_FOLDER,
