@@ -1,6 +1,10 @@
+[build-system]
+requires = ['setuptools']
+build-backend = 'setuptools.build_meta'
+
 [project]
 name = "gemeaspy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -9,3 +13,11 @@ dependencies = [
     "pytest~=9.0.2",
     "cosmic-ray~=8.4.4"
 ]
+
+[tool.setuptools.packages.find]
+include = ["gemeaspy*"]
+
+[project.scripts]
+gemeaspy = "gemeaspy.acquisition:run_acquisition"
+gemeaspy_backup = "gemeaspy.handling.backup:main"
+gemeaspy_reset = "gemeaspy.handling.reset:main"

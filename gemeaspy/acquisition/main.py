@@ -4,7 +4,7 @@ from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
 
-def run(task_file) -> None:
+def run_task_file(task_file) -> None:
 	# read connection and measurement settings
     ls = Terrameter()
     ls.connect()
@@ -13,20 +13,18 @@ def run(task_file) -> None:
     ls.start_monitoring(task_file)
     ls.disconnect()
 
-
-def main(argv: list[str]):
+def run_acquisition(argv: list[str]):
     nargs = len(argv)
     if nargs == 1:
         task_file = None
         raise Exception("No task file provided")
     elif nargs == 2:
         task_file = argv[1]
-        run(task_file)
+        run_task_file(task_file)
     else:
         task_files = argv[1:]
         for task_file in task_files:
-            run(task_file)
-
+            run_task_file(task_file)
 
 if __name__ == "__main__":
-    main(sys.argv)
+    run_acquisition(sys.argv)

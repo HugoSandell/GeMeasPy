@@ -1,6 +1,7 @@
 import pytest
 
-from gemeaspy.acquisition import main
+from gemeaspy.acquisition import run_acquisition
+from gemeaspy.acquisition.main import __file__ as main_file_path
 from gemeaspy.tests import setup_config, setup_task_files
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.test_case import AcquisitionTestCase
@@ -29,4 +30,5 @@ def task_files(test_case: AcquisitionTestCase):
 
 
 def test_main(test_case: AcquisitionTestCase, config, task_files):
-    main.main([main.__file__] + task_files)
+    print("Main: ", main_file_path)
+    run_acquisition([main_file_path] + task_files)
