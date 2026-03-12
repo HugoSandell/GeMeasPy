@@ -1,20 +1,16 @@
+import argparse
+import io
+import re
 import shlex
+import string
 from cmd import Cmd
 from typing import IO, Optional, cast
-import sys
-import string
-import argparse
-import re
-import io  
+
 import paramiko
 
-parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
-if __name__ == '__main__' or parent_module.__name__ == '__main__':
-    import constants, vfs
-    from terrameter import TerrameterLS
-else:
-    from . import constants, vfs
-    from .terrameter import TerrameterLS
+from . import constants, vfs
+from .terrameter import TerrameterLS
+
 
 class PtyRequest:
     """A request for a pseudo terminal.

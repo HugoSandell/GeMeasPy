@@ -1,18 +1,12 @@
 """Terrameter LS2 project database file utilities."""
-import sqlite3
-from datetime import datetime, timezone
-from typing import *
-import os 
-import io
-import sys
-import tempfile
 
-parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
-if __name__ == '__main__' or parent_module.__name__ == '__main__':
-    import project_types
-else:
-    from . import project_types
-from project_types import *
+import io
+import os
+import sqlite3
+import tempfile
+from typing import *
+
+from .project_types import *
 
 Path: TypeAlias = str | bytes | os.PathLike
 File: TypeAlias = Path | io.BufferedIOBase

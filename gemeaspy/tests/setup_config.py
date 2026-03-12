@@ -1,9 +1,6 @@
 import json
-import os
-import sys
 import tempfile
 
-sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from gemeaspy.settings import config
 from gemeaspy.tests import parameter_spec
 from gemeaspy.tests.test_case import AcquisitionTestCase

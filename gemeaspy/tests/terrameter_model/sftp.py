@@ -1,22 +1,17 @@
 import os
-import sys
 import pathlib
+
 import paramiko
 import paramiko.common
-from paramiko import SFTPAttributes, SFTPHandle, SFTPServerInterface, ServerInterface
-from paramiko.sftp import SFTP_NO_SUCH_FILE, SFTP_PERMISSION_DENIED, SFTP_FAILURE
+from paramiko import ServerInterface, SFTPAttributes, SFTPHandle, SFTPServerInterface
+from paramiko.sftp import SFTP_FAILURE, SFTP_NO_SUCH_FILE, SFTP_PERMISSION_DENIED
+
+from . import host_key_store, terrameter
 
 SFTP_IS_DIRECTORY = 24
 S_IFREG =   0o0100000 # regular file
 S_IFDIR =   0o0040000 # directory
 
-parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
-if __name__ == '__main__' or parent_module.__name__ == '__main__':
-    import terrameter
-    import host_key_store
-else:
-    from . import terrameter
-    from . import host_key_store
 
 class EmulatorSFTPHandle(SFTPHandle):
     def __init__(self, flags: int, path: str, instrument: terrameter.TerrameterLS):

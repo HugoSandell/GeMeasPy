@@ -1,22 +1,15 @@
 import errno
-import time
-from typing import *
-import threading
-import xml.etree.ElementTree as ElementTree
-import sys
-from io import BytesIO
 import os
+import threading
+import time
+import xml.etree.ElementTree as ElementTree
+from io import BytesIO
+from typing import *
 
-parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
-if __name__ == '__main__' or parent_module.__name__ == '__main__':
-    from vfs import VirtualFileSystem, Path
-    import constants
-    from project import Project
-else:
-    from .vfs import VirtualFileSystem, Path
-    from . import constants
-    from .project import Project
-    
+from . import constants
+from .project import Project
+from .vfs import Path, VirtualFileSystem
+
 Value: TypeAlias = str | int | float | bool
 
 class _Variable:

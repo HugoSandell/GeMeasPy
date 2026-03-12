@@ -1,23 +1,19 @@
-import typing
-from typing import TypeAlias
-import subprocess
-import tempfile 
-import os
-import itertools
-import sys
 import csv
+import itertools
 import json
-from xml.etree.ElementTree import ElementTree, Element, SubElement
+import os
 import random
+import subprocess
+import sys
+import tempfile
 from dataclasses import dataclass, field
+from typing import TypeAlias
+from xml.etree.ElementTree import Element, ElementTree, SubElement
 
-from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.parameter_spec import ParameterSpec, ParameterValue, Constraint
-
-sys.path.insert(
-    1, _ROOTPKG_PATH := os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-)
+from gemeaspy.tests.parameter_spec import Constraint, ParameterSpec, ParameterValue
 from gemeaspy.tests.test_case import TestCase
+
+_ROOTPKG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 _ACTS_PARAMETER_TYPE_NUM = "0"
 _ACTS_PARAMETER_TYPE_ENUM = "1"

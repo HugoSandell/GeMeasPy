@@ -1,24 +1,17 @@
-from typing import TypeAlias, Optional
+import os
 import socket
 import threading
-import os
 import time
+from typing import Optional, TypeAlias
+
 import paramiko
 import paramiko.common
-import sys
 
-parent_module = sys.modules['.'.join(__name__.split('.')[:-1]) or '__main__']
-if __name__ == '__main__' or parent_module.__name__ == '__main__':
-    from shell import TerrameterShell, PtyRequest
-    from sftp import EmulatorSFTPServerInterface
-    from host_key_store import get_test_host_key
-    from terrameter import TerrameterLS
-else:
-    from .shell import TerrameterShell, PtyRequest
-    from .sftp import EmulatorSFTPServerInterface
-    from .host_key_store import get_test_host_key
-    from .terrameter import TerrameterLS
-    
+from .host_key_store import get_test_host_key
+from .sftp import EmulatorSFTPServerInterface
+from .shell import PtyRequest, TerrameterShell
+from .terrameter import TerrameterLS
+
 ShellRequest: TypeAlias = paramiko.Channel 
 """A request for a shell session. 
 Consists of a paramiko Channel to communicate through."""
