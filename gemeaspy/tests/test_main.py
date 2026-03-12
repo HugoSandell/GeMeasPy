@@ -1,3 +1,5 @@
+import os
+    
 import pytest
 
 from gemeaspy.acquisition import run_acquisition
@@ -9,6 +11,7 @@ from gemeaspy.tests.test_case import AcquisitionTestCase
 
 @pytest.fixture
 def emulator():
+    os.environ["USETERRAMETEREMULATOR"] = "1"
     instrument = InstrumentServerEmulator()
     instrument.start()
     yield instrument
@@ -30,5 +33,4 @@ def task_files(test_case: AcquisitionTestCase):
 
 
 def test_main(test_case: AcquisitionTestCase, config, task_files):
-    print("Main: ", main_file_path)
     run_acquisition([main_file_path] + task_files)
