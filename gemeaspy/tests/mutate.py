@@ -30,7 +30,7 @@ def main():
     config["excluded-modules"] = ["gemeaspy/tests"]
     config["distributor"]["name"] = "local"
 
-    config["test-command"] = f"\"{PYTHON_PATH}\" -m pytest --size=3 --generator=acts " \
+    config["test-command"] = f"\"{PYTHON_PATH}\" -m pytest -T=3 --generator=acts " \
         f"--log-file=\"{PYTEST_LOG_FILE}\" -c \"{PYTEST_CONFIG_FILE}\" \"{TEST_DIR}\""
 
     # Reinitialise

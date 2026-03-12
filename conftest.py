@@ -7,22 +7,30 @@ from gemeaspy.tests import test_generation
 
 def pytest_addoption(parser: pytest.Parser):
     parser.addoption("--generator", "-G", dest="generator", type=str, default="random", help="Specify which test case generator to use ('random' or 'acts')")
-    parser.addoption("--size", "-I", dest="size", default=-1, type=int, help="Specify the size of the test suite (interaction strength or number of test cases). Negative values ")
+    parser.addoption("--size", "-N", dest="size", default=-1, type=int, help="Specify the number of test cases. (random only)")
+    parser.addoption("--strength", "-T", dest="strength", default=-1, type=int, help="Specify the test suite interaction strength. (ACTS only)")
 
 def pytest_generate_tests(metafunc: pytest.Metafunc):
     if "test_case" not in metafunc.fixturenames:
         return
-    i = metafunc.config.getoption("size")
+    t = metafunc.config.getoption("strength")
+    N = metafunc.config.getoption("size")
     generator_name = str(metafunc.config.getoption("generator")).lower().strip()
     
-    if generator_name == "random":
-        max_i: int = reduce(lambda x, p: x * len(ACQUISITION_PARAM_SPEC[p]), ACQUISITION_PARAM_SPEC, 1)
-        if i > max_i:
-            i = max_i
-        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, max_case_count=i, seed = None)
+    if generator_name == "acts":
+        if t <= 0:
+            raise ValueError("Interaction strength must be greater than 0")
+        elif t > len(ACQUISITION_PARAM_SPEC):
+            raise ValueError(f"Interaction strength must not be greater than {len(ACQUISITION_PARAM_SPEC)}")
+        test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=[], strength=t)
         metafunc.parametrize("test_case", test_data)
-    elif generator_name == "acts":  
-        test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=[], strength=i)
+    elif generator_name == "random":
+        max_N: int = reduce(lambda x, p: x * len(ACQUISITION_PARAM_SPEC[p]), ACQUISITION_PARAM_SPEC, 1)
+        if N <= 0:
+            raise ValueError("Test suite size must be greater than 0")
+        if N > max_N:
+            raise ValueError(f"Test suite size must not be greater than {max_N}")    
+        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, max_case_count=N, seed = None)
         metafunc.parametrize("test_case", test_data)
     else:
-        raise ValueError(f"{generator_name} is not the name of a supported generator")
+        raise ValueError(f"'{generator_name}' is not a valid test case generator.")
