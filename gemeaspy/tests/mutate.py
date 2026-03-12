@@ -14,7 +14,6 @@ def main():
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
     DATA_DIR = os.path.join(ROOT_DIR, "test_data")
     CR_CONFIG_FILE = os.path.join(ROOT_DIR, "cosmic-ray.toml")
-    CR_SESSION_FILE = os.path.join(DATA_DIR, "cosmicray_acts.sqlite")
     PYTEST_LOG_FILE = os.path.join(DATA_DIR, "pytest.log")
 
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray 
@@ -36,16 +35,21 @@ def main():
     config["distributor"]["name"] = "local"
 
     for generator in requested_generators:
+        print(f"Running mutation analysis on test case generator '{generator}'")
+        
         config["test-command"] = f"\"{PYTHON_PATH}\" -m pytest {VALID_GENERATORS[generator]} --generator={generator} " \
             f"--log-file=\"{PYTEST_LOG_FILE}\""
-
+        
+        cr_session_file = os.path.join(DATA_DIR, f"cosmicray_{generator}.sqlite")
         # Reinitialise
-        if os.path.isfile(CR_SESSION_FILE):
-            os.remove(CR_SESSION_FILE)
-        with cosmic_ray.work_db.use_db(CR_SESSION_FILE, mode=WorkDB.Mode.create) as db:
+        if os.path.isfile(cr_session_file):
+            os.remove(cr_session_file)
+        with cosmic_ray.work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:
             work_baseline = WorkItem("baseline", [])
             db.add_work_item(work_baseline)
             cr_execute(work_db=db, config=config)
+        print(f"Done. Session for '{generator}' is written to {cr_session_file}.")
+    print("Testing complete!")
 
 
 if __name__ == "__main__":
