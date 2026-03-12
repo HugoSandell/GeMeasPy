@@ -4,6 +4,10 @@
 *.po 
 *.lck
 
+# Build files
+dist
+*.egg-info
+
 # Git
 .git/
 
@@ -13,6 +17,7 @@
 # log file
 gemeaspy/logs.txt
 *.log
+**/logs.txt
 
 # settings and task list files
 gemeaspy/settings/connection_settings.json
@@ -23,7 +28,7 @@ gemeaspy/settings/monitoring_task_list.txt
 gemeaspy/settings/config.py
 
 # data
-data/
+test_data/
 
 # ruff & uv
 .ruff_cache/
