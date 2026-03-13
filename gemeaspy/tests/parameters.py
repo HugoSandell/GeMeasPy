@@ -1,4 +1,4 @@
 import typing
+from typing import TypeAlias
 
-type _ParameterBasicType = str | int | bool | None
-type ParameterValue = _ParameterBasicType | list[_ParameterBasicType]
+ParameterValue: TypeAlias = str | int | bool | None | list[str]

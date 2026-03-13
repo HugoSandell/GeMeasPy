@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import Any, TypeAlias, TypeVar
 from types import NoneType
 
 from gemeaspy.tests.parameters import ParameterValue
@@ -22,6 +23,14 @@ INVALID_HOSTNAME = "__INVALID_HOSTNAME__"
 VALID_PORT = "__VALID_PORT__"
 INVALID_PASSWORD = "__INVALID_PASSWORD__"
 
+T = TypeVar('T', bound = ParameterValue)
+ParamSpecEntry: TypeAlias = tuple[list[T], list[T]]
+"""A pair of lists, the first of valid values and the second of invalid values."""
+
+def param_values[T](valid: list[T], invalid: list[T] | None = None) -> ParamSpecEntry:
+    if type(valid) != list or (invalid != None and type(invalid) != list):
+        raise TypeError(f"Arguments must be lists! Got {type(valid)}, {type(invalid)}")
+    return field(default_factory=lambda: (valid, invalid if invalid else []))
 
 @dataclass
 class ParameterSpec:
@@ -30,12 +39,12 @@ class ParameterSpec:
     def __iter__(self) -> Iterator[str]:
         return iter(filter(lambda key: key != "TestCaseType", vars(self))) # _TestCaseType is a metavariable
     
-    def __setitem__(self, name: str, value: list[ParameterValue]) -> None:
+    def __setitem__(self, name: str, value: ParamSpecEntry[ParameterValue]) -> None:
         if name not in vars(self):
             raise KeyError(f"{self.__class__.__name__} has no attribute '{name}'")
         self.__setattr__(name, value)
         
-    def __getitem__(self, name: str) -> list[ParameterValue]:
+    def __getitem__(self, name: str) -> ParamSpecEntry[ParameterValue]:
         if name not in vars(self):
             raise KeyError(f"{self.__class__.__name__} has no attribute '{name}'")
         return vars(self)[name]
@@ -53,7 +62,7 @@ class ParameterSpec:
         """Return None iff the value is a valid ParameterValue, otherwise an Exception"""
         if name not in vars(self):
             return NameError(f"Parameter name '{name}' is invalid")
-        if not any(value == known_good_value for known_good_value in self[name]):
+        if not any(value == known_good_value for known_good_value in self[name][0]+ self[name][1]):
             return ValueError(f"Parameter value {repr(value)} is invalid for parameter '{name}'")
         return None
 
@@ -61,78 +70,74 @@ class ParameterSpec:
 class AcquisitionParameterSpec(ParameterSpec):
     TestCaseType: type = AcquisitionTestCase
     
-    arg_task_files: list[list[str]] = field(default_factory=lambda:[
+    arg_task_files: ParamSpecEntry[list[str]] = param_values([
         [], 
-        [""], 
         [INVALID_FILE], 
         [VALID_TASKFILE1], 
         [INVALID_FILE, VALID_TASKFILE1], 
         [VALID_TASKFILE1, INVALID_FILE], 
         [VALID_TASKFILE1, VALID_TASKFILE2]
-    ])
+    ],[])
     # Task file headers
-    taskfile1_number_of_tasks: list[str] = field(default_factory=lambda:[
+    taskfile1_number_of_tasks: tuple[list[str], list[str]] = param_values([
         "",
         "0",
         "1",
         "2",
         "X",
-    ])
-    taskfile1_relay_type: list[str] = field(default_factory=lambda:[
-        "",
-        "0"
-    ])
-    taskfile2_number_of_tasks: list[str] = field(default_factory=lambda:[
+    ],[])
+    taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
+    taskfile2_number_of_tasks: ParamSpecEntry[str] = param_values([
         "",
         "0",
         "1",
         "2",
         "X",
-    ])
-    taskfile2_relay_type: list[str] = field(default_factory=lambda:[
+    ], [])
+    taskfile2_relay_type: ParamSpecEntry[str] = param_values([
         "",
         "0"
-    ])
+    ], [])
     # config.py
-    config_projects_folder: list[str] = field(default_factory=lambda:[INVALID_FILE, VALID_PROJECTS_FOLDER])
-    config_local_data_path: list[str] = field(default_factory=lambda:[INVALID_FILE, VALID_LOCAL_DATA_PATH])
-    config_connection_file: list[str] = field(default_factory=lambda:[INVALID_FILE, VALID_CONNECTION_FILE]) 
+    config_projects_folder: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_PROJECTS_FOLDER], [])
+    config_local_data_path: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_LOCAL_DATA_PATH], [])
+    config_connection_file: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_CONNECTION_FILE], []) 
     # connection_settings.json
-    connection_hostname: list[str | None] = field(
-        default_factory=lambda: ["", VALID_HOSTNAME, INVALID_HOSTNAME, None]
+    connection_hostname: ParamSpecEntry[str | None] = param_values(
+        ["", VALID_HOSTNAME, INVALID_HOSTNAME, None], []
     )
-    connection_port: list[str | int | None] = field(
-        default_factory=lambda: ["", VALID_PORT, 0, -1, 65536, None]
+    connection_port: ParamSpecEntry[str | int | None] = param_values(
+        ["", VALID_PORT, 0, -1, 65536, None]
     )
-    connection_password: list[str | None] = field(
-        default_factory=lambda: ["", INVALID_PASSWORD, None]
+    connection_password: ParamSpecEntry[str | None] = param_values(
+        ["", INVALID_PASSWORD, None], []
     )
     # emulator
-    emulator_behaviour: list[str] = field(default_factory=lambda:[b.name for b in TerrameterBehaviour])
+    emulator_behaviour: ParamSpecEntry[str] = param_values([b.name for b in TerrameterBehaviour])
     
-    taskfile1_task1_name: list[str] = field(default_factory=lambda:["", f"Task1", "#TaskX"])
-    taskfile1_task1_spread: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile1_task1_protocol: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile1_task1_settings: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile1_task1_spacing: list[str] = field(default_factory=lambda:["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile1_task1_name: ParamSpecEntry[str] = param_values(["", f"Task1", "#TaskX"])
+    taskfile1_task1_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
+    taskfile1_task1_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
+    taskfile1_task1_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
+    taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
     
-    taskfile1_task2_name: list[str] = field(default_factory=lambda:["", f"Task2", "#TaskX"])
-    taskfile1_task2_spread: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile1_task2_protocol: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile1_task2_settings: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile1_task2_spacing: list[str] = field(default_factory=lambda:["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile1_task2_name: ParamSpecEntry[str] = param_values(["", f"Task2", "#TaskX"])
+    taskfile1_task2_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
+    taskfile1_task2_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
+    taskfile1_task2_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
+    taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
     
-    taskfile2_task1_name: list[str] = field(default_factory=lambda:["", f"Task1", "#TaskX"])
-    taskfile2_task1_spread: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile2_task1_protocol: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile2_task1_settings: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile2_task1_spacing: list[str] = field(default_factory=lambda:["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile2_task1_name: ParamSpecEntry[str] = param_values(["", f"Task1", "#TaskX"])
+    taskfile2_task1_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
+    taskfile2_task1_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
+    taskfile2_task1_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
+    taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
     
-    taskfile2_task2_name: list[str] = field(default_factory=lambda:["", f"Task2", "#TaskX"])
-    taskfile2_task2_spread: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile2_task2_protocol: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile2_task2_settings: list[str] = field(default_factory=lambda:["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile2_task2_spacing: list[str] = field(default_factory=lambda:["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile2_task2_name: ParamSpecEntry[str] = param_values(["", f"Task2", "#TaskX"])
+    taskfile2_task2_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
+    taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
+    taskfile2_task2_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
+    taskfile2_task2_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
 
 @dataclass
 class Constraint:

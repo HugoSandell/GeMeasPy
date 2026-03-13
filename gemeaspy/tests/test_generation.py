@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
-from gemeaspy.tests.parameter_spec import (Constraint, ParameterSpec,
-                                           ParameterValue)
+from gemeaspy.tests.parameter_spec import (Constraint, ParamSpecEntry, ParameterSpec,
+                                           ParameterValue, param_values)
 from gemeaspy.tests.test_case import TestCase
 
 _ROOTPKG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -36,8 +36,10 @@ def acts_enum_to_string(s: str) -> str:
         s = s.replace(f"@{char.encode("ascii").hex()}@", char)
     return s
 
-def acts_type(parameter_values: list[ParameterValue]) -> str:
+def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> str:
     """Determine the appropriate ACTS type for the given parameter"""
+    if type(parameter_values) == tuple:
+        parameter_values = [value for component in parameter_values for value in component]
     if all(isinstance(v, bool) for v in parameter_values):
         return _ACTS_PARAMETER_TYPE_BOOLEAN
     if all(isinstance(v, int) for v in parameter_values):
@@ -54,10 +56,12 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
         elem_parameter_attrib = {"id": str(id), "name": param_name, "type": param_type}
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
-        for value in parameter_spec[param_name]:
-            SubElement(elem_values, "value").text = string_to_acts_enum(json.dumps(value))
+        for valid_value in parameter_spec[param_name][0]:
+            SubElement(elem_values, "value").text = string_to_acts_enum(json.dumps(valid_value))
         SubElement(elem_parameter, "basechoices")
-        SubElement(elem_parameter, "invalidValues")
+        elem_invalid_values = SubElement(elem_parameter, "invalidValues")
+        for invalid_value in parameter_spec[param_name][1]:
+            SubElement(elem_invalid_values, "invalidValue").text = f"{string_to_acts_enum(json.dumps(invalid_value))}"
     SubElement(elem_system, "OutputParameters")
     SubElement(elem_system, "Relations")
     
@@ -162,7 +166,7 @@ def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: R
             is_duplicate(case_index, x) for x in range(case_index)
         ):
             for param_name in param_spec:
-                test_data[case_index][param_name] = random.choice(param_spec[param_name])
+                test_data[case_index][param_name] = random.choice(param_spec[param_name][0] + param_spec[param_name][1]) # TODO: Handle invalid values
             initialized = True
 
     # Verify uniqueness
@@ -191,9 +195,9 @@ def _main():
     @dataclass
     class TestParameterSpec(ParameterSpec):
         TestCaseType: type = TestTestCase
-        param_a: list[str] = field(default_factory=lambda: ["a", "b", "c"])
-        param_b: list[int] = field(default_factory=lambda: [1, 2, 3])
-        param_c: list[bool] = field(default_factory=lambda: [True, False])
+        param_a: ParamSpecEntry[str] = param_values(["a", "b", "c"], ["d"])
+        param_b: ParamSpecEntry[int] = param_values([2, 3, 4], [1])
+        param_c: ParamSpecEntry[bool] = param_values([True, False])
     param_spec: ParameterSpec = TestParameterSpec()
     
     constraints: list[Constraint] = [
@@ -209,7 +213,7 @@ def _main():
         interaction_strength = len(param_spec)
     
     acts_tests: list[TestCase] = generate_covering_array(param_spec, constraints, interaction_strength, validate=False)
-    random_tests = generate_random_data(param_spec, len(acts_tests), rng_seed)
+    random_tests: list[TestCase] = generate_random_data(param_spec, len(acts_tests), rng_seed)
     
     # Print results 
     # TODO: Print constraints
@@ -223,7 +227,7 @@ def _main():
     print()
     print_centered(padding="=")
     print_centered("Parameters")
-    print_centered("name : values")
+    print_centered("name : valid values, invalid values")
     for param_name in param_spec:
         print(f"{param_name}:\t", end="")
         print(", ".join([str(value) for value in param_spec[param_name]]))
