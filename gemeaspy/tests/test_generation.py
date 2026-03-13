@@ -157,9 +157,13 @@ def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: R
     
     test_data: list[TestCase] = [param_spec.TestCaseType() for _ in range(case_count)]
     for case_index in range(case_count):
-        while len(test_data[case_index]) == 0 or any([is_duplicate(case_index, x) for x in range(case_index)]):
+        initialized = False
+        while not initialized or any(
+            is_duplicate(case_index, x) for x in range(case_index)
+        ):
             for param_name in param_spec:
                 test_data[case_index][param_name] = random.choice(param_spec[param_name])
+            initialized = True
 
     # Verify uniqueness
     for case_a, case_b in itertools.combinations(range(case_count), 2):
