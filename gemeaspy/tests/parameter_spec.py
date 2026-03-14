@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, TypeAlias, TypeVar
 from types import NoneType
@@ -27,7 +27,7 @@ T = TypeVar('T', bound = ParameterValue)
 ParamSpecEntry: TypeAlias = tuple[list[T], list[T]]
 """A pair of lists, the first of valid values and the second of invalid values."""
 
-def param_values[T](valid: list[T], invalid: list[T] | None = None) -> ParamSpecEntry:
+def param_values[T](valid: Sequence[T], invalid: Sequence[T] | None = None) -> ParamSpecEntry:
     if type(valid) != list or (invalid != None and type(invalid) != list):
         raise TypeError(f"Arguments must be lists! Got {type(valid)}, {type(invalid)}")
     return field(default_factory=lambda: (valid, invalid if invalid else []))
@@ -71,73 +71,129 @@ class AcquisitionParameterSpec(ParameterSpec):
     TestCaseType: type = AcquisitionTestCase
     
     arg_task_files: ParamSpecEntry[list[str]] = param_values([
-        [], 
-        [INVALID_FILE], 
-        [VALID_TASKFILE1], 
-        [INVALID_FILE, VALID_TASKFILE1], 
-        [VALID_TASKFILE1, INVALID_FILE], 
-        [VALID_TASKFILE1, VALID_TASKFILE2]
-    ],[])
+            [VALID_TASKFILE1],
+            [VALID_TASKFILE1, VALID_TASKFILE2]
+        ],[
+            [], 
+            [INVALID_FILE], 
+            [INVALID_FILE, VALID_TASKFILE1], 
+            [VALID_TASKFILE1, INVALID_FILE]
+        ]
+    )
     # Task file headers
     taskfile1_number_of_tasks: tuple[list[str], list[str]] = param_values([
-        "",
         "0",
         "1",
         "2",
-        "X",
-    ],[])
+    ],["","X"])
     taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
     taskfile2_number_of_tasks: ParamSpecEntry[str] = param_values([
-        "",
         "0",
         "1",
         "2",
-        "X",
-    ], [])
+    ], ["", "X"])
     taskfile2_relay_type: ParamSpecEntry[str] = param_values([
-        "",
         "0"
-    ], [])
+    ], [""])
     # config.py
-    config_projects_folder: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_PROJECTS_FOLDER], [])
-    config_local_data_path: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_LOCAL_DATA_PATH], [])
-    config_connection_file: ParamSpecEntry[str] = param_values([INVALID_FILE, VALID_CONNECTION_FILE], []) 
+    config_projects_folder: ParamSpecEntry[str] = param_values([VALID_PROJECTS_FOLDER], [INVALID_FILE])
+    config_local_data_path: ParamSpecEntry[str] = param_values([VALID_LOCAL_DATA_PATH], [INVALID_FILE])
+    config_connection_file: ParamSpecEntry[str] = param_values([VALID_CONNECTION_FILE], [INVALID_FILE]) 
     # connection_settings.json
     connection_hostname: ParamSpecEntry[str | None] = param_values(
-        ["", VALID_HOSTNAME, INVALID_HOSTNAME, None], []
+        valid = [VALID_HOSTNAME], invalid = ["", INVALID_HOSTNAME, None]
     )
     connection_port: ParamSpecEntry[str | int | None] = param_values(
-        ["", VALID_PORT, 0, -1, 65536, None]
+        [VALID_PORT], invalid=["", 0, -1, 65536, None]
     )
     connection_password: ParamSpecEntry[str | None] = param_values(
-        ["", INVALID_PASSWORD, None], []
+        [""], [INVALID_PASSWORD, None]
     )
+    
     # emulator
-    emulator_behaviour: ParamSpecEntry[str] = param_values([b.name for b in TerrameterBehaviour])
+    emulator_behaviour: ParamSpecEntry[str] = field(
+        default_factory=lambda:
+            (
+                [TerrameterBehaviour.IDEAL.name], 
+                [b.name for b in TerrameterBehaviour if b is not TerrameterBehaviour.IDEAL]
+            )
+        )
     
-    taskfile1_task1_name: ParamSpecEntry[str] = param_values(["", f"Task1", "#TaskX"])
-    taskfile1_task1_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile1_task1_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile1_task1_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
+    # Tasks 
+    #  Empty "" is valid because it should be used for absent tasks when the 
+    #  task file header specifies fewer tasks. Its use should be controlled 
+    #  with constraints
+    taskfile1_task1_name: ParamSpecEntry[str] = param_values(
+        ["", "Task1"], 
+        ["#TaskX"]
+        )
+    taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
+        ["", VALID_SPREADFILE], [INVALID_FILE]
+        )
+    taskfile1_task1_protocol: ParamSpecEntry[str] = param_values(
+        ["", VALID_PROTOCOLFILE], [INVALID_FILE]
+        )
+    taskfile1_task1_settings: ParamSpecEntry[str] = param_values(
+        ["", VALID_SETTINGSFILE], [INVALID_FILE]
+        )
+    taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(
+            ["", "1 1 1"],
+            ["1 1 1 1", "I I I"]
+        )
     
-    taskfile1_task2_name: ParamSpecEntry[str] = param_values(["", f"Task2", "#TaskX"])
-    taskfile1_task2_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile1_task2_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile1_task2_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile1_task2_name: ParamSpecEntry[str] = param_values(
+        ["", "Task2"], 
+        ["#TaskX"]
+        )
+    taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
+        ["", VALID_SPREADFILE], [INVALID_FILE]
+        )
+    taskfile1_task2_protocol: ParamSpecEntry[str] = param_values(
+        ["", VALID_PROTOCOLFILE], [INVALID_FILE]
+        )
+    taskfile1_task2_settings: ParamSpecEntry[str] = param_values(
+        ["", VALID_SETTINGSFILE], [INVALID_FILE]
+        )
+    taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(
+            ["", "1 1 1"],
+            ["1 1 1 1", "I I I"]
+        )  
+
+    taskfile2_task1_name: ParamSpecEntry[str] = param_values(
+        ["", "Task1"], 
+        ["#TaskX"]
+        )
+    taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
+        ["", VALID_SPREADFILE], [INVALID_FILE]
+        )
+    taskfile2_task1_protocol: ParamSpecEntry[str] = param_values(
+        ["", VALID_PROTOCOLFILE], [INVALID_FILE]
+        )
+    taskfile2_task1_settings: ParamSpecEntry[str] = param_values(
+        ["", VALID_SETTINGSFILE], [INVALID_FILE]
+        )
+    taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(
+            ["", "1 1 1"],
+            ["1 1 1 1", "I I I"]
+        )  
     
-    taskfile2_task1_name: ParamSpecEntry[str] = param_values(["", f"Task1", "#TaskX"])
-    taskfile2_task1_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile2_task1_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile2_task1_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
-    
-    taskfile2_task2_name: ParamSpecEntry[str] = param_values(["", f"Task2", "#TaskX"])
-    taskfile2_task2_spread: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SPREADFILE])
-    taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_PROTOCOLFILE])
-    taskfile2_task2_settings: ParamSpecEntry[str] = param_values(["", INVALID_FILE, VALID_SETTINGSFILE])
-    taskfile2_task2_spacing: ParamSpecEntry[str] = param_values(["", "1 1 1", "1 1 1 1", "I I I"])
+    taskfile2_task2_name: ParamSpecEntry[str] = param_values(
+        ["", "Task2"], 
+        ["#TaskX"]
+        )
+    taskfile2_task2_spread: ParamSpecEntry[str] = param_values(
+        ["", VALID_SPREADFILE], [INVALID_FILE]
+        )
+    taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(
+        ["", VALID_PROTOCOLFILE], [INVALID_FILE]
+        )
+    taskfile2_task2_settings: ParamSpecEntry[str] = param_values(
+        ["", VALID_SETTINGSFILE], [INVALID_FILE]
+        )
+    taskfile2_task2_spacing: ParamSpecEntry[str] = param_values(
+            ["", "1 1 1"],
+            ["1 1 1 1", "I I I"]
+        )  
 
 @dataclass
 class Constraint:
