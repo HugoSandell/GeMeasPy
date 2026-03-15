@@ -1,6 +1,7 @@
 import sys
 import os
 import typing
+from time import time
 
 import gemeaspy
 import cosmic_ray.config
@@ -22,7 +23,7 @@ def main():
     # executes the wrong python executable 
     PYTHON_PATH = sys.executable
     
-    VALID_GENERATORS = {"random": "-N=200", "acts": "-T=3"}
+    VALID_GENERATORS = {"random": "-N=200", "acts": "-T=2"}
     requested_generators = [g.strip().lower() for g in sys.argv[1:]]
     
     invalid_generators = [g for g in requested_generators if g not in VALID_GENERATORS]
@@ -46,11 +47,13 @@ def main():
         # Reinitialise
         if os.path.isfile(cr_session_file):
             os.remove(cr_session_file)
+        start_time = time() 
         with cosmic_ray.work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:
             work_baseline = WorkItem("baseline", [])
             db.add_work_item(work_baseline)
             cr_execute(work_db=db, config=config)
-        print(f"Done. Session for '{generator}' is written to {cr_session_file}.")
+        execution_time = time() - start_time
+        print(f"'{generator}' done in {execution_time} seconds. Session is written to {cr_session_file}.")
     print("Testing complete!")
 
 
