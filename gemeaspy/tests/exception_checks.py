@@ -27,7 +27,9 @@ class ExceptionCheck:
     def matches(self, exc: BaseException) -> bool:
         return (
             self.expected_exception is None or isinstance(exc, self.expected_exception)
-        ) and (self.match_pattern is None or re.search(self.match_pattern, str(exc)))
+        ) and (
+            self.match_pattern is None or re.search(self.match_pattern, str(exc)) is not None
+        )
 
 
 NO_TASK_FILES_CHECK = ExceptionCheck(match="No task file provided")
@@ -56,7 +58,7 @@ def check_exception(test_case: AcquisitionTestCase):
     # can improve the error messages for failing tests.
 
     if any(c.expected_exception is None for c in exception_checks):
-        expected_exception = None
+        expected_exception = tuple()
     else:
         expected_exception = tuple({c.expected_exception for c in exception_checks})
 
