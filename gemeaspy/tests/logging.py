@@ -10,9 +10,11 @@ warning = logger.warning
 
 def configure_logs():
     from os.path import dirname
+    from datetime import datetime
     import gemeaspy
     
-    log_file_path = dirname(gemeaspy.__file__) + "/../log/gemeaspy_tests.log" 
+    now = "".join(filter(lambda c: str.isalnum(c), datetime.now().isoformat("-").split(".")[0]))
+    log_file_path = f"{dirname(gemeaspy.__file__)}/../log/tests{now}.log" 
     log_format = "%(asctime)s %(levelname)-6s [%(module)s:%(lineno)s] %(message)s"
     log_date_format = "%Y-%m-%d %H:%M:%S"
     
