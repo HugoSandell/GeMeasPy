@@ -40,7 +40,7 @@ def main():
     for generator in requested_generators:
         print(f"Running mutation analysis on test case generator '{generator}'")
         
-        config["test-command"] = f"\"{PYTHON_PATH}\" -m pytest {VALID_GENERATORS[generator]} --generator={generator} " \
+        config["test-command"] = f"\"{PYTHON_PATH}\" -m coverage run --data-file={generator}.coverage --branch -m pytest {VALID_GENERATORS[generator]} --generator={generator} " \
             f"--log-file=\"{PYTEST_LOG_FILE}\""
         
         cr_session_file = os.path.join(DATA_DIR, f"cosmicray_{generator}.sqlite")
