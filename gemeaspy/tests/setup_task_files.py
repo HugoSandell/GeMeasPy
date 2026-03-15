@@ -81,7 +81,7 @@ def resolve_task_files(test: AcquisitionTestCase):
 if __name__ == "__main__":
     test_case = AcquisitionTestCase(
         arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
-        taskfile1_number_of_tasks="2",
+        taskfile1_number_of_tasks=2,
         taskfile1_relay_type="",
         taskfile1_task1_name="Task1",
         taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
