@@ -81,17 +81,17 @@ class AcquisitionParameterSpec(ParameterSpec):
         ]
     )
     # Task file headers
-    taskfile1_number_of_tasks: tuple[list[str], list[str]] = param_values([
-        "0",
-        "1",
-        "2",
-    ],["","X"])
+    taskfile1_number_of_tasks: ParamSpecEntry[int] = param_values([
+        0,
+        1,
+        2,
+    ])
     taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
-    taskfile2_number_of_tasks: ParamSpecEntry[str] = param_values([
-        "0",
-        "1",
-        "2",
-    ], ["", "X"])
+    taskfile2_number_of_tasks: ParamSpecEntry[int] = param_values([
+        0,
+        1,
+        2,
+    ])
     taskfile2_relay_type: ParamSpecEntry[str] = param_values([
         "0"
     ], [""])
@@ -199,10 +199,47 @@ class AcquisitionParameterSpec(ParameterSpec):
 class Constraint:
     text: str = ""
     parameters: list[str] = field(default_factory=list)
+    def __str__(self) -> str:
+        return self.text
 
+def constraints_for_empty_task(N_param: str, element: str, element_index: int) -> list[Constraint]:
+    """Generate the constraints dictating when a task's valid parameter values should be \"\""""
+    # TODO: These constraints slow down generation considerably. Are there alternatives?
+    # Could we manually apply N < element_index => param == "" after running ACTS, and remove duplicates?
+    
+    constraints: list[Constraint] = []
+    
+    antecedent = f"{N_param} < {element_index}"
+    for element_suffix in ["_name", "_spread", "_protocol", "_settings", "_spacing"]:
+        parameter_name = element + element_suffix
+        consequent = f" => {parameter_name} == \"\""
+        constraints.append(
+            Constraint(antecedent + consequent, [N_param, parameter_name])
+        )
+    antecedent = f"{N_param} >= {element_index}"
+    for element_suffix in ["_name", "_spread", "_protocol", "_settings", "_spacing"]:
+        parameter_name = element + element_suffix
+        consequent = f" => {parameter_name} != \"\""
+        constraints.append(
+            Constraint(antecedent + consequent, [N_param, parameter_name])
+        )
+    return constraints
 
 # TODO: Roll constraints into parameter spec?
 ACQUISITION_CONSTRAINTS: list[Constraint] = [
-    Constraint("", []),
+    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task1", 1),
+    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
+    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
+    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
 ]
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
+
+if __name__=="__main__":
+    N_param = "N"
+    print(f"Generated constraints restrict the blank parameter value \"\" depending on {N_param}\n")
+
+    for element_index in (1, 2, 4):
+        element = "E" + str(element_index)
+        print(f"Constraints for element #{element_index} ({element}) in a collection of {N_param} elements:")
+        for constraint in constraints_for_empty_task(N_param, element, element_index):
+            print(constraint)
