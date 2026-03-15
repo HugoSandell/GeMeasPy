@@ -1,4 +1,5 @@
 import csv
+import functools
 import itertools
 import json
 import os
@@ -164,7 +165,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
 
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
-def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
+def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
     random.seed(seed)
     
     def is_duplicate(case_a: int, case_b: int):
@@ -174,24 +175,66 @@ def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: R
         return True
     
     logging.debug("Random test case generator starting.")
+
+    def product(iterable) -> int: 
+        return functools.reduce(lambda product, x: product * x, iterable, 1)
     
-    # TODO: make sure this won't loop endlessly if there are more cases than combinations 
-    case_count = max_case_count
+    param_sizes_valid = [len(param_spec[param][0]) for param in param_spec]
+    max_case_count_valid = product(param_sizes_valid)
+    param_sizes_invalid = [len(param_spec[param][1]) for param in param_spec]
     
+    combinations_invalid = [
+            int((max_case_count_valid / param_sizes_valid[i]) * param_sizes_invalid[i]) 
+            for i in range(len(param_spec))
+        ]
+    max_case_count_invalid: int = sum(combinations_invalid)
+    max_total_case_count = max_case_count_valid + max_case_count_invalid
+    
+    # How many cass to generate?
+    case_count = min(max_total_case_count, case_count)
+    
+    # How many of the cases are invalid? Reflect the distribution in the spec
+    invalid_rate: float = max_case_count_invalid / max_total_case_count
+
+    # Count to make sure we don't try to generate more than the maximum
+    generated_invalid = 0
+    generated_valid = 0
+
+    # Lookup table of invalid values for a given parameter name
+    invalid_values = dict((param, param_spec[param][1]) for param in param_spec if len(param_spec[param][1]) > 0)
+
     test_data: list[TestCase] = [param_spec.TestCaseType() for _ in range(case_count)]
     for case_index in range(case_count):
         initialized = False
+        is_valids_complete = generated_valid >= max_case_count_valid
+        is_invalids_complete = generated_invalid < max_case_count_invalid
+        use_invalid_if_possible = random.random() < invalid_rate
+        is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
+        
         while not initialized or any(
             is_duplicate(case_index, x) for x in range(case_index)
         ):
+            # "" Signifies no invalid
+            invalid_param = "" 
+            if is_case_invalid:
+                invalid_param = random.choice([*invalid_values.keys()])
+                invalid_value_i = random.randint(0, len(invalid_values[invalid_param])-1)
+                invalid_value = invalid_values[invalid_param][invalid_value_i]
+                test_data[case_index][invalid_param] = invalid_value
+            # Fill out all valid params
             for param_name in param_spec:
-                test_data[case_index][param_name] = random.choice(param_spec[param_name][0] + param_spec[param_name][1]) # TODO: Handle invalid values
+                if param_name != invalid_param:
+                    test_data[case_index][param_name] = random.choice(param_spec[param_name][0])
             initialized = True
+        if is_case_invalid:
+            generated_invalid += 1
+        else:
+            generated_valid += 1
 
     # Verify uniqueness
     for case_a, case_b in itertools.combinations(range(case_count), 2):
         assert not is_duplicate(case_a, case_b)
-        
+
     logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
     return test_data
 
@@ -214,8 +257,8 @@ def _main():
     @dataclass
     class TestParameterSpec(ParameterSpec):
         TestCaseType: type = TestTestCase
-        param_a: ParamSpecEntry[str] = param_values(["a", "b", "c"], ["d"])
-        param_b: ParamSpecEntry[int] = param_values([2, 3, 4], [1])
+        param_a: ParamSpecEntry[str] = param_values(["a", "b", "c"], ["X", "Y"])
+        param_b: ParamSpecEntry[int] = param_values([2, 3, 4], [-1])
         param_c: ParamSpecEntry[bool] = param_values([True, False])
     param_spec: ParameterSpec = TestParameterSpec()
     
@@ -235,7 +278,6 @@ def _main():
     random_tests: list[TestCase] = generate_random_data(param_spec, len(acts_tests), rng_seed)
     
     # Print results 
-    # TODO: Print constraints
     def print_centered(msg: str="", padding: str=" "):
         total_length = os.get_terminal_size().columns
         padding_per_side = total_length / 2 / len(padding) - len(msg) / 2

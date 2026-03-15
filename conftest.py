@@ -32,7 +32,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
             raise ValueError("Test suite size must be greater than 0")
         if N > max_N:
             raise ValueError(f"Test suite size must not be greater than {max_N}")    
-        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, max_case_count=N, seed = None)
+        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, case_count=N, seed = None)
         metafunc.parametrize("test_case", test_data)
     else:
         raise ValueError(f"'{generator_name}' is not a valid test case generator.")
