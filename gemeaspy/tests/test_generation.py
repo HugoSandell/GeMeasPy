@@ -6,22 +6,27 @@ import random
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
+import gemeaspy
+from gemeaspy.tests import logging
 from gemeaspy.tests.parameter_spec import (Constraint, ParamSpecEntry, ParameterSpec,
-                                           ParameterValue, param_values)
+                                            ParameterValue, param_values)
 from gemeaspy.tests.test_case import TestCase
 
-_ROOTPKG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
 
 _ACTS_PARAMETER_TYPE_NUM = "0"
 _ACTS_PARAMETER_TYPE_ENUM = "1"
 _ACTS_PARAMETER_TYPE_BOOLEAN = "2"
 
-_ACTS_JAR = f"{_ROOTPKG_PATH}/../bin/ACTS/acts_3.3.jar"
+_ACTS_JAR = f"{_ROOT_PATH}/bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
+_ACTS_CONSTRAINT_HANDLER = "forbiddentuples" # 'solver' or 'forbiddentuples' -- same result, but solver may be faster for complex constraints.
+_ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a problem
 
 # It is unfortunately necessary to replace some characters for ACTS
 ACTS_ENUM_UNSAFE_CHARS = ["\"", ",", "&", "%", "+", "<", ">", "="]
@@ -77,9 +82,10 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     os.close(fd)
     return path
 
+
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
-    
+
     if not os.path.exists(_ACTS_JAR):
         raise FileNotFoundError(f"ACTS was not found at {_ACTS_JAR}")
     
@@ -91,18 +97,25 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
     
     acts_config_path = generate_acts_file(param_spec, constraints)
     
-    acts_arguments = ["java", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, "-Doutput=csv",
-                      "-jar", _ACTS_JAR, path_escape(acts_config_path), path_escape(out_file_path)]
+    acts_arguments = [
+        "java", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
+        "-Doutput=csv", "-Dchandler=" + _ACTS_CONSTRAINT_HANDLER, "-jar", _ACTS_JAR, 
+        path_escape(acts_config_path), 
+        path_escape(out_file_path)
+    ]
 
+    logging.debug(f"Executing ACTS. Command: {' '.join(acts_arguments)}")
     try:
-        acts_out = subprocess.check_output([*acts_arguments]).decode()
+        acts_out = subprocess.check_output([*acts_arguments], timeout=_ACTS_TIMEOUT).decode()
     except subprocess.CalledProcessError as e:
         e.add_note(f"ACTS exited with code {e.returncode}")
         e.add_note(f"Arguments: {e.args}")
         e.add_note(f"Output: \n{e.output}")
+        logging.error(f"ACTS exited with code {e.returncode} and output:\n{e.output}")
         raise
     except Exception as e:
         e.add_note("ACTS could not be executed!")
+        logging.error(f"subprocess could not execute ACTS: {str(e)}")
         raise
     finally:
         os.remove(acts_config_path)
@@ -112,6 +125,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         e = Exception("ACTS failed but exited normally")
         e.add_note(f"Command: {" ".join(acts_arguments)}")
         e.add_note(f"Output: \n{acts_out}")
+        logging.error(f"ACTS appears to have failed: {acts_out}")
         raise e
     
     csv_rows = []
@@ -134,6 +148,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         if validate:
             validation_result = param_spec.validate_parameter(name, value)
             if validation_result != None:
+                logging.error(f"Parameter from ACTS failed to validate: {name} = {value}")
                 raise validation_result
         return value
     
@@ -144,7 +159,9 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             value_json = acts_enum_to_string(raw_case[parameter_name])
             case[parameter_name] = json_to_parameter_value(parameter_name, value_json)
         test_data.append(case)
+    logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     return test_data
+
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
@@ -155,6 +172,8 @@ def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: R
             if test_data[case_a][param_name] != test_data[case_b][param_name]:
                 return False
         return True
+    
+    logging.debug("Random test case generator starting.")
     
     # TODO: make sure this won't loop endlessly if there are more cases than combinations 
     case_count = max_case_count
@@ -173,6 +192,7 @@ def generate_random_data(param_spec: ParameterSpec, max_case_count: int, seed: R
     for case_a, case_b in itertools.combinations(range(case_count), 2):
         assert not is_duplicate(case_a, case_b)
         
+    logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
     return test_data
 
 # For manual testing
@@ -184,8 +204,7 @@ def _main():
     if not sys.argv[1].isnumeric():
         sys.stderr.write("Error: Combinatorial strength must be a positive integer!\n")
         exit(1)
-        
-        
+    
     @dataclass
     class TestTestCase(TestCase):
         param_a: str = ""
