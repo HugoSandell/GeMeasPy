@@ -86,12 +86,16 @@ class AcquisitionParameterSpec(ParameterSpec):
         1,
         2,
     ])
+    taskfile1_number_of_tasks_error: ParamSpecEntry[int] = param_values([0], [-1, +1])
+    """The error of the number of tasks count. 0 - No error"""
     taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
     taskfile2_number_of_tasks: ParamSpecEntry[int] = param_values([
         0,
         1,
         2,
     ])
+    taskfile2_number_of_tasks_error: ParamSpecEntry[int] = param_values([0], [-1, +1])
+    """The error of the number of tasks count. 0 - No error"""
     taskfile2_relay_type: ParamSpecEntry[str] = param_values([
         "0"
     ], [""])

@@ -26,21 +26,25 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     f = tempfile.NamedTemporaryFile(
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
     )
-    f.write(f"{number_of_tasks} {relay_type}\n")
 
+    num_tasks_error: int = typing.cast(int, test_case[f"taskfile{file_no}_number_of_tasks_error"])
+    
     try:
-        number_of_tasks = int(number_of_tasks)
+        number_of_tasks_int: int = int(number_of_tasks)
+        f.write(f"{number_of_tasks_int + num_tasks_error} {relay_type}\n")
     except ValueError:
-        number_of_tasks = 0
+        number_of_tasks_int: int = 1
+        f.write(f"{number_of_tasks} {relay_type}\n")
+    
 
-    for taskid in range(1, number_of_tasks + 1):
+    for taskid in range(1, number_of_tasks_int + 1):
         task_prefix = f"{prefix}task{taskid}_"
         f.write(f"{param_as_str('name', task_prefix)}\n")
         f.write(f"{_replace_file_placeholder(param_as_str('spread', task_prefix))}\n")
         f.write(f"{_replace_file_placeholder(param_as_str('protocol', task_prefix))}\n")
         f.write(f"{_replace_file_placeholder(param_as_str('settings', task_prefix))}\n")
         f.write(f"{param_as_str('spacing', task_prefix)}\n")
-        
+    
     f.close()
     return f
 

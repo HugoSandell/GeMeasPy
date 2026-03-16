@@ -28,8 +28,10 @@ class AcquisitionTestCase(TestCase):
     arg_task_files: list[str] = field(default_factory=list)
     # Task file headers
     taskfile1_number_of_tasks: int = 1
+    taskfile1_number_of_tasks_error: int = 0
     taskfile1_relay_type: str = ""
     taskfile2_number_of_tasks: int = 1
+    taskfile2_number_of_tasks_error: int = 0
     taskfile2_relay_type: str = ""
     # config.py
     config_projects_folder: str = ""
