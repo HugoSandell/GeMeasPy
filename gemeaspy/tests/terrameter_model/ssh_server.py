@@ -198,6 +198,7 @@ class SSHTestServerChannel():
                     stdout = self._paramiko_channel.makefile('wU')
                     stderr = self._paramiko_channel.makefile_stderr('wU')
                     shell = TerrameterShell(self._server.instrument, stdin, stdout, stderr=stderr)
+                    shell.user = self._server._username
                     exec_command = shell.precmd(self._exec_command)
                     stop = shell.onecmd(exec_command)
                     shell.postcmd(stop, exec_command)

@@ -36,7 +36,7 @@ class TerrameterShell(Cmd):
             
         self.instrument: TerrameterLS = instrument
         self.hostname = "LS123456789"
-        self.user = "banana"
+        self.user = "root"
         self.homedir = f"/home/{self.user}"
         self.cwd: vfs.Path = vfs.Path(self.homedir)
         """Current Working Directory"""
