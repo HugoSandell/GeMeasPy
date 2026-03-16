@@ -115,6 +115,8 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         e.add_note(f"Output: \n{e.output}")
         logging.error(f"ACTS exited with code {e.returncode} and output:\n{e.output}")
         raise
+    except subprocess.TimeoutExpired as e:
+        raise TimeoutError()
     except Exception as e:
         e.add_note("ACTS could not be executed!")
         logging.error(f"subprocess could not execute ACTS: {str(e)}")
