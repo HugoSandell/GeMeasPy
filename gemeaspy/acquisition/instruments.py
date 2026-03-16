@@ -21,12 +21,12 @@ class Instrument(ABC):
 
 
 class Terrameter(Instrument):
-
-
     def __init__(self) -> None:
         self.params = utilities.read_terrameter_connection_parameters()
         self.connection = None
-        self.logfile = open("logs.txt", 'a', 1)
+        import gemeaspy, os
+        root_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/..")
+        self.logfile = open(f"{root_dir}/log/acquisition_instruments.log", 'a', 1)
         self._write()
 
     def _write(self) -> None:
