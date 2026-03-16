@@ -214,24 +214,24 @@ class Constraint:
     def __str__(self) -> str:
         return self.text
 
+
+ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
+
 def constraints_for_empty_task(N_param: str, element: str, element_index: int) -> list[Constraint]:
     """Generate the constraints dictating when a task's valid parameter values should be \"\""""
     # TODO: These constraints slow down generation considerably. Are there alternatives?
     # Could we manually apply N < element_index => param == "" after running ACTS, and remove duplicates?
     
     constraints: list[Constraint] = []
+    suffixes = ("_name", "_spread", "_protocol", "_settings", "_spacing")
     
     antecedent = f"{N_param} < {element_index}"
-    for element_suffix in ["_name", "_spread", "_protocol", "_settings", "_spacing"]:
+    for element_suffix in suffixes:
         parameter_name = element + element_suffix
-        consequent = f" => {parameter_name} == \"\""
-        constraints.append(
-            Constraint(antecedent + consequent, [N_param, parameter_name])
-        )
-    antecedent = f"{N_param} >= {element_index}"
-    for element_suffix in ["_name", "_spread", "_protocol", "_settings", "_spacing"]:
-        parameter_name = element + element_suffix
-        consequent = f" => {parameter_name} != \"\""
+        parameter_base_case = ACQUISITION_PARAM_SPEC[parameter_name][0][0]
+        if type(parameter_base_case) == str:
+            parameter_base_case = f'"{parameter_base_case}"'
+        consequent = f" => {parameter_name} == {parameter_base_case}"
         constraints.append(
             Constraint(antecedent + consequent, [N_param, parameter_name])
         )
@@ -239,8 +239,11 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
 
 # TODO: Roll constraints into parameter spec?
 ACQUISITION_CONSTRAINTS: list[Constraint] = [
+    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task1", 1),
+    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
+    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
+    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
 ]
-ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
 
 if __name__=="__main__":
     N_param = "N"
