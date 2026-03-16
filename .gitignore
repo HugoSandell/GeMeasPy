@@ -22,6 +22,7 @@ dist
 gemeaspy/logs.txt
 *.log
 **/logs.txt
+log/
 
 # settings and task list files
 gemeaspy/settings/connection_settings.json
