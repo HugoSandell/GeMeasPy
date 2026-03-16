@@ -247,10 +247,12 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
 
 if __name__=="__main__":
     N_param = "N"
-    print(f"Generated constraints restrict the blank parameter value \"\" depending on {N_param}\n")
+    print(f"Generated constraints limit value to base case depending on {N_param}\n")
 
     for element_index in (1, 2, 4):
         element = "E" + str(element_index)
         print(f"Constraints for element #{element_index} ({element}) in a collection of {N_param} elements:")
         for constraint in constraints_for_empty_task(N_param, element, element_index):
             print(constraint)
+    
+    
