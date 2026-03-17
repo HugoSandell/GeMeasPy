@@ -1,3 +1,4 @@
+"""For generating configuration files from test case parameters."""
 import json
 import tempfile
 

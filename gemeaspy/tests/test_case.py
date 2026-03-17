@@ -1,3 +1,4 @@
+"""Definition of an individual test case."""
 from dataclasses import dataclass, field
 import typing
 from collections.abc import Iterator

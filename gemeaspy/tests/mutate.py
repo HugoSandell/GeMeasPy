@@ -1,3 +1,4 @@
+"""CLI script to perform testing and mutation analysis."""
 import os
 import sys
 import time

@@ -1,3 +1,4 @@
+"""Type definition for parameter values."""
 import typing
 from typing import TypeAlias
 

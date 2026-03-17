@@ -1,3 +1,4 @@
+"""Logger for test code"""
 import logging as _logging
 
 logger = _logging.Logger("gemeaspy_tests", _logging.DEBUG)
@@ -8,7 +9,7 @@ info = logger.info
 error = logger.error
 warning = logger.warning
 
-def configure_logs():
+def initialise_logger():
     from os.path import dirname
     from datetime import datetime
     import gemeaspy
@@ -23,4 +24,4 @@ def configure_logs():
     tests_handler.setFormatter(general_formatter)
     logger.addHandler(tests_handler)
 
-configure_logs()
+initialise_logger()

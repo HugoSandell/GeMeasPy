@@ -1,3 +1,4 @@
+"""Test suite generators."""
 import csv
 import functools
 import itertools

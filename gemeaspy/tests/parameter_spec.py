@@ -1,3 +1,4 @@
+"""Specification for parameter names and values. Used as input for test generation."""
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, TypeAlias, TypeVar

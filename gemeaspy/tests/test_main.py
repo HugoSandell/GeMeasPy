@@ -1,3 +1,4 @@
+"""PyTest entry point for end-to-end testing of acquisition."""
 import os
 
 import pytest

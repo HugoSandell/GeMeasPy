@@ -1,3 +1,4 @@
+"""Handling of exceptions raised by SUT in pytest tests"""
 import re
 from contextlib import nullcontext
 from re import Pattern
