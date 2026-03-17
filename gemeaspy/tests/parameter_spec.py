@@ -129,9 +129,6 @@ class AcquisitionParameterSpec(ParameterSpec):
         )
     
     # Tasks 
-    #  Empty "" is valid because it should be used for absent tasks when the 
-    #  task file header specifies fewer tasks. Its use should be controlled 
-    #  with constraints
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
         ["Task1"], 
         ["#TaskX", ""]
