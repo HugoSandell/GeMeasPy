@@ -3,7 +3,7 @@ import tempfile
 import typing
 
 from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.util import random_string
 
 def _replace_file_placeholder(value: str):
@@ -19,7 +19,7 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     
     def param_as_str(param: str, prefix: str = prefix) -> str:
         """Get the given attribute of test case as str or throw an exception."""
-        return str(getattr(test_case, prefix + param))
+        return str(test_case.parameters[prefix + param])
             
     number_of_tasks = param_as_str("number_of_tasks")
     relay_type = param_as_str("relay_type")
@@ -28,7 +28,7 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
     )
 
-    num_tasks_error: int = typing.cast(int, test_case[f"taskfile{file_no}_number_of_tasks_error"])
+    num_tasks_error: int = typing.cast(int, test_case.parameters[f"taskfile{file_no}_number_of_tasks_error"])
     
     try:
         number_of_tasks_int: int = int(number_of_tasks)
@@ -62,10 +62,10 @@ def resolve_task_files(test: AcquisitionTestCase):
             created_task_files[file_no] = f.name
         return created_task_files[file_no]
 
-    if type(test.arg_task_files) is not list:
+    if type(test.parameters.arg_task_files) is not list:
         raise TypeError("Parameter 'arg_task_files' has an invalid type")
 
-    for task_file in test.arg_task_files:
+    for task_file in test.parameters.arg_task_files:
         match task_file:
             case parameter_spec.INVALID_FILE:
                 task_files.append(random_string())
@@ -84,7 +84,7 @@ def resolve_task_files(test: AcquisitionTestCase):
 
 
 if __name__ == "__main__":
-    test_case = AcquisitionTestCase(
+    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
         arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
         taskfile1_number_of_tasks=2,
         taskfile1_relay_type="",
@@ -98,5 +98,5 @@ if __name__ == "__main__":
         taskfile1_task2_protocol=parameter_spec.INVALID_FILE,
         taskfile1_task2_settings=parameter_spec.INVALID_FILE,
         taskfile1_task2_spacing="1 1 1 1",
-    )
+    ))
     print(resolve_task_files(test_case))

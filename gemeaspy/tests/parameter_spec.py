@@ -10,7 +10,7 @@ from typing import Any, TypeAlias, TypeVar
 from gemeaspy.tests import util
 from gemeaspy.tests.parameters import ParameterValue
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
-from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.test_case import TestCase, AcquisitionTestCase
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -39,10 +39,10 @@ def param_values[T](valid: Sequence[T], invalid: Sequence[T] | None = None) -> P
 
 @dataclass
 class ParameterSpec:
-    TestCaseType: type = TestCase
+    TestCaseType: type[TestCase] = TestCase
 
     def __iter__(self) -> Iterator[str]:
-        return iter(filter(lambda key: key != "TestCaseType", vars(self))) # _TestCaseType is a metavariable
+        return iter(filter(lambda key: key != "TestCaseType", vars(self))) # TestCaseType is a metavariable
     
     def __setitem__(self, name: str, value: ParamSpecEntry[ParameterValue]) -> None:
         if name not in vars(self):
@@ -73,7 +73,7 @@ class ParameterSpec:
 
 @dataclass
 class AcquisitionParameterSpec(ParameterSpec):
-    TestCaseType: type = AcquisitionTestCase
+    TestCaseType: type[TestCase] = AcquisitionTestCase
     
     arg_task_files: ParamSpecEntry[list[str]] = param_values([
             [VALID_TASKFILE1],
@@ -232,9 +232,6 @@ ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
 
 def constraints_for_empty_task(N_param: str, element: str, element_index: int) -> list[Constraint]:
     """Generate the constraints dictating when a task's valid parameter values should be \"\""""
-    # TODO: These constraints slow down generation considerably. Are there alternatives?
-    # Could we manually apply N < element_index => param == "" after running ACTS, and remove duplicates?
-    
     constraints: list[Constraint] = []
     suffixes = ("_name", "_spread", "_protocol", "_settings", "_spacing")
     

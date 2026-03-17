@@ -40,14 +40,14 @@ FILE_NOT_FOUND_CHECK = ExceptionCheck(FileNotFoundError)
 def check_exception(test_case: AcquisitionTestCase):
     exception_checks = []
 
-    if len(test_case.arg_task_files) == 0:
+    if len(test_case.parameters.arg_task_files) == 0:
         exception_checks.append(NO_TASK_FILES_CHECK)
 
     if any(
-        f in ("", parameter_spec.INVALID_FILE) for f in test_case.arg_task_files
+        f in ("", parameter_spec.INVALID_FILE) for f in test_case.parameters.arg_task_files
     ) or parameter_spec.INVALID_FILE in (
-        test_case.config_local_data_path,
-        test_case.config_connection_file,
+        test_case.parameters.config_local_data_path,
+        test_case.parameters.config_connection_file,
     ):
         exception_checks.append(FILE_NOT_FOUND_CHECK)
 

@@ -4,7 +4,7 @@ import tempfile
 
 from gemeaspy.settings import config
 from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.util import random_string
 
 
@@ -14,7 +14,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
         "look_for_keys": False,
     }
 
-    match test.connection_hostname:
+    match test.parameters.connection_hostname:
         case parameter_spec.INVALID_HOSTNAME:
             connection_settings["hostname"] = f"{random_string()}.invalid"
         case None:
@@ -22,7 +22,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
         case x:
             connection_settings["hostname"] = x
 
-    match test.connection_port:
+    match test.parameters.connection_port:
         case parameter_spec.VALID_PORT:
             connection_settings["port"] = server_port
         case None:
@@ -30,7 +30,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
         case x:
             connection_settings["port"] = x
 
-    match test.connection_password:
+    match test.parameters.connection_password:
         case parameter_spec.INVALID_PASSWORD:
             connection_settings["password"] = random_string()
         case None:
@@ -52,13 +52,13 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 def setup(test: AcquisitionTestCase, server_port: int):
     tempfiles = []
 
-    match test.config_projects_folder:
+    match test.parameters.config_projects_folder:
         case parameter_spec.INVALID_FILE:
             config.TERRAMETER_PROJECTS_FOLDER = f"/media/mmcblk0p1/{random_string()}"
         case x:
             config.TERRAMETER_PROJECTS_FOLDER = x
 
-    match test.config_local_data_path:
+    match test.parameters.config_local_data_path:
         case parameter_spec.VALID_LOCAL_DATA_PATH:
             f = tempfile.TemporaryDirectory(prefix="gemeaspytest_data_")
             tempfiles.append(f)
@@ -68,7 +68,7 @@ def setup(test: AcquisitionTestCase, server_port: int):
         case _:
             raise ValueError("invalid config_local_data_path")
 
-    match test.config_connection_file:
+    match test.parameters.config_connection_file:
         case parameter_spec.VALID_CONNECTION_FILE:
             f = _create_connection_settings(test, server_port)
             tempfiles.append(f)
@@ -86,13 +86,14 @@ def setup(test: AcquisitionTestCase, server_port: int):
 
 
 if __name__ == "__main__":
-    test_case = AcquisitionTestCase(
+    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
         config_projects_folder=parameter_spec.VALID_PROJECTS_FOLDER,
         config_local_data_path=parameter_spec.VALID_LOCAL_DATA_PATH,
         config_connection_file=parameter_spec.VALID_CONNECTION_FILE,
         connection_hostname=parameter_spec.INVALID_HOSTNAME,
         connection_port=-1,
         connection_password=None,
+    )
     )
     setup(test_case, 2222)
     print(config.TERRAMETER_PROJECTS_FOLDER)

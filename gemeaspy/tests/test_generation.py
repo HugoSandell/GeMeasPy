@@ -22,7 +22,7 @@ from gemeaspy.tests.parameter_spec import (
     acts_type,
     param_values,
 )
-from gemeaspy.tests.test_case import TestCase
+from gemeaspy.tests.test_case import TestCase, TestCaseParameters
 from gemeaspy.tests.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
@@ -142,7 +142,9 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         case = param_spec.TestCaseType()
         for parameter_name in raw_case:
             value_json = acts_enum_to_string(raw_case[parameter_name])
-            case[parameter_name] = json_to_parameter_value(parameter_name, value_json)
+            case.parameters[parameter_name] = json_to_parameter_value(parameter_name, value_json)
+            is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
+            case.expect_failure = case.expect_failure or is_invalid
         test_data.append(case)
     logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     return test_data
@@ -154,7 +156,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
     
     def is_duplicate(case_a: int, case_b: int):
         for param_name in param_spec:
-            if test_data[case_a][param_name] != test_data[case_b][param_name]:
+            if test_data[case_a].parameters[param_name] != test_data[case_b].parameters[param_name]:
                 return False
         return True
     
@@ -204,16 +206,18 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
                 invalid_param = random.choice([*invalid_values.keys()])
                 invalid_value_i = random.randint(0, len(invalid_values[invalid_param])-1)
                 invalid_value = invalid_values[invalid_param][invalid_value_i]
-                test_data[case_index][invalid_param] = invalid_value
+                test_data[case_index].parameters[invalid_param] = invalid_value
             # Fill out all valid params
             for param_name in param_spec:
                 if param_name != invalid_param:
-                    test_data[case_index][param_name] = random.choice(param_spec[param_name][0])
+                    test_data[case_index].parameters[param_name] = random.choice(param_spec[param_name][0])
             initialized = True
         if is_case_invalid:
             generated_invalid += 1
+            test_data[case_index].expect_failure = True
         else:
             generated_valid += 1
+            test_data[case_index].expect_failure = False
 
     # Verify uniqueness
     for case_a, case_b in itertools.combinations(range(case_count), 2):
@@ -233,7 +237,7 @@ def _main():
         exit(1)
     
     @dataclass
-    class TestTestCase(TestCase):
+    class TestTestCase(TestCaseParameters):
         param_a: str = ""
         param_b: int = 0
         param_c: bool = False
@@ -281,15 +285,15 @@ def _main():
     for i, constraint in enumerate(constraints):
         print(f"{i+1}) {constraint.text}")
     
-    def print_test_cases(tests, name):
+    def print_test_cases(tests: list[TestCase], name: str):
         print_centered(padding="=+")
         input("Press Enter to continue...")
         print("\r\033[F", end="")
         print_centered(f"{name}\n")
         for i, test in enumerate(tests):
             print(f"{i + 1})\t", end="")
-            for param_name in test:
-                print(f"{param_name} = {test[param_name]}\t", end="")
+            for param_name in test.parameters:
+                print(f"{param_name} = {test.parameters[param_name]}\t", end="")
             print()
 
     print_test_cases(

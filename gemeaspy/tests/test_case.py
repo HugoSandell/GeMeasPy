@@ -1,12 +1,12 @@
 """Definition of an individual test case."""
+from abc import ABC, abstractmethod, abstractproperty
 from dataclasses import dataclass, field
 import typing
 from collections.abc import Iterator
 
 from gemeaspy.tests.parameters import ParameterValue
 
-
-class TestCase:
+class TestCaseParameters:
     def __iter__(self) -> Iterator[str]:
         return iter(vars(self))
     def __setitem__(self, name: str, value: ParameterValue) -> None:
@@ -24,8 +24,21 @@ class TestCase:
     def __repr__(self) -> str:
         return repr(vars(self))
 
+
 @dataclass
-class AcquisitionTestCase(TestCase):
+class TestCase[T: TestCaseParameters](ABC):
+    expect_failure: bool = False
+    @property
+    @abstractmethod
+    def parameters(self) -> T:
+        pass
+    @parameters.setter
+    @abstractmethod
+    def parameters(self, value: T):
+        pass
+
+@dataclass
+class AcquisitionTestCaseParameters(TestCaseParameters):
     arg_task_files: list[str] = field(default_factory=list)
     # Task file headers
     taskfile1_number_of_tasks: int = 1
@@ -68,3 +81,13 @@ class AcquisitionTestCase(TestCase):
     taskfile2_task2_protocol: str = ""
     taskfile2_task2_settings: str = ""
     taskfile2_task2_spacing: str = ""
+    
+@dataclass
+class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
+    _parameters: AcquisitionTestCaseParameters = field(default_factory=AcquisitionTestCaseParameters)
+    @property
+    def parameters(self) -> AcquisitionTestCaseParameters:
+        return self._parameters
+    @parameters.setter
+    def parameters(self, value: AcquisitionTestCaseParameters) -> None:
+        self._parameters = value

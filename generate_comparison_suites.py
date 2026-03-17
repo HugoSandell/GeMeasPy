@@ -1,13 +1,12 @@
 import json
 import time
 from collections.abc import Callable
+from typing import cast
 
 from gemeaspy.tests import test_generation
-from gemeaspy.tests.parameter_spec import (
-    ACQUISITION_CONSTRAINTS,
-    ACQUISITION_PARAM_SPEC,
-)
-from gemeaspy.tests.test_case import TestCase
+from gemeaspy.tests.parameter_spec import (ACQUISITION_CONSTRAINTS,
+                                            ACQUISITION_PARAM_SPEC)
+from gemeaspy.tests.test_case import AcquisitionTestCase
 
 _SEC = 1.0
 _MIN = 60.0 * _SEC
@@ -24,28 +23,28 @@ def timer[T](f: Callable[..., T]) -> Callable[..., tuple[T, float]]:
     return _f
 
 @timer
-def generate_covering_array(strength: int) -> list[TestCase]:
-    return test_generation.generate_covering_array(
+def generate_covering_array(strength: int) -> list[AcquisitionTestCase]:
+    return cast(list[AcquisitionTestCase], test_generation.generate_covering_array(
         param_spec=ACQUISITION_PARAM_SPEC, 
         constraints=ACQUISITION_CONSTRAINTS,
         strength = strength,
         validate=True
-    )
+    ))
 
 @timer
-def generate_random_array(size: int) -> list[TestCase]:
-    return test_generation.generate_random_data(
+def generate_random_array(size: int) -> list[AcquisitionTestCase]:
+    return cast(list[AcquisitionTestCase], test_generation.generate_random_data(
         param_spec=ACQUISITION_PARAM_SPEC,
         case_count=size,
         seed=0
-    )
+    ))
 
-def save_acts_suite(strength: int, suite: list[TestCase]):
+def save_acts_suite(strength: int, suite: list[AcquisitionTestCase]):
     filename = f"{test_generation._ROOT_PATH}/test_data/suite_acts_{strength}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
 
-def save_random_suite(strength_equivalent: int, suite: list[TestCase]):
+def save_random_suite(strength_equivalent: int, suite: list[AcquisitionTestCase]):
     filename = f"{test_generation._ROOT_PATH}/test_data/suite_random_{strength_equivalent}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
