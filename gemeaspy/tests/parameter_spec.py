@@ -132,17 +132,14 @@ class AcquisitionParameterSpec(ParameterSpec):
         ["#TaskX", ""]
         )
     taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
-        ["VALID_SPREADFILE"],
-        [INVALID_FILE, ""]
-        )
+        [VALID_SPREADFILE], [INVALID_FILE, ""]
+    )
     taskfile1_task1_protocol: ParamSpecEntry[str] = param_values(
-        ["VALID_PROTOCOLFILE"], 
-        [INVALID_FILE, ""]
-        )
+        [VALID_PROTOCOLFILE], [INVALID_FILE, ""]
+    )
     taskfile1_task1_settings: ParamSpecEntry[str] = param_values(
-        ["VALID_SETTINGSFILE"], 
-        [INVALID_FILE, ""]
-        )
+        [VALID_SETTINGSFILE], [INVALID_FILE, ""]
+    )
     taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
             ["1 1 1 1", "I I I", ""]
@@ -153,17 +150,14 @@ class AcquisitionParameterSpec(ParameterSpec):
         ["#TaskX"]
         )
     taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
-        ["VALID_SPREADFILE"], 
-        [INVALID_FILE]
-        )
+        [VALID_SPREADFILE], [INVALID_FILE]
+    )
     taskfile1_task2_protocol: ParamSpecEntry[str] = param_values(
-        ["VALID_PROTOCOLFILE"], 
-        [INVALID_FILE]
-        )
+        [VALID_PROTOCOLFILE], [INVALID_FILE]
+    )
     taskfile1_task2_settings: ParamSpecEntry[str] = param_values(
-        ["VALID_SETTINGSFILE"], 
-        [INVALID_FILE]
-        )
+        [VALID_SETTINGSFILE], [INVALID_FILE]
+    )
     taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
             ["1 1 1 1", "I I I"]
@@ -174,17 +168,14 @@ class AcquisitionParameterSpec(ParameterSpec):
         ["#TaskX"]
         )
     taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
-        ["VALID_SPREADFILE"], 
-        [INVALID_FILE]
-        )
+        [VALID_SPREADFILE], [INVALID_FILE]
+    )
     taskfile2_task1_protocol: ParamSpecEntry[str] = param_values(
-        ["VALID_PROTOCOLFILE"],
-        [INVALID_FILE]
-        )
+        [VALID_PROTOCOLFILE], [INVALID_FILE]
+    )
     taskfile2_task1_settings: ParamSpecEntry[str] = param_values(
-        ["VALID_SETTINGSFILE"], 
-        [INVALID_FILE]
-        )
+        [VALID_SETTINGSFILE], [INVALID_FILE]
+    )
     taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
             ["1 1 1 1", "I I I"]
@@ -194,18 +185,13 @@ class AcquisitionParameterSpec(ParameterSpec):
         ["Task2"], 
         []
         )
-    taskfile2_task2_spread: ParamSpecEntry[str] = param_values(
-        ["VALID_SPREADFILE"],
-        []
-        )
+    taskfile2_task2_spread: ParamSpecEntry[str] = param_values([VALID_SPREADFILE], [])
     taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(
-        ["VALID_PROTOCOLFILE"],
-        []
-        )
+        [VALID_PROTOCOLFILE], []
+    )
     taskfile2_task2_settings: ParamSpecEntry[str] = param_values(
-        ["VALID_SETTINGSFILE"], 
-        []
-        )
+        [VALID_SETTINGSFILE], []
+    )
     taskfile2_task2_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
             []
