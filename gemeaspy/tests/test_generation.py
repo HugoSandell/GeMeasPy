@@ -8,22 +8,24 @@ import random
 import subprocess
 import sys
 import tempfile
-
 from dataclasses import dataclass
 from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
 from gemeaspy.tests import logging
-from gemeaspy.tests.parameter_spec import (Constraint, ParamSpecEntry, ParameterSpec,
-                                            ParameterValue, param_values)
+from gemeaspy.tests.parameter_spec import (
+    Constraint,
+    ParameterSpec,
+    ParameterValue,
+    ParamSpecEntry,
+    acts_type,
+    param_values,
+)
 from gemeaspy.tests.test_case import TestCase
+from gemeaspy.tests.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
-
-_ACTS_PARAMETER_TYPE_NUM = "0"
-_ACTS_PARAMETER_TYPE_ENUM = "1"
-_ACTS_PARAMETER_TYPE_BOOLEAN = "2"
 
 _ACTS_JAR = f"{_ROOT_PATH}/bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
@@ -31,28 +33,6 @@ _ACTS_CONSTRAINT_HANDLER = "forbiddentuples" # 'solver' or 'forbiddentuples' -- 
 _ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a problem
 _ACTS_HEAP = "4G" # How much heap space to allocate to java (Suffix G for gigabytes, M for Megabytes)
 
-# It is unfortunately necessary to replace some characters for ACTS
-ACTS_ENUM_UNSAFE_CHARS = ["\"", ",", "&", "%", "+", "<", ">", "="]
-def string_to_acts_enum(s: str) -> str:
-    """Replace unsafe characters for processing in ACTS"""
-    for char in ACTS_ENUM_UNSAFE_CHARS:
-        s = s.replace(char, f"@{char.encode("ascii").hex()}@")
-    return s
-def acts_enum_to_string(s: str) -> str:
-    """Recover unsafe characters from ACTS"""
-    for char in ACTS_ENUM_UNSAFE_CHARS:
-        s = s.replace(f"@{char.encode("ascii").hex()}@", char)
-    return s
-
-def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> str:
-    """Determine the appropriate ACTS type for the given parameter"""
-    if type(parameter_values) == tuple:
-        parameter_values = [value for component in parameter_values for value in component]
-    if all(isinstance(v, bool) for v in parameter_values):
-        return _ACTS_PARAMETER_TYPE_BOOLEAN
-    if all(isinstance(v, int) for v in parameter_values):
-        return _ACTS_PARAMETER_TYPE_NUM
-    return _ACTS_PARAMETER_TYPE_ENUM
 
 def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
     """Generate a temporary ACTS configuration file and return its path"""

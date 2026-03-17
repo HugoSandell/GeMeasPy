@@ -1,12 +1,16 @@
 """Specification for parameter names and values. Used as input for test generation."""
+
+import json
+
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Any, TypeAlias, TypeVar
 from types import NoneType
+from typing import Any, TypeAlias, TypeVar
 
+from gemeaspy.tests import util
 from gemeaspy.tests.parameters import ParameterValue
-from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
+from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -206,6 +210,24 @@ class Constraint:
         return self.text
 
 
+_ACTS_PARAMETER_TYPE_NUM = "0"
+_ACTS_PARAMETER_TYPE_ENUM = "1"
+_ACTS_PARAMETER_TYPE_BOOLEAN = "2"
+
+
+def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> str:
+    """Determine the appropriate ACTS type for the given parameter"""
+    if type(parameter_values) is tuple:
+        parameter_values = [
+            value for component in parameter_values for value in component
+        ]
+    if all(isinstance(v, bool) for v in parameter_values):
+        return _ACTS_PARAMETER_TYPE_BOOLEAN
+    if all(isinstance(v, int) for v in parameter_values):
+        return _ACTS_PARAMETER_TYPE_NUM
+    return _ACTS_PARAMETER_TYPE_ENUM
+
+
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
 
 def constraints_for_empty_task(N_param: str, element: str, element_index: int) -> list[Constraint]:
@@ -219,8 +241,9 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
     antecedent = f"{N_param} < {element_index}"
     for element_suffix in suffixes:
         parameter_name = element + element_suffix
-        parameter_base_case = ACQUISITION_PARAM_SPEC[parameter_name][0][0]
-        if type(parameter_base_case) == str:
+        parameter = ACQUISITION_PARAM_SPEC[parameter_name]
+        parameter_base_case = util.string_to_acts_enum(json.dumps(parameter[0][0]))
+        if acts_type(parameter) == _ACTS_PARAMETER_TYPE_ENUM:
             parameter_base_case = f'"{parameter_base_case}"'
         consequent = f" => {parameter_name} == {parameter_base_case}"
         constraints.append(

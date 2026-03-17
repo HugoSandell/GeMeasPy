@@ -42,5 +42,5 @@ test_data/
 uv.lock
 
 #ACTS
-bin/ACTS/acts.log.lck
-bin/ACTS/LastOpenedFiles.xml
+acts.log.lck
+LastOpenedFiles.xml
