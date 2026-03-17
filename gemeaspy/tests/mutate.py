@@ -1,16 +1,16 @@
-import sys
 import os
-import typing
-from time import time
+import sys
+import time
 
-import gemeaspy
 import cosmic_ray.config
 import cosmic_ray.work_db
-
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.work_db import WorkDB
 from cosmic_ray.work_item import WorkItem
+
+import gemeaspy
+
 
 def main():
     ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
@@ -47,12 +47,12 @@ def main():
         # Reinitialise
         if os.path.isfile(cr_session_file):
             os.remove(cr_session_file)
-        start_time = time() 
+        start_time = time.monotonic()
         with cosmic_ray.work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:
             work_baseline = WorkItem("baseline", [])
             db.add_work_item(work_baseline)
             cr_execute(work_db=db, config=config)
-        execution_time = time() - start_time
+        execution_time = time.monotonic() - start_time
         print(f"'{generator}' done in {execution_time} seconds. Session is written to {cr_session_file}.")
     print("Testing complete!")
 
