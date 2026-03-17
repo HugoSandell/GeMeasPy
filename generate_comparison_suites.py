@@ -1,11 +1,12 @@
-from collections.abc import Callable
 import json
-import typing
+import time
+from collections.abc import Callable
 
 from gemeaspy.tests import test_generation
-from time import time
-
-from gemeaspy.tests.parameter_spec import ACQUISITION_CONSTRAINTS, ACQUISITION_PARAM_SPEC
+from gemeaspy.tests.parameter_spec import (
+    ACQUISITION_CONSTRAINTS,
+    ACQUISITION_PARAM_SPEC,
+)
 from gemeaspy.tests.test_case import TestCase
 
 _SEC = 1.0
@@ -16,9 +17,9 @@ MAX_EXECUTION_TIME: float = 00 * _HOUR + 3 * _MIN + 0 * _SEC
 
 def timer[T](f: Callable[..., T]) -> Callable[..., tuple[T, float]]:
     def _f(*args) -> tuple[T, float]:
-        start_time = time()
+        start_time = time.monotonic()
         retval = f(*args)
-        end_time = time()
+        end_time = time.monotonic()
         return (retval, end_time - start_time)
     return _f
 
