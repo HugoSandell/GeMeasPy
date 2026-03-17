@@ -1,7 +1,10 @@
 import datetime
 import os
+from pathlib import Path, PurePosixPath
 from shutil import rmtree
 from typing import Any, TextIO
+
+from paramiko import SFTPClient
 
 from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.connections import SSHConnection
@@ -186,6 +189,26 @@ def remove_control_files(connection: SSHConnection, task_list: list[dict[str, An
     connection.send_command_shell(command)
     return project
 
+def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localpath: str | Path):
+    """Recursively transfer remote path to local file system"""
+    S_IFDIR =   0o0040000 # directory flag
+    remotepath = PurePosixPath(remotepath)
+    localpath = Path(localpath)
+    exploration_queue = [PurePosixPath(".")]
+    while len(exploration_queue) > 0:
+        path = exploration_queue.pop()
+        path_full_remote = remotepath.joinpath(path)
+        path_full_local = localpath.joinpath(path)
+        print(path_full_remote)
+        path_attr = sftp.stat(path_full_remote.as_posix())
+        path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
+        if not path_is_dir:
+            os.makedirs(path_full_local.parent, exist_ok=True)
+            sftp.get(path_full_remote.as_posix(), path_full_local)
+            continue
+        files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
+        exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
+
 def transfer_project(connection: SSHConnection) -> None:
     if not connection or not connection.ssh:
         raise Exception("No Active Connection")
@@ -208,17 +231,14 @@ def transfer_project(connection: SSHConnection) -> None:
     transport = connection.ssh.get_transport()
     if not transport:
         raise Exception("Connection is missing transport")
-    ip, port = transport.getpeername()
-    os.system(
-        "sftp -r -P {4:} root@{0:}:{1:}/{3:}/ {2:}/{3:}/".format(
-            ip,
-            config.TERRAMETER_PROJECTS_FOLDER,
-            config.LOCAL_PATH_TO_DATA,
-            project,
-            port,
-        )
-    )
-
+    
+    sftp = SFTPClient.from_transport(transport)
+    if not sftp:
+        raise Exception("Failed to create SFTPClient from transport")
+    
+    localpath = f"{config.LOCAL_PATH_TO_DATA}/{project}"
+    remotepath = f"{config.TERRAMETER_PROJECTS_FOLDER}/{project}"
+    transfer_recursive(sftp, remotepath, localpath)
 
 def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
