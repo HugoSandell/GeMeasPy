@@ -45,6 +45,3 @@ def test_main(test_case: AcquisitionTestCase, config, task_files):
             future.result(timeout=10)
         except futures.TimeoutError as e:
             pytest.fail("Call timed out")
-        except Exception as e:
-            e.add_note("PORT: " + str(test_case.parameters.connection_port))
-            raise
