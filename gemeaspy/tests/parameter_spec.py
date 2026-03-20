@@ -106,7 +106,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         IntFieldError, [IntFieldError.CORRECT]
     )
     """The error of the number of tasks count. 0 - No error"""
-    taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
+    taskfile1_relay_type: ParamSpecEntry[str] = param_values(["0"], [""])
     taskfile2_number_of_tasks: ParamSpecEntry[int] = param_values([
         0,
         1,
