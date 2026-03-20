@@ -1,10 +1,13 @@
 """For generating tasklist files from test case parameters."""
+
 import tempfile
-import typing
+from collections.abc import Callable
+from typing import Any
 
 from gemeaspy.tests import parameter_spec
 from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.util import random_string
+
 
 def _replace_file_placeholder(value: str):
     match value:
@@ -16,36 +19,28 @@ def _replace_file_placeholder(value: str):
 
 def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
-    
-    def param_as_str(param: str, prefix: str = prefix) -> str:
-        """Get the given attribute of test case as str or throw an exception."""
-        return str(test_case.parameters[prefix + param])
-            
-    number_of_tasks = param_as_str("number_of_tasks")
-    relay_type = param_as_str("relay_type")
+
+    def param[T](param: str, t: Callable[[Any], T], prefix: str = prefix) -> T:
+        """Get the given attribute of test case as type `t` or throw an exception."""
+        return t(test_case.parameters[prefix + param])
+
+    number_of_tasks = param("number_of_tasks", int)
+    num_tasks_error = param("number_of_tasks_error", int)
+    relay_type = param("relay_type", str)
 
     f = tempfile.NamedTemporaryFile(
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
     )
+    f.write(f"{number_of_tasks + num_tasks_error} {relay_type}\n")
 
-    num_tasks_error: int = typing.cast(int, test_case.parameters[f"taskfile{file_no}_number_of_tasks_error"])
-    
-    try:
-        number_of_tasks_int: int = int(number_of_tasks)
-        f.write(f"{number_of_tasks_int + num_tasks_error} {relay_type}\n")
-    except ValueError:
-        number_of_tasks_int: int = 1
-        f.write(f"{number_of_tasks} {relay_type}\n")
-    
-
-    for taskid in range(1, number_of_tasks_int + 1):
+    for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
-        f.write(f"{param_as_str('name', task_prefix)}\n")
-        f.write(f"{_replace_file_placeholder(param_as_str('spread', task_prefix))}\n")
-        f.write(f"{_replace_file_placeholder(param_as_str('protocol', task_prefix))}\n")
-        f.write(f"{_replace_file_placeholder(param_as_str('settings', task_prefix))}\n")
-        f.write(f"{param_as_str('spacing', task_prefix)}\n")
-    
+        f.write(f"{param('name', str, task_prefix)}\n")
+        f.write(f"{_replace_file_placeholder(param('spread', str, task_prefix))}\n")
+        f.write(f"{_replace_file_placeholder(param('protocol', str, task_prefix))}\n")
+        f.write(f"{_replace_file_placeholder(param('settings', str, task_prefix))}\n")
+        f.write(f"{param('spacing', str, task_prefix)}\n")
+
     f.close()
     return f
 
