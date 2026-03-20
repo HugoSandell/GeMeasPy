@@ -1,16 +1,16 @@
 """Specification for parameter names and values. Used as input for test generation."""
 
 import json
-
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
 from gemeaspy.tests import util
 from gemeaspy.tests.parameters import ParameterValue
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
-from gemeaspy.tests.test_case import TestCase, AcquisitionTestCase
+from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -36,6 +36,16 @@ def param_values[T](valid: Sequence[T], invalid: Sequence[T] | None = None) -> P
     if type(valid) != list or (invalid != None and type(invalid) != list):
         raise TypeError(f"Arguments must be lists! Got {type(valid)}, {type(invalid)}")
     return field(default_factory=lambda: (valid, invalid if invalid else []))
+
+
+def enum_param_values[T: Enum](enum: type[T], valid: Sequence[T]) -> ParamSpecEntry:
+    return field(
+        default_factory=lambda: (
+            [v.name for v in valid],
+            [v.name for v in enum if v not in valid],
+        )
+    )
+
 
 @dataclass
 class ParameterSpec:
@@ -120,14 +130,10 @@ class AcquisitionParameterSpec(ParameterSpec):
     )
     
     # emulator
-    emulator_behaviour: ParamSpecEntry[str] = field(
-        default_factory=lambda:
-            (
-                [TerrameterBehaviour.IDEAL.name], 
-                [b.name for b in TerrameterBehaviour if b is not TerrameterBehaviour.IDEAL]
-            )
-        )
-    
+    emulator_behaviour: ParamSpecEntry[str] = enum_param_values(
+        TerrameterBehaviour, [TerrameterBehaviour.IDEAL]
+    )
+
     # Tasks 
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
         ["Task1"], 
