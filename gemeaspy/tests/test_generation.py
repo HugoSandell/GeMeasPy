@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import TypeAlias, cast
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
@@ -26,13 +26,13 @@ from gemeaspy.tests.test_case import TestCase, TestCaseParameters
 from gemeaspy.tests.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
+_INPUT_CACHE_PATH = f"{_ROOT_PATH}/test_data/input_cache"
 
 _ACTS_JAR = f"{_ROOT_PATH}/bin/ACTS/acts_3.3.jar"
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
 _ACTS_CONSTRAINT_HANDLER = "forbiddentuples" # 'solver' or 'forbiddentuples' -- same result, but solver may be faster for complex constraints.
 _ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a problem
 _ACTS_HEAP = "4G" # How much heap space to allocate to java (Suffix G for gigabytes, M for Megabytes)
-
 
 def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
@@ -65,9 +65,36 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     os.close(fd)
     return path
 
+def try_load_cache(param_spec: ParameterSpec, id_str: str) -> None | list[TestCase[TestCaseParameters]]:
+    cache_file_path = f"{_INPUT_CACHE_PATH}/{type(param_spec).__name__}_{id_str}.json"
+    if not os.path.isfile(cache_file_path):
+        return None
+    with open(cache_file_path, "r") as fp:
+        suite_json = json.load(fp)
+        if type(suite_json) != list:
+            raise TypeError(f"Expected list in input cache file '{cache_file_path}'")
+    suite = []
+    for case_json in suite_json:
+        parameters_json = case_json["parameters"]
+        case = param_spec.TestCaseType()
+        case.expect_failure = case_json["expect_failure"]
+        for param_name in case.parameters:
+            case.parameters[param_name] = parameters_json[param_name]
+        suite.append(case)
+    return suite
+
+def save_cache[T: TestCase](suite: list[T], param_spec: ParameterSpec, id_str: str):
+    cache_file_path = f"{_INPUT_CACHE_PATH}/{type(param_spec).__name__}_{id_str}.json"
+    with open(cache_file_path, "w") as fp:
+        json.dump([{"parameters": case.parameters.__dict__, "expect_failure": case.expect_failure} for case in suite], fp)
 
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
+    
+    # Check cache
+    cache = try_load_cache(param_spec, f"t{strength}")
+    if cache != None:
+        return cache
 
     if not os.path.exists(_ACTS_JAR):
         raise FileNotFoundError(f"ACTS was not found at {_ACTS_JAR}")
@@ -147,11 +174,18 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             case.expect_failure = case.expect_failure or is_invalid
         test_data.append(case)
     logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
+    save_cache(test_data, param_spec, f"t{strength}")
     return test_data
 
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
+    
+    # Check cache
+    cache = try_load_cache(param_spec, f"n{case_count}_s{RNGSeed}")
+    if cache != None:
+        return cache
+    
     random.seed(seed)
     
     def is_duplicate(case_a: int, case_b: int):
@@ -224,6 +258,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         assert not is_duplicate(case_a, case_b)
 
     logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
+    save_cache(test_data, param_spec, f"n{case_count}_s{RNGSeed}")
     return test_data
 
 # For manual testing
