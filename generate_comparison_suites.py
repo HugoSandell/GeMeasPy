@@ -40,12 +40,12 @@ def generate_random_array(size: int) -> list[AcquisitionTestCase]:
     ))
 
 def save_acts_suite(strength: int, suite: list[AcquisitionTestCase]):
-    filename = f"{test_generation._ROOT_PATH}/test_data/suite_acts_{strength}.json"
+    filename = f"{test_generation._ROOT_PATH}/test_data/input_cache/suite_acts_{strength}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
 
 def save_random_suite(strength_equivalent: int, suite: list[AcquisitionTestCase]):
-    filename = f"{test_generation._ROOT_PATH}/test_data/suite_random_{strength_equivalent}.json"
+    filename = f"{test_generation._ROOT_PATH}/test_data/input_cache/suite_random_{strength_equivalent}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
 
