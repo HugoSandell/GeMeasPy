@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from gemeaspy.tests import parameter_spec
+from gemeaspy.tests.int_field_error import IntFieldError
 from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.util import random_string
 
@@ -21,17 +22,17 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
 
     def param[T](param: str, t: Callable[[Any], T], prefix: str = prefix) -> T:
-        """Get the given attribute of test case as type `t` or throw an exception."""
+        """Get the given attribute of test case as `T` or throw an exception."""
         return t(test_case.parameters[prefix + param])
 
     number_of_tasks = param("number_of_tasks", int)
-    num_tasks_error = param("number_of_tasks_error", int)
+    num_tasks_error = param("number_of_tasks_error", IntFieldError.__getitem__)
     relay_type = param("relay_type", str)
 
     f = tempfile.NamedTemporaryFile(
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
     )
-    f.write(f"{number_of_tasks + num_tasks_error} {relay_type}\n")
+    f.write(f"{num_tasks_error.resolve(number_of_tasks)} {relay_type}\n")
 
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"

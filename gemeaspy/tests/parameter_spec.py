@@ -8,6 +8,7 @@ from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
 from gemeaspy.tests import util
+from gemeaspy.tests.int_field_error import IntFieldError
 from gemeaspy.tests.parameters import ParameterValue
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
 from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
@@ -101,7 +102,9 @@ class AcquisitionParameterSpec(ParameterSpec):
         1,
         2,
     ])
-    taskfile1_number_of_tasks_error: ParamSpecEntry[int] = param_values([0], [-1, +1])
+    taskfile1_number_of_tasks_error: ParamSpecEntry[str] = enum_param_values(
+        IntFieldError, [IntFieldError.CORRECT]
+    )
     """The error of the number of tasks count. 0 - No error"""
     taskfile1_relay_type: ParamSpecEntry[str] = param_values(["", "0"])
     taskfile2_number_of_tasks: ParamSpecEntry[int] = param_values([
@@ -109,7 +112,9 @@ class AcquisitionParameterSpec(ParameterSpec):
         1,
         2,
     ])
-    taskfile2_number_of_tasks_error: ParamSpecEntry[int] = param_values([0], [-1, +1])
+    taskfile2_number_of_tasks_error: ParamSpecEntry[str] = enum_param_values(
+        IntFieldError, [IntFieldError.CORRECT]
+    )
     """The error of the number of tasks count. 0 - No error"""
     taskfile2_relay_type: ParamSpecEntry[str] = param_values([
         "0"
