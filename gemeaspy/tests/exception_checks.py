@@ -34,11 +34,13 @@ class ExceptionCheck:
 
 
 NO_TASK_FILES_CHECK = ExceptionCheck(match="No task file provided")
-FILE_NOT_FOUND_CHECK = ExceptionCheck(FileNotFoundError)
-
+FILE_NOT_FOUND_CHECK = ExceptionCheck(FileNotFoundError)    
 
 def check_exception(test_case: AcquisitionTestCase):
     exception_checks = []
+
+    if test_case.expect_failure:
+        exception_checks.append(ExceptionCheck(Exception))
 
     if len(test_case.parameters.arg_task_files) == 0:
         exception_checks.append(NO_TASK_FILES_CHECK)

@@ -1,6 +1,9 @@
 """PyTest entry point for end-to-end testing of acquisition."""
+from contextlib import nullcontext
+from concurrent import futures
 import os
 
+from coverage import debug
 import pytest
 
 from gemeaspy.acquisition import run_acquisition
@@ -9,6 +12,7 @@ from gemeaspy.tests import exception_checks, setup_config, setup_task_files
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.test_case import AcquisitionTestCase
 
+ACQUISITION_TIMEOUT = 10.0 # The greatest amount of time to wait for acquisition to finish
 
 @pytest.fixture
 def emulator():
@@ -25,14 +29,22 @@ def config(test_case: AcquisitionTestCase, emulator):
     yield
     cleanup()
 
-
 @pytest.fixture
 def task_files(test_case: AcquisitionTestCase):
     task_files, cleanup = setup_task_files.resolve_task_files(test_case)
     yield task_files
     cleanup()
-
+    
 
 def test_main(test_case: AcquisitionTestCase, config, task_files):
-    with exception_checks.check_exception(test_case):
-        run_acquisition([main_file_path] + task_files)
+    executor = futures.ThreadPoolExecutor(max_workers=1)
+        
+    with exception_checks.check_exception(test_case): 
+        future = executor.submit(run_acquisition, [main_file_path] + task_files)
+        try: 
+            future.result(timeout=10)
+        except futures.TimeoutError as e:
+            pytest.fail("Call timed out")
+        except Exception as e:
+            e.add_note("PORT: " + str(test_case.parameters.connection_port))
+            raise
