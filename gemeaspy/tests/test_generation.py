@@ -85,6 +85,7 @@ def try_load_cache(param_spec: ParameterSpec, id_str: str) -> None | list[TestCa
 
 def save_cache[T: TestCase](suite: list[T], param_spec: ParameterSpec, id_str: str):
     cache_file_path = f"{_INPUT_CACHE_PATH}/{type(param_spec).__name__}_{id_str}.json"
+    os.makedirs(_INPUT_CACHE_PATH, exist_ok=True)
     with open(cache_file_path, "w") as fp:
         json.dump([{"parameters": case.parameters.__dict__, "expect_failure": case.expect_failure} for case in suite], fp)
 
