@@ -12,7 +12,8 @@ _SEC = 1.0
 _MIN = 60.0 * _SEC
 _HOUR = 60.0 * _MIN
 
-MAX_EXECUTION_TIME: float = 00 * _HOUR + 3 * _MIN + 0 * _SEC
+MAX_EXECUTION_TIME: float = 00 * _HOUR + 60 * _MIN + 0 * _SEC
+MAX_STRENGTH: int = 6
 
 def timer[T](f: Callable[..., T]) -> Callable[..., tuple[T, float]]:
     def _f(*args) -> tuple[T, float]:
@@ -36,7 +37,7 @@ def generate_random_array(size: int) -> list[AcquisitionTestCase]:
     return cast(list[AcquisitionTestCase], test_generation.generate_random_data(
         param_spec=ACQUISITION_PARAM_SPEC,
         case_count=size,
-        seed=0
+        seed=None
     ))
 
 def save_acts_suite(strength: int, suite: list[AcquisitionTestCase]):
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     
     suite_sizes: dict[int, int] = {}
     
-    while last_execution_time < MAX_EXECUTION_TIME:
+    while last_execution_time < MAX_EXECUTION_TIME and t <= MAX_STRENGTH:
         print(f"Running ACTS generator with t={t}")
         try:
             test_suite, last_execution_time = generate_covering_array(t)
