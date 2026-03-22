@@ -170,10 +170,10 @@ class TerrameterShell(Cmd):
         if self.is_pty:
             self.print_line_sh(line)
         
-        if self.terrameter_cli_active:
+        if self.terrameter_cli_active and len(line) > 0:
             # Forward to parser for terrameter commands
             cmd = line[0]
-            arg = line[1:]
+            arg = "" if len(line) == 1 else line[1:]
             self._do_terrameter_command(cmd, arg)
             return ""
         
