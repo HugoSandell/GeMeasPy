@@ -13,7 +13,7 @@ from typing import TypeAlias, cast
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
-from gemeaspy.tests import logging
+from gemeaspy.tests import _logging
 from gemeaspy.tests.parameter_spec import (
     Constraint,
     ParameterSpec,
@@ -115,20 +115,20 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         path_escape(out_file_path)
     ]
 
-    logging.debug(f"Executing ACTS. Command: {' '.join(acts_arguments)}")
+    _logging.debug(f"Executing ACTS. Command: {' '.join(acts_arguments)}")
     try:
         acts_out = subprocess.check_output([*acts_arguments], timeout=_ACTS_TIMEOUT).decode()
     except subprocess.CalledProcessError as e:
         e.add_note(f"ACTS exited with code {e.returncode}")
         e.add_note(f"Arguments: {e.args}")
         e.add_note(f"Output: \n{e.output}")
-        logging.error(f"ACTS exited with code {e.returncode} and output:\n{e.output}")
+        _logging.error(f"ACTS exited with code {e.returncode} and output:\n{e.output}")
         raise
     except subprocess.TimeoutExpired as e:
         raise TimeoutError()
     except Exception as e:
         e.add_note("ACTS could not be executed!")
-        logging.error(f"subprocess could not execute ACTS: {str(e)}")
+        _logging.error(f"subprocess could not execute ACTS: {str(e)}")
         raise
     finally:
         os.remove(acts_config_path)
@@ -138,7 +138,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         e = Exception("ACTS failed but exited normally")
         e.add_note(f"Command: {" ".join(acts_arguments)}")
         e.add_note(f"Output: \n{acts_out}")
-        logging.error(f"ACTS appears to have failed: {acts_out}")
+        _logging.error(f"ACTS appears to have failed: {acts_out}")
         raise e
     
     csv_rows = []
@@ -161,7 +161,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         if validate:
             validation_result = param_spec.validate_parameter(name, value)
             if validation_result != None:
-                logging.error(f"Parameter from ACTS failed to validate: {name} = {value}")
+                _logging.error(f"Parameter from ACTS failed to validate: {name} = {value}")
                 raise validation_result
         return value
     
@@ -174,7 +174,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
             case.expect_failure = case.expect_failure or is_invalid
         test_data.append(case)
-    logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
+    _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     save_cache(test_data, param_spec, f"t{strength}")
     return test_data
 
@@ -195,7 +195,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
                 return False
         return True
     
-    logging.debug("Random test case generator starting.")
+    _logging.debug("Random test case generator starting.")
 
     def product(iterable) -> int: 
         return functools.reduce(lambda product, x: product * x, iterable, 1)
@@ -258,7 +258,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
     for case_a, case_b in itertools.combinations(range(case_count), 2):
         assert not is_duplicate(case_a, case_b)
 
-    logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
+    _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
     save_cache(test_data, param_spec, f"n{case_count}_s{seed}")
     return test_data
 

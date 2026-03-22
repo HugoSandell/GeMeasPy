@@ -1,7 +1,7 @@
 """Logger for test code"""
-import logging as _logging
+import logging
 
-logger = _logging.Logger("gemeaspy_tests", _logging.DEBUG)
+logger = logging.Logger("gemeaspy_tests", logging.DEBUG)
 
 debug = logger.debug
 critical = logger.critical
@@ -19,8 +19,8 @@ def initialise_logger():
     log_format = "%(asctime)s %(levelname)-6s [%(module)s:%(lineno)s] %(message)s"
     log_date_format = "%Y-%m-%d %H:%M:%S"
     
-    general_formatter = _logging.Formatter(log_format, log_date_format)
-    tests_handler = _logging.FileHandler(log_file_path)
+    general_formatter = logging.Formatter(log_format, log_date_format)
+    tests_handler = logging.FileHandler(log_file_path)
     tests_handler.setFormatter(general_formatter)
     logger.addHandler(tests_handler)
 
