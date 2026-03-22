@@ -211,7 +211,7 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
             files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
             exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
         except FileNotFoundError as e:
-            logging.warning(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote}': {e.strerror}")
+            logging.warning(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote.as_posix()}': {e.strerror}")
 
 def transfer_project(connection: SSHConnection) -> None:
     if not connection or not connection.ssh:
