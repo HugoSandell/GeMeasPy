@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
@@ -195,19 +196,22 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
     remotepath = PurePosixPath(remotepath)
     localpath = Path(localpath)
     exploration_queue = [PurePosixPath(".")]
+
     while len(exploration_queue) > 0:
         path = exploration_queue.pop()
         path_full_remote = remotepath.joinpath(path)
         path_full_local = localpath.joinpath(path)
-        print(path_full_remote)
-        path_attr = sftp.stat(path_full_remote.as_posix())
-        path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
-        if not path_is_dir:
-            os.makedirs(path_full_local.parent, exist_ok=True)
-            sftp.get(path_full_remote.as_posix(), path_full_local)
-            continue
-        files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
-        exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
+        try:
+            path_attr = sftp.stat(path_full_remote.as_posix())
+            path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
+            if not path_is_dir:
+                os.makedirs(path_full_local.parent, exist_ok=True)
+                sftp.get(path_full_remote.as_posix(), path_full_local)
+                continue
+            files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
+            exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
+        except FileNotFoundError as e:
+            logging.warning(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote}': {e.strerror}")
 
 def transfer_project(connection: SSHConnection) -> None:
     if not connection or not connection.ssh:
