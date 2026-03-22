@@ -180,10 +180,10 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
 
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
-def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = 0) -> list[TestCase]:
+def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None) -> list[TestCase]:
     
     # Check cache
-    cache = try_load_cache(param_spec, f"n{case_count}_s{RNGSeed}")
+    cache = try_load_cache(param_spec, f"n{case_count}_s{seed}")
     if cache != None:
         return cache
     
@@ -259,7 +259,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         assert not is_duplicate(case_a, case_b)
 
     logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
-    save_cache(test_data, param_spec, f"n{case_count}_s{RNGSeed}")
+    save_cache(test_data, param_spec, f"n{case_count}_s{seed}")
     return test_data
 
 # For manual testing
