@@ -4,7 +4,6 @@ import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
 from typing import Any, TextIO
-
 from paramiko import SFTPClient
 
 from gemeaspy.acquisition import utilities
@@ -206,7 +205,11 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
             path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
             if not path_is_dir:
                 os.makedirs(path_full_local.parent, exist_ok=True)
-                sftp.get(path_full_remote.as_posix(), path_full_local)
+                logging.debug(f"Transferring: {path_full_remote.as_posix()} -> {path_full_local.as_posix()}")
+                sftp.get(path_full_remote.as_posix(), path_full_local.as_posix())
+                if not os.path.exists(path_full_local.as_posix()):
+                    raise SystemError("Transfer Failed! Local file was not created.")
+                else: logging.debug(f"Successfully Transferred: {path_full_local.as_posix()}")
                 continue
             files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
             exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
@@ -242,6 +245,7 @@ def transfer_project(connection: SSHConnection) -> None:
     
     localpath = f"{config.LOCAL_PATH_TO_DATA}/{project}"
     remotepath = f"{config.TERRAMETER_PROJECTS_FOLDER}/{project}"
+    logging.info(f"Transferring Recursively: {localpath} -> {remotepath}")
     transfer_recursive(sftp, remotepath, localpath)
 
 def check_transfer(connection: SSHConnection) -> bool:
