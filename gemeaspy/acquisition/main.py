@@ -42,26 +42,26 @@ def run_acquisition(argv: list[str]) -> int:
     except ChannelException as e:
         print("Error: Failed to create SSH shell channel to Terrameter!")
         if verbose:
-            print(traceback.format_exc(), sys.stderr)
+            traceback.print_exception(e, file=sys.stderr)
         logging.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
         return 3
     except ConfigFileError as e:
         print(f"Error: {e.msg} ({e.file})")
         logging.error(f"ConfigFileError - [{e.file}] {e.msg}", exc_info=True)
         if verbose:
-            print(traceback.format_exc(), sys.stderr)
+            traceback.print_exception(e, file=sys.stderr)
         return 4
     except TransferError as e:
         print(f"Error: Project transfer failed - {e.msg} ({e.file})")
         logging.error(f"TransferError - [{e.file}] {e.msg}", exc_info=True)
         if verbose:
-            print(traceback.format_exc(), sys.stderr)
+            traceback.print_exception(e, file=sys.stderr)
         return 5
     except Exception as e:
         print(f"Error: An unexpected error occured. Check logs for more information.")
-        logging.error(f"{str(type(e))} - {e}", exc_info=True)
+        logging.error(f"Unhandled exception.", exc_info=True)
         if verbose:
-            print(traceback.format_exc(), sys.stderr)
+            traceback.print_exception(e, file=sys.stderr)
         return 1
     return 0
 
