@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from gemeaspy.acquisition.instruments import Terrameter
@@ -14,6 +15,7 @@ def run_task_file(task_file) -> None:
     ls.disconnect()
 
 def run_acquisition(argv: list[str]):
+    logging.getLogger("paramiko").setLevel(logging.ERROR)
     nargs = len(argv)
     if nargs == 1:
         task_file = None
