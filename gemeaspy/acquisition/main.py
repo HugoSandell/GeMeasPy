@@ -5,7 +5,7 @@ import traceback
 
 from paramiko import ChannelException
 
-from gemeaspy.acquisition.error import ConfigFileError, TransferError
+from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TransferError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
@@ -57,6 +57,12 @@ def run_acquisition(argv: list[str]) -> int:
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 5
+    except SSHConnectionError as e:
+        print(f"Error: A connection error occured - {e.msg}")
+        logging.error(f"SSHConnectionError - [{e.params}] {e.msg}", exc_info=True)
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        return 6
     except Exception as e:
         print(f"Error: An unexpected error occured. Check logs for more information.")
         logging.error(f"Unhandled exception.", exc_info=True)
