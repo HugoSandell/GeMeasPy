@@ -16,7 +16,7 @@ def _evaluate_valid(test_data, stdout: str, stderr:str) -> OracleResult:
     
     err_pos = stdout.find("Error: ")
     if err_pos >= 0:
-        _logging.info(f"SUT failed with stdout:\n{stdout}\nstderr:\n{stderr}", exc_info=True)
+        _logging.info(f"SUT failed with stdout:\n{stdout}\nstderr:\n{stderr}")
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
     
     # Looks clean
