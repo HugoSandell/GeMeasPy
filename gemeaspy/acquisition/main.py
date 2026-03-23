@@ -1,5 +1,7 @@
 import logging
+import os
 import sys
+import traceback
 
 from paramiko import ChannelException
 
@@ -19,6 +21,9 @@ def run_task_file(task_file) -> None:
 
 def run_acquisition(argv: list[str]) -> int:
     logging.getLogger("paramiko").setLevel(logging.ERROR)
+    
+    verbose = "DEBUG" in os.environ
+    
     nargs = len(argv)
     if nargs == 1:
         task_file = None
@@ -36,19 +41,27 @@ def run_acquisition(argv: list[str]) -> int:
     # NOTE: All fatal exceptions shall start with 'Error:'
     except ChannelException as e:
         print("Error: Failed to create SSH shell channel to Terrameter!")
-        logging.error(f"ChannelException - [{e.code}] {e.text}")
+        if verbose:
+            print(traceback.format_exc(), sys.stderr)
+        logging.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
         return 3
     except ConfigFileError as e:
         print(f"Error: {e.msg} ({e.file})")
-        logging.error(f"ConfigFileError - [{e.file}] {e.msg}")
+        logging.error(f"ConfigFileError - [{e.file}] {e.msg}", exc_info=True)
+        if verbose:
+            print(traceback.format_exc(), sys.stderr)
         return 4
     except TransferError as e:
         print(f"Error: Project transfer failed - {e.msg} ({e.file})")
-        logging.error(f"TransferError - [{e.file}] {e.msg}")
+        logging.error(f"TransferError - [{e.file}] {e.msg}", exc_info=True)
+        if verbose:
+            print(traceback.format_exc(), sys.stderr)
         return 5
     except Exception as e:
         print(f"Error: An unexpected error occured. Check logs for more information.")
-        logging.error(f"{str(type(e))} - {e}")
+        logging.error(f"{str(type(e))} - {e}", exc_info=True)
+        if verbose:
+            print(traceback.format_exc(), sys.stderr)
         return 1
     return 0
 

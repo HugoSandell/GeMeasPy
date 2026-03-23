@@ -1,10 +1,14 @@
 from functools import reduce
+import os
 
 import pytest
 
 from gemeaspy.tests import test_generation
 from gemeaspy.tests.parameter_spec import ACQUISITION_PARAM_SPEC
 
+@pytest.fixture(autouse=True)
+def environment_variable_debug():
+    os.environ["DEBUG"] = "1"
 
 def pytest_addoption(parser: pytest.Parser):
     parser.addoption("--generator", "-G", dest="generator", type=str, default="acts", help="Specify which test case generator to use ('random' or 'acts')")
