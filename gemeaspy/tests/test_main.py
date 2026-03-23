@@ -36,7 +36,7 @@ def task_files(test_case: AcquisitionTestCase):
     cleanup()
     
 
-def test_main(test_case: AcquisitionTestCase, config, task_files):
+def test_main(test_case: AcquisitionTestCase, config, task_files, capsys: pytest.CaptureFixture):
     executor = futures.ThreadPoolExecutor(max_workers=1)
         
     #with exception_checks.check_exception(test_case): 
@@ -46,5 +46,7 @@ def test_main(test_case: AcquisitionTestCase, config, task_files):
         future.result(timeout=ACQUISITION_TIMEOUT)
     except futures.TimeoutError as e:
         pytest.fail("Call timed out")
-    oracle_result: OracleResult = oracle.evaluate_test(test_case, task_files, "", "")
+        
+    capture = capsys.readouterr()
+    oracle_result: OracleResult = oracle.evaluate_test(test_case, task_files, capture.out, capture.err)
     assert oracle_result.ok, oracle_result.msg

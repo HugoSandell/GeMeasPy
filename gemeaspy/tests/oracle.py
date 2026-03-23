@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from gemeaspy.tests import _logging
 from gemeaspy.tests.parameter_spec import AcquisitionParameterSpec
 from gemeaspy.tests.test_case import AcquisitionTestCase
 
@@ -12,7 +13,12 @@ class OracleResult:
 
 def _evaluate_valid(test_data, stdout: str, stderr:str) -> OracleResult:
     # Find any and all faulty states
-    # ...
+    
+    err_pos = stdout.find("Error: ")
+    if err_pos >= 0:
+        _logging.info(f"SUT failed with stdout:\n{stdout}\nstderr:\n{stderr}", exc_info=True)
+        return OracleResult(False, stdout[err_pos:].splitlines()[0])
+    
     # Looks clean
     return OracleResult(True)
 
