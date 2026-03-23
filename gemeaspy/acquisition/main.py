@@ -3,6 +3,7 @@ import sys
 
 from paramiko import ChannelException
 
+from gemeaspy.acquisition.error import ConfigFileError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
@@ -30,10 +31,14 @@ def run_acquisition(argv: list[str]):
             task_files = argv[1:]
             for task_file in task_files:
                 run_task_file(task_file)
+    # NOTE: All fatal exceptions shall start with 'Error:'
     except ChannelException as e:
-        print("Failed to create SSH shell channel to Terrameter!")
+        print("Error: Failed to create SSH shell channel to Terrameter!")
         logging.info(f"ChannelException - [{e.code}] {e.text}")
         return False
+    except ConfigFileError as e:
+        print(f"Error: {e.msg} ({e.file})")
+        logging.info(f"ConfigFileError - [{e.file}] {e.msg}")
 
 if __name__ == "__main__":
     run_acquisition(sys.argv)

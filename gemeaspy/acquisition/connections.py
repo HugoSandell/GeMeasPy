@@ -1,22 +1,28 @@
-import time
 from typing import Any
 
 import paramiko
+
 from gemeaspy.acquisition import utilities
+from gemeaspy.acquisition.error import ConfigFileError
+from gemeaspy.settings import config
+
 
 class SSHConnection():
-
-
     def __init__(self, params: dict[str, Any]) -> None:
         required_params = ("hostname", "username", "password")
         if not all(key in params.keys() for key in required_params):
-            raise Exception("Invalid Parameters")
+            raise ConfigFileError("Missing entry in connection parameters.", file=config.TERRAMETER_CONNECTION_FILE)
         self.params = params
         self.ssh = None
         self.channel = None
         self.connected = self._setup()
 
     def send_command_shell(self, command: str, time_to_sleep: int = 1) -> tuple[paramiko.ChannelFile, paramiko.ChannelFile, paramiko.ChannelFile]:
+        """
+            Raises: 
+                Exception (if self.ssh is None)
+                paramiko.ssh_exception.ChannelException
+        """
         if self.ssh is None:
             raise Exception("No Active Connection")
         stdin, stdout, stderr = self.ssh.exec_command(command)
