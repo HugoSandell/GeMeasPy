@@ -8,6 +8,7 @@ from paramiko import SFTPClient
 
 from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.connections import SSHConnection
+from gemeaspy.acquisition.error import TransferError
 from gemeaspy.settings import config
 
 
@@ -204,7 +205,10 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
             path_attr = sftp.stat(path_full_remote.as_posix())
             path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
             if not path_is_dir:
-                os.makedirs(path_full_local.parent, exist_ok=True)
+                try:
+                    os.makedirs(path_full_local.parent, exist_ok=True)
+                except OSError as e:
+                    raise TransferError("Failed to create directory", path_full_local.parent.as_posix())
                 logging.debug(f"Transferring: {path_full_remote.as_posix()} -> {path_full_local.as_posix()}")
                 sftp.get(path_full_remote.as_posix(), path_full_local.as_posix())
                 if not os.path.exists(path_full_local.as_posix()):
@@ -254,8 +258,9 @@ def check_transfer(connection: SSHConnection) -> bool:
     stdin, stdout, stderr = connection.send_command_shell(command)
     project = stdout.readline().strip()
     zetsum = "{}/{}/zetsum/zetsum".format(config.LOCAL_PATH_TO_DATA, project)
-    return os.path.isfile(zetsum)
 
+    return os.path.isfile(zetsum)
+    
 
 def delete_project(connection: SSHConnection, project: str) -> None:
     print("Deleting project from the terrameter..")

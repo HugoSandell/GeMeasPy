@@ -7,3 +7,8 @@ class ConfigFileError(GeMeasPyError):
     def __init__(self, msg: str, file: str | None=None):
         GeMeasPyError.__init__(self, msg)
         self.file = file
+
+class TransferError(GeMeasPyError):
+    def __init__(self, msg: str, file: str | None=None):
+        GeMeasPyError.__init__(self, msg)
+        self.file = file
