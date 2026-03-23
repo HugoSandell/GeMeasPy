@@ -36,6 +36,12 @@ class TestCase[T: TestCaseParameters](ABC):
     @abstractmethod
     def parameters(self, value: T):
         pass
+    def __getitem__(self, key: str) -> ParameterValue:
+        return self.parameters[key]
+    def __setitem__(self, key: str, value: ParameterValue) -> None:
+        self.parameters[key] = value
+    def __len__(self) -> int:
+        return len(self.parameters)
 
 @dataclass
 class AcquisitionTestCaseParameters(TestCaseParameters):
@@ -91,3 +97,4 @@ class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
     @parameters.setter
     def parameters(self, value: AcquisitionTestCaseParameters) -> None:
         self._parameters = value
+    
