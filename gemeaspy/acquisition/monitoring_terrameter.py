@@ -7,6 +7,8 @@ from gemeaspy.acquisition import terrameter_commands as tc
 from gemeaspy.acquisition import utilities
 
 is_meas_delay = 60
+MAX_TRANSFER_TRIES = 5 # How many times to attempt project transfer
+
 def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     # Read Info
     task_list = utilities.read_monitoring_tasks(task_file)
@@ -75,8 +77,10 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     tc.terminate_terrameter_software(connection)
     utilities.reset_relay(task_list[0])
     tc.transfer_project(connection)
-    while not tc.check_transfer(connection):
-        time.sleep(0.5)
+    for _ in range(MAX_TRANSFER_TRIES):
+        if not tc.check_transfer(connection):
+            break
+        time.sleep(0.1)
         tc.transfer_project(connection)
     print("Files have succesfully transferred to the pc!")
     project = tc.remove_control_files(connection, task_list)
