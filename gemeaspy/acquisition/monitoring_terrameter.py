@@ -10,6 +10,9 @@ is_meas_delay = 60
 def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     # Read Info
     task_list = utilities.read_monitoring_tasks(task_file)
+    if len(task_list) == 0:
+        return
+    
     # TODO: This should start only if there are measurements todo.
     tc.start_terrameter_software(connection, display=0)
 
