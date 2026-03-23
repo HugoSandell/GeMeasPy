@@ -74,7 +74,9 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 tc.task_completed(connection, task["id"], logfile)
     tc.terminate_terrameter_software(connection)
     utilities.reset_relay(task_list[0])
+    tc.transfer_project(connection)
     while not tc.check_transfer(connection):
+        time.sleep(0.5)
         tc.transfer_project(connection)
     print("Files have succesfully transferred to the pc!")
     project = tc.remove_control_files(connection, task_list)
