@@ -12,7 +12,7 @@ from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.test_case import AcquisitionTestCase
 
-ACQUISITION_TIMEOUT = 10.0 # The greatest amount of time to wait for acquisition to finish
+ACQUISITION_TIMEOUT = 3.0 # The greatest amount of time to wait for acquisition to finish
 
 @pytest.fixture
 def emulator():
@@ -43,8 +43,8 @@ def test_main(test_case: AcquisitionTestCase, config, task_files):
 
     future = executor.submit(run_acquisition, [main_file_path] + task_files)
     try: 
-        future.result(timeout=5)
+        future.result(timeout=ACQUISITION_TIMEOUT)
     except futures.TimeoutError as e:
         pytest.fail("Call timed out")
-    oracle_result: OracleResult = oracle.evaluate_test(test_case, "", "")
+    oracle_result: OracleResult = oracle.evaluate_test(test_case, task_files, "", "")
     assert oracle_result.ok, oracle_result.msg

@@ -16,7 +16,7 @@ def _evaluate_valid(test_data, stdout: str, stderr:str) -> OracleResult:
     # Looks clean
     return OracleResult(True)
 
-def evaluate_test(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
+def evaluate_test(test_data: AcquisitionTestCase, task_files: list[str], stdout: str, stderr: str) -> OracleResult:
     param_spec = AcquisitionParameterSpec()
     invalid_parameter: str | None = None
     if test_data.expect_failure:
