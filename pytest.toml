@@ -10,7 +10,7 @@ testpaths = [
     "gemeaspy/tests",
 ]
 addopts = [
-    "--capture=tee-sys",
+    "--capture=fd",
     "--cache-clear",
-    "--maxfail=15",
+    "--maxfail=10",
 ]
