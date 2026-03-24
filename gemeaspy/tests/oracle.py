@@ -4,12 +4,23 @@ from dataclasses import dataclass
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.parameter_spec import AcquisitionParameterSpec
+from gemeaspy.tests.setup_config import ConfigState
 from gemeaspy.tests.test_case import AcquisitionTestCase
+
 
 @dataclass
 class OracleResult:
     ok: bool
     msg: str = ""
+
+
+def _evaluate_any(config_state: ConfigState) -> OracleResult:
+    """Checks properties that should hold for all cases"""
+    if config_state.data_invalid_is_modified():
+        return OracleResult(False, "SUT modified file configured as LOCAL_PATH_TO_DATA")
+
+    return OracleResult(True)
+
 
 def _evaluate_valid(test_data, stdout: str, stderr:str) -> OracleResult:
     # Find any and all faulty states
@@ -22,7 +33,18 @@ def _evaluate_valid(test_data, stdout: str, stderr:str) -> OracleResult:
     # Looks clean
     return OracleResult(True)
 
-def evaluate_test(test_data: AcquisitionTestCase, task_files: list[str], stdout: str, stderr: str) -> OracleResult:
+
+def evaluate_test(
+    test_data: AcquisitionTestCase,
+    config_state: ConfigState,
+    task_files: list[str],
+    stdout: str,
+    stderr: str,
+) -> OracleResult:
+    result = _evaluate_any(config_state)
+    if not result.ok:
+        return result
+
     param_spec = AcquisitionParameterSpec()
     invalid_parameter: str | None = None
     if test_data.expect_failure:

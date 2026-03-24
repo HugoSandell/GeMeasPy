@@ -26,7 +26,7 @@ def emulator():
 @pytest.fixture
 def config(test_case: AcquisitionTestCase, emulator):
     state = setup_config.ConfigState(test_case, emulator.address[1])
-    yield
+    yield state
     state.cleanup()
 
 @pytest.fixture
@@ -48,5 +48,7 @@ def test_main(test_case: AcquisitionTestCase, config, task_files, capfd: pytest.
         pytest.fail("Call timed out")
         
     capture = capfd.readouterr()
-    oracle_result: OracleResult = oracle.evaluate_test(test_case, task_files, capture.out, capture.err)
+    oracle_result: OracleResult = oracle.evaluate_test(
+        test_case, config, task_files, capture.out, capture.err
+    )
     assert oracle_result.ok, oracle_result.msg

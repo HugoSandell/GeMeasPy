@@ -1,5 +1,7 @@
 """For generating configuration files from test case parameters."""
+
 import json
+import os
 import tempfile
 
 from gemeaspy.settings import config
@@ -51,6 +53,8 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 
 class ConfigState:
     _tempfiles = []
+    _data_invalid_path = None
+    _data_invalid_content = None
 
     def __init__(self, test: AcquisitionTestCase, server_port: int):
         match test.parameters.config_projects_folder:
@@ -67,7 +71,16 @@ class ConfigState:
                 self._tempfiles.append(f)
                 config.LOCAL_PATH_TO_DATA = f.name
             case parameter_spec.INVALID_FILE:
-                config.LOCAL_PATH_TO_DATA = f"{random_string()}/{random_string()}"
+                f = tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    prefix="gemeaspytest_data_invalid_",
+                    delete_on_close=False,
+                )
+                self._data_invalid_content = random_string().encode()
+                f.write(self._data_invalid_content)
+                f.close()
+                self._tempfiles.append(f)
+                config.LOCAL_PATH_TO_DATA = self._data_invalid_path = f.name
             case _:
                 raise ValueError("invalid config_local_data_path")
 
@@ -84,6 +97,24 @@ class ConfigState:
     def cleanup(self):
         for f in self._tempfiles:
             f.__exit__(None, None, None)
+
+    def data_invalid_is_modified(self):
+        if self._data_invalid_path is None or self._data_invalid_content is None:
+            # nothing to check
+            return False
+
+        if not os.path.isfile(self._data_invalid_path):
+            return True
+
+        with open(self._data_invalid_path, "rb") as f:
+            if f.read(len(self._data_invalid_content)) != self._data_invalid_content:
+                return True
+
+            # ensure no extra data has been written
+            if f.read(1) != b"":
+                return True
+
+        return False
 
 
 if __name__ == "__main__":
