@@ -1,6 +1,8 @@
 """Test suite generators."""
+
 import csv
 import functools
+import hashlib
 import itertools
 import json
 import os
@@ -9,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import TypeAlias, cast
+from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
@@ -65,8 +67,20 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     os.close(fd)
     return path
 
-def try_load_cache(param_spec: ParameterSpec, id_str: str) -> None | list[TestCase[TestCaseParameters]]:
-    cache_file_path = f"{_INPUT_CACHE_PATH}/{type(param_spec).__name__}_{id_str}.json"
+
+def get_cache_file_path(
+    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
+) -> str:
+    param_spec_hash = hashlib.sha256(
+        repr((param_spec, constraints)).encode()
+    ).hexdigest()
+    return f"{_INPUT_CACHE_PATH}/{param_spec_hash}_{id_str}.json"
+
+
+def try_load_cache(
+    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
+) -> None | list[TestCase[TestCaseParameters]]:
+    cache_file_path = get_cache_file_path(param_spec, constraints, id_str)
     if not os.path.isfile(cache_file_path):
         return None
     with open(cache_file_path, "r") as fp:
@@ -83,8 +97,14 @@ def try_load_cache(param_spec: ParameterSpec, id_str: str) -> None | list[TestCa
         suite.append(case)
     return suite
 
-def save_cache[T: TestCase](suite: list[T], param_spec: ParameterSpec, id_str: str):
-    cache_file_path = f"{_INPUT_CACHE_PATH}/{type(param_spec).__name__}_{id_str}.json"
+
+def save_cache[T: TestCase](
+    suite: list[T],
+    param_spec: ParameterSpec,
+    constraints: list[Constraint] | None,
+    id_str: str,
+):
+    cache_file_path = get_cache_file_path(param_spec, constraints, id_str)
     os.makedirs(_INPUT_CACHE_PATH, exist_ok=True)
     with open(cache_file_path, "w") as fp:
         json.dump([{"parameters": case.parameters.__dict__, "expect_failure": case.expect_failure} for case in suite], fp)
@@ -93,8 +113,8 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     
     # Check cache
-    cache = try_load_cache(param_spec, f"t{strength}")
-    if cache != None:
+    cache = try_load_cache(param_spec, constraints, f"t{strength}")
+    if cache is not None:
         return cache
 
     if not os.path.exists(_ACTS_JAR):
@@ -175,7 +195,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             case.expect_failure = case.expect_failure or is_invalid
         test_data.append(case)
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
-    save_cache(test_data, param_spec, f"t{strength}")
+    save_cache(test_data, param_spec, constraints, f"t{strength}")
     return test_data
 
 
@@ -183,8 +203,8 @@ RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None) -> list[TestCase]:
     
     # Check cache
-    cache = try_load_cache(param_spec, f"n{case_count}_s{seed}")
-    if cache != None:
+    cache = try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
+    if cache is not None:
         return cache
     
     random.seed(seed)
@@ -259,7 +279,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         assert not is_duplicate(case_a, case_b)
 
     _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
-    save_cache(test_data, param_spec, f"n{case_count}_s{seed}")
+    save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}")
     return test_data
 
 # For manual testing
