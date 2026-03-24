@@ -267,11 +267,11 @@ def _main():
     argc = len(sys.argv)
     if argc < 2 or argc > 3:
         print(f"Usage: {sys.argv[0]} <comb_strength> [rng_seed]")
-        exit(1)
+        sys.exit(1)
     if not sys.argv[1].isnumeric():
         sys.stderr.write("Error: Combinatorial strength must be a positive integer!\n")
-        exit(1)
-    
+        sys.exit(1)
+
     @dataclass
     class TestTestCase(TestCaseParameters):
         param_a: str = ""

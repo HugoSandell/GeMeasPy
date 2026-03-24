@@ -30,7 +30,7 @@ def main():
     invalid_generators = [g for g in requested_generators if g not in VALID_GENERATORS]
     if len(invalid_generators) > 0:
         print(f"Invalid generator{"s" if len(invalid_generators) > 1 else ""}: {", ".join(invalid_generators)}", file=sys.stderr)
-        exit(1)
+        sys.exit(1)
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["module-path"] = ["gemeaspy/acquisition"]

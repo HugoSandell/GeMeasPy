@@ -73,4 +73,4 @@ def run_acquisition(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     exit_code = run_acquisition(sys.argv)
-    exit(exit_code)
+    sys.exit(exit_code)
