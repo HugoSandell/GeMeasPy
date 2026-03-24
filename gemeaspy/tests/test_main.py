@@ -25,9 +25,9 @@ def emulator():
 
 @pytest.fixture
 def config(test_case: AcquisitionTestCase, emulator):
-    cleanup = setup_config.setup(test_case, emulator.address[1])
+    state = setup_config.ConfigState(test_case, emulator.address[1])
     yield
-    cleanup()
+    state.cleanup()
 
 @pytest.fixture
 def task_files(test_case: AcquisitionTestCase):
