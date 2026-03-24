@@ -7,7 +7,6 @@ from gemeaspy.tests import parameter_spec
 from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.util import random_string
 
-INVALID_FILE = ")(/&%¤~#\"!"
 
 def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
     connection_settings: dict[str, str | int | bool | None] = {
@@ -65,7 +64,7 @@ def setup(test: AcquisitionTestCase, server_port: int):
             tempfiles.append(f)
             config.LOCAL_PATH_TO_DATA = f.name
         case parameter_spec.INVALID_FILE:
-            config.LOCAL_PATH_TO_DATA = INVALID_FILE
+            config.LOCAL_PATH_TO_DATA = f"{random_string()}/{random_string()}"
         case _:
             raise ValueError("invalid config_local_data_path")
 
@@ -75,7 +74,7 @@ def setup(test: AcquisitionTestCase, server_port: int):
             tempfiles.append(f)
             config.TERRAMETER_CONNECTION_FILE = f.name
         case parameter_spec.INVALID_FILE:
-            config.TERRAMETER_CONNECTION_FILE = INVALID_FILE
+            config.TERRAMETER_CONNECTION_FILE = random_string()
         case _:
             raise ValueError("invalid config_connection_file")
 
