@@ -78,7 +78,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     utilities.reset_relay(task_list[0])
     tc.transfer_project(connection)
     for _ in range(MAX_TRANSFER_TRIES):
-        if not tc.check_transfer(connection):
+        if tc.check_transfer(connection):
             break
         time.sleep(0.1)
         tc.transfer_project(connection)
