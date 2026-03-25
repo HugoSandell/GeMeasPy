@@ -108,8 +108,9 @@ def evaluate_test(
             task = int(match.group("task"))
             property = str(match.group("property"))
             return _evaluate_task_property(test_data, file, task, property, stdout)
-        case X:
+        case _:
             if invalid_parameter not in param_spec:
                 return OracleResult(False, f"invalid_parameter set to invalid value {repr(invalid_parameter)}")
+            if _find_stdout_error_message(stdout) != None:
+                return OracleResult(True)
             raise NotImplementedError(f"Invalid value {invalid_parameter}={repr(test_data.parameters[invalid_parameter])} not implemented in Oracle.")
-    
