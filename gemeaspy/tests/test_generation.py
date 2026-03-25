@@ -15,6 +15,7 @@ from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
+import gemeaspy.acquisition
 from gemeaspy.tests import _logging
 from gemeaspy.tests.parameter_spec import (
     Constraint,
@@ -94,10 +95,14 @@ def try_load_cache(
             case = param_spec.TestCaseType()
             case.expect_failure = case_json["expect_failure"]
             case.invalid_parameter = case_json["invalid_parameter"]
+            if str(case.invalid_parameter) not in param_spec:
+                _logging.warning(f"Cache file contained invalid invalid_parameter {repr(case.invalid_parameter)}")
+                return None
             for param_name in case.parameters:
                 case.parameters[param_name] = parameters_json[param_name]
             suite.append(case)
-        except KeyError:
+        except KeyError as e:
+            _logging.warning(f"Cache file contained invalid key {repr(e.args[0])}")
             return None
     return suite
 
@@ -261,13 +266,12 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         is_invalids_complete = generated_invalid < max_case_count_invalid
         use_invalid_if_possible = random.random() < invalid_rate
         is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
-        invalid_param = None
+        invalid_param: str | None = None
         
         while not initialized or any(
             is_duplicate(case_index, x) for x in range(case_index)
         ):
             # "" Signifies no invalid
-            invalid_param = "" 
             if is_case_invalid:
                 invalid_param = random.choice([*invalid_values.keys()])
                 invalid_value_i = random.randint(0, len(invalid_values[invalid_param])-1)

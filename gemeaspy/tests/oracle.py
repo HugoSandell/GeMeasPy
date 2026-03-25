@@ -97,7 +97,7 @@ def evaluate_test(
 
     param_spec = AcquisitionParameterSpec()
     invalid_parameter = test_data.invalid_parameter
-    
+
     match invalid_parameter:
         case None:
             return _evaluate_valid(test_data, stdout, stderr)
@@ -109,5 +109,7 @@ def evaluate_test(
             property = str(match.group("property"))
             return _evaluate_task_property(test_data, file, task, property, stdout)
         case X:
+            if invalid_parameter not in param_spec:
+                return OracleResult(False, f"invalid_parameter set to invalid value {repr(invalid_parameter)}")
             raise NotImplementedError(f"Invalid value {invalid_parameter}={repr(test_data.parameters[invalid_parameter])} not implemented in Oracle.")
     
