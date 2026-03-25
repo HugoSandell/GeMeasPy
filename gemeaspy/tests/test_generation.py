@@ -271,7 +271,6 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         while not initialized or any(
             is_duplicate(case_index, x) for x in range(case_index)
         ):
-            # "" Signifies no invalid
             if is_case_invalid:
                 invalid_param = random.choice([*invalid_values.keys()])
                 invalid_value_i = random.randint(0, len(invalid_values[invalid_param])-1)
