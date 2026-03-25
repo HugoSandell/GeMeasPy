@@ -89,13 +89,16 @@ def try_load_cache(
             raise TypeError(f"Expected list in input cache file '{cache_file_path}'")
     suite = []
     for case_json in suite_json:
-        parameters_json = case_json["parameters"]
-        case = param_spec.TestCaseType()
-        case.expect_failure = case_json["expect_failure"]
-        case.invalid_parameter = case_json["invalid_parameter"]
-        for param_name in case.parameters:
-            case.parameters[param_name] = parameters_json[param_name]
-        suite.append(case)
+        try:
+            parameters_json = case_json["parameters"]
+            case = param_spec.TestCaseType()
+            case.expect_failure = case_json["expect_failure"]
+            case.invalid_parameter = case_json["invalid_parameter"]
+            for param_name in case.parameters:
+                case.parameters[param_name] = parameters_json[param_name]
+            suite.append(case)
+        except KeyError:
+            return None
     return suite
 
 
