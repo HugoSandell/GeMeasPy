@@ -55,20 +55,33 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> O
     value = test_data.parameters.connection_port
     return OracleResult(False, f"No error message found for invalid connection port value {repr(value)}")
 
-def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int, property: str) -> OracleResult:
+def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int, property: str, stdout: str) -> OracleResult:
     """Any invalid property of a task"""
     parameter_name = f"taskfile{file}_task{task}_{property}"
+    parameter_value = test_case.parameters[parameter_name]
+    msg_no_error_found = f"No error message found for invalid task {property} {parameter_name}={repr(parameter_value)}"
+    
     match property:
         case "name":
-            raise NotImplementedError(f"Invalid task property {property}={repr(test_case.parameters[parameter_name])} not implemented in Oracle.")
+            if _find_stdout_error_message(stdout):
+                return OracleResult(True)
+            return OracleResult(False, msg_no_error_found)
         case "settings":
-            raise NotImplementedError(f"Invalid task property {property}={repr(test_case.parameters[parameter_name])} not implemented in Oracle.")
+            if _find_stdout_error_message(stdout):
+                return OracleResult(True)
+            return OracleResult(False, msg_no_error_found)
         case "spread":
-            raise NotImplementedError(f"Invalid task property {property}={repr(test_case.parameters[parameter_name])} not implemented in Oracle.")
+            if _find_stdout_error_message(stdout):
+                return OracleResult(True)
+            return OracleResult(False, msg_no_error_found)
         case "protocol":
-            raise NotImplementedError(f"Invalid task property {property}={repr(test_case.parameters[parameter_name])} not implemented in Oracle.")
+            if _find_stdout_error_message(stdout):
+                return OracleResult(True)
+            return OracleResult(False, msg_no_error_found)
         case "spacing":
-            raise NotImplementedError(f"Invalid task property {property}={repr(test_case.parameters[parameter_name])} not implemented in Oracle.")
+            if _find_stdout_error_message(stdout):
+                return OracleResult(True)
+            return OracleResult(False, msg_no_error_found)
     return OracleResult(True)
 
 def evaluate_test(
@@ -83,12 +96,7 @@ def evaluate_test(
         return result
 
     param_spec = AcquisitionParameterSpec()
-    invalid_parameter: str | None = None
-    if test_data.expect_failure:
-        for param_name in param_spec:
-            if test_data.parameters[param_name] in param_spec[param_name][1]:
-                invalid_parameter = param_name
-                break
+    invalid_parameter = test_data.invalid_parameter
     
     match invalid_parameter:
         case None:
@@ -99,7 +107,7 @@ def evaluate_test(
             file = int(match.group("file"))
             task = int(match.group("task"))
             property = str(match.group("property"))
-            return _evaluate_task_property(test_data, file, task, property)
+            return _evaluate_task_property(test_data, file, task, property, stdout)
         case X:
             raise NotImplementedError(f"Invalid value {invalid_parameter}={repr(test_data.parameters[invalid_parameter])} not implemented in Oracle.")
     
