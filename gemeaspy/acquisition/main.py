@@ -10,6 +10,8 @@ from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, Tran
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
+logger: logging.Logger = logging.root
+
 def setup_logger(log_path: str) -> logging.Logger:
     logging.getLogger("paramiko").setLevel(logging.ERROR)
     os.makedirs(Path(log_path).parent, exist_ok=True)
@@ -69,10 +71,4 @@ def run_acquisition(argv: list[str]) -> int:
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 6
-    except Exception as e:
-        print(f"Error: An unexpected error occured. Check logs for more information.")
-        logger.error(f"Unhandled exception.", exc_info=True)
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        return 1
     return 0
