@@ -28,6 +28,7 @@ class TestCaseParameters:
 @dataclass
 class TestCase[T: TestCaseParameters](ABC):
     expect_failure: bool = False
+    invalid_parameter: str | None = None
     @property
     @abstractmethod
     def parameters(self) -> T:

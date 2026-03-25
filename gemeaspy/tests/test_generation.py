@@ -92,6 +92,7 @@ def try_load_cache(
         parameters_json = case_json["parameters"]
         case = param_spec.TestCaseType()
         case.expect_failure = case_json["expect_failure"]
+        case.invalid_parameter = case_json["invalid_parameter"]
         for param_name in case.parameters:
             case.parameters[param_name] = parameters_json[param_name]
         suite.append(case)
@@ -107,7 +108,12 @@ def save_cache[T: TestCase](
     cache_file_path = get_cache_file_path(param_spec, constraints, id_str)
     os.makedirs(_INPUT_CACHE_PATH, exist_ok=True)
     with open(cache_file_path, "w") as fp:
-        json.dump([{"parameters": case.parameters.__dict__, "expect_failure": case.expect_failure} for case in suite], fp)
+        json.dump([
+                {"parameters": case.parameters.__dict__, 
+                    "expect_failure": case.expect_failure, 
+                    "invalid_parameter": case.invalid_parameter
+                } for case in suite
+            ], fp)
 
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
@@ -193,6 +199,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             case.parameters[parameter_name] = json_to_parameter_value(parameter_name, value_json)
             is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
             case.expect_failure = case.expect_failure or is_invalid
+            case.invalid_parameter = parameter_name if is_invalid else None
         test_data.append(case)
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     save_cache(test_data, param_spec, constraints, f"t{strength}")
@@ -251,6 +258,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         is_invalids_complete = generated_invalid < max_case_count_invalid
         use_invalid_if_possible = random.random() < invalid_rate
         is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
+        invalid_param = None
         
         while not initialized or any(
             is_duplicate(case_index, x) for x in range(case_index)
@@ -267,6 +275,8 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
                 if param_name != invalid_param:
                     test_data[case_index].parameters[param_name] = random.choice(param_spec[param_name][0])
             initialized = True
+            
+        test_data[case_index].invalid_parameter = invalid_param
         if is_case_invalid:
             generated_invalid += 1
             test_data[case_index].expect_failure = True
