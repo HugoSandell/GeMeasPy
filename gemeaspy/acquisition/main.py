@@ -76,7 +76,3 @@ def run_acquisition(argv: list[str]) -> int:
             traceback.print_exception(e, file=sys.stderr)
         return 1
     return 0
-
-if __name__ == "__main__":
-    exit_code = run_acquisition(sys.argv)
-    sys.exit(exit_code)
