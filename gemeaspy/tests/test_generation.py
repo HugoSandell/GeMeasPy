@@ -95,7 +95,9 @@ def try_load_cache(
             case = param_spec.TestCaseType()
             case.expect_failure = case_json["expect_failure"]
             case.invalid_parameter = case_json["invalid_parameter"]
-            if str(case.invalid_parameter) not in param_spec:
+            if str(case.invalid_parameter) not in param_spec or (
+                case.expect_failure and case.invalid_parameter is None
+            ):
                 _logging.warning(f"Cache file contained invalid invalid_parameter {repr(case.invalid_parameter)}")
                 return None
             for param_name in case.parameters:
@@ -207,7 +209,8 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             case.parameters[parameter_name] = json_to_parameter_value(parameter_name, value_json)
             is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
             case.expect_failure = case.expect_failure or is_invalid
-            case.invalid_parameter = parameter_name if is_invalid else None
+            if is_invalid:
+                case.invalid_parameter = parameter_name
         test_data.append(case)
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     save_cache(test_data, param_spec, constraints, f"t{strength}")
