@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 import sys
 import traceback
 
@@ -9,6 +10,12 @@ from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, Tran
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
+def setup_logger(log_path: str) -> logging.Logger:
+    logging.getLogger("paramiko").setLevel(logging.ERROR)
+    os.makedirs(Path(log_path).parent, exist_ok=True)
+    logger = logging.Logger("acquisition")
+    logger.addHandler(logging.FileHandler("log/acquisition.log"))
+    return logger
 
 def run_task_file(task_file) -> None:
 	# read connection and measurement settings
@@ -20,15 +27,14 @@ def run_task_file(task_file) -> None:
     ls.disconnect()
 
 def run_acquisition(argv: list[str]) -> int:
-    logging.getLogger("paramiko").setLevel(logging.ERROR)
-    
+    logger: logging.Logger = setup_logger("log/acquisition.log")
     verbose = "DEBUG" in os.environ
     
     nargs = len(argv)
     if nargs == 1:
         task_file = None
         print(f"Error: No task file given")
-        logging.error(f"Acquisition was run with no input")
+        logger.error(f"Acquisition was run with no input")
         return 2
     try: 
         if nargs == 2:
@@ -43,29 +49,29 @@ def run_acquisition(argv: list[str]) -> int:
         print("Error: Failed to create SSH shell channel to Terrameter!")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
-        logging.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
+        logger.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
         return 3
     except ConfigFileError as e:
         print(f"Error: {e.msg} ({e.file})")
-        logging.error(f"ConfigFileError - [{e.file}] {e.msg}", exc_info=True)
+        logger.error(f"ConfigFileError - [{e.file}] {e.msg}", exc_info=True)
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 4
     except TransferError as e:
         print(f"Error: Project transfer failed - {e.msg} ({e.file})")
-        logging.error(f"TransferError - [{e.file}] {e.msg}", exc_info=True)
+        logger.error(f"TransferError - [{e.file}] {e.msg}", exc_info=True)
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 5
     except SSHConnectionError as e:
         print(f"Error: A connection error occured - {e.msg}")
-        logging.error(f"SSHConnectionError - [{e.params}] {e.msg}", exc_info=True)
+        logger.error(f"SSHConnectionError - [{e.params}] {e.msg}", exc_info=True)
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 6
     except Exception as e:
         print(f"Error: An unexpected error occured. Check logs for more information.")
-        logging.error(f"Unhandled exception.", exc_info=True)
+        logger.error(f"Unhandled exception.", exc_info=True)
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 1
