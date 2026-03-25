@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
+
 from typing import Any, TextIO
 from paramiko import SFTPClient
 
@@ -266,4 +267,8 @@ def delete_project(connection: SSHConnection, project: str) -> None:
     print("Deleting project from the terrameter..")
     command = "rm -r {}/{}".format(config.TERRAMETER_PROJECTS_FOLDER, project)
     stdin, stdout, stderr = connection.send_command_shell(command, time_to_sleep=60)
-    rmtree("{}/{}/zetsum".format(config.LOCAL_PATH_TO_DATA, project))
+    local_path = "{}/{}/zetsum".format(config.LOCAL_PATH_TO_DATA, project)
+    try:
+        rmtree(local_path)
+    except FileNotFoundError:
+        logging.debug(f"Failed to remove local project files at '{local_path}' because the directory couldn't be found")
