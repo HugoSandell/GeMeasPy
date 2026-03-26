@@ -95,8 +95,9 @@ def try_load_cache(
             case = param_spec.TestCaseType()
             case.expect_failure = case_json["expect_failure"]
             case.invalid_parameter = case_json["invalid_parameter"]
-            if str(case.invalid_parameter) not in param_spec or (
-                case.expect_failure and case.invalid_parameter is None
+            if case.expect_failure and (
+                str(case.invalid_parameter) not in param_spec
+                or case.invalid_parameter is None
             ):
                 _logging.warning(f"Cache file contained invalid invalid_parameter {repr(case.invalid_parameter)}")
                 return None
