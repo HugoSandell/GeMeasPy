@@ -209,8 +209,12 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
             value_json = acts_enum_to_string(raw_case[parameter_name])
             case.parameters[parameter_name] = json_to_parameter_value(parameter_name, value_json)
             is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
-            case.expect_failure = case.expect_failure or is_invalid
             if is_invalid:
+                if case.expect_failure or case.invalid_parameter is not None:
+                    raise Exception(
+                        "ACTS generated test case with multiple invalid parameters"
+                    )
+                case.expect_failure = True
                 case.invalid_parameter = parameter_name
         test_data.append(case)
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
