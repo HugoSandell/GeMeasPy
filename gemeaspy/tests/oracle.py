@@ -111,6 +111,9 @@ def evaluate_test(
         case _:
             if invalid_parameter not in param_spec:
                 return OracleResult(False, f"invalid_parameter set to invalid value {repr(invalid_parameter)}")
-            if _find_stdout_error_message(stdout) != None:
+            if (msg := _find_stdout_error_message(stdout)) is not None:
+                _logging.warning(
+                    f"No specific evaluator exists for invalid parameter {invalid_parameter}. Assuming this is the expected error: {msg}"
+                )
                 return OracleResult(True)
             raise NotImplementedError(f"Invalid value {invalid_parameter}={repr(test_data.parameters[invalid_parameter])} not implemented in Oracle.")
