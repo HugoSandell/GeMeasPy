@@ -13,6 +13,7 @@ from gemeaspy.tests.util import random_string
 def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
     connection_settings: dict[str, str | int | bool | None] = {
         "username": "root",
+        "allow_agent": False,
         "look_for_keys": False,
     }
 
