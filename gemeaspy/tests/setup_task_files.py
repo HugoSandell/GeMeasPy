@@ -10,10 +10,10 @@ from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCasePar
 from gemeaspy.tests.util import random_string
 
 
-def _replace_file_placeholder(value: str):
+def _replace_file_placeholder(value: str, invalid_prefix: str) -> str:
     match value:
         case parameter_spec.INVALID_FILE:
-            return random_string()
+            return f"{invalid_prefix}_{random_string()}"
         case x:
             return x
 
@@ -36,11 +36,19 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
 
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
-        f.write(f"{param('name', str, task_prefix)}\n")
-        f.write(f"{_replace_file_placeholder(param('spread', str, task_prefix))}\n")
-        f.write(f"{_replace_file_placeholder(param('protocol', str, task_prefix))}\n")
-        f.write(f"{_replace_file_placeholder(param('settings', str, task_prefix))}\n")
-        f.write(f"{param('spacing', str, task_prefix)}\n")
+
+        def task_param(name: str, is_file: bool) -> str:
+            value = param(name, str, task_prefix)
+            if is_file:
+                return _replace_file_placeholder(value, name)
+            else:
+                return value
+
+        f.write(f"{task_param('name', False)}\n")
+        f.write(f"{task_param('spread', True)}\n")
+        f.write(f"{task_param('protocol', True)}\n")
+        f.write(f"{task_param('settings', True)}\n")
+        f.write(f"{task_param('spacing', False)}\n")
 
     f.close()
     return f
@@ -64,7 +72,7 @@ def resolve_task_files(test: AcquisitionTestCase):
     for task_file in test.parameters.arg_task_files:
         match task_file:
             case parameter_spec.INVALID_FILE:
-                task_files.append(random_string())
+                task_files.append(f"task_file_{random_string()}")
             case parameter_spec.VALID_TASKFILE1:
                 task_files.append(_get_or_create_task_file(1))
             case parameter_spec.VALID_TASKFILE2:

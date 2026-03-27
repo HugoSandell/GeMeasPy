@@ -19,7 +19,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 
     match test.parameters.connection_hostname:
         case parameter_spec.INVALID_HOSTNAME:
-            connection_settings["hostname"] = f"{random_string()}.invalid"
+            connection_settings["hostname"] = f"hostname-{random_string()}.invalid"
         case None:
             pass
         case x:
@@ -35,7 +35,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 
     match test.parameters.connection_password:
         case parameter_spec.INVALID_PASSWORD:
-            connection_settings["password"] = random_string()
+            connection_settings["password"] = f"password_{random_string()}"
         case None:
             pass
         case x:
@@ -61,7 +61,7 @@ class ConfigState:
         match test.parameters.config_projects_folder:
             case parameter_spec.INVALID_FILE:
                 config.TERRAMETER_PROJECTS_FOLDER = (
-                    f"/media/mmcblk0p1/{random_string()}"
+                    f"/media/mmcblk0p1/gemeaspytest_projects_{random_string()}"
                 )
             case x:
                 config.TERRAMETER_PROJECTS_FOLDER = x
@@ -91,7 +91,9 @@ class ConfigState:
                 self._tempfiles.append(f)
                 config.TERRAMETER_CONNECTION_FILE = f.name
             case parameter_spec.INVALID_FILE:
-                config.TERRAMETER_CONNECTION_FILE = random_string()
+                config.TERRAMETER_CONNECTION_FILE = (
+                    f"connection_settings_{random_string()}"
+                )
             case _:
                 raise ValueError("invalid config_connection_file")
 
