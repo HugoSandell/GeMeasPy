@@ -47,7 +47,32 @@ def _evaluate_valid(test_data: TestCase, stdout: str, stderr:str) -> OracleResul
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
     # Looks clean
     return OracleResult(True)
-    
+
+
+def _evaluate_arg_task_files(
+    test_data: AcquisitionTestCase, stdout: str
+) -> OracleResult:
+    value = test_data.parameters.arg_task_files
+
+    if not (msg := _find_stdout_error_message(stdout)):
+        return OracleResult(
+            False, f"No error message found for invalid arg_task_files={repr(value)}"
+        )
+
+    if len(value) == 0:
+        if "No task file given" in msg:
+            return OracleResult(True)
+    else:
+        raise NotImplementedError(
+            f"Value {repr(value)} not implemented in arg_task_files evaluator"
+        )
+
+    return OracleResult(
+        False,
+        f"Unexpected error message for invalid arg_task_files={repr(value)}: {msg}",
+    )
+
+
 def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> OracleResult:
     """Bad port number"""
     if _find_stdout_error_message(stdout):
@@ -101,6 +126,8 @@ def evaluate_test(
     match invalid_parameter:
         case None:
             return _evaluate_valid(test_data, stdout, stderr)
+        case "arg_task_files":
+            return _evaluate_arg_task_files(test_data, stdout)
         case "connection_port":
             return _evaluate_port(test_data, stdout, stderr)
         case p if (match := re.match(RE_TASK, p)) != None:
