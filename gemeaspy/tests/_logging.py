@@ -13,8 +13,8 @@ def initialise_logger():
     from os.path import dirname
     from datetime import datetime
     import gemeaspy
-    
-    now = "".join(filter(lambda c: str.isalnum(c), datetime.now().isoformat("-").split(".")[0]))
+
+    now = datetime.now().strftime("%Y%m%d%H%M%S")
     log_file_path = f"{dirname(gemeaspy.__file__)}/../log/tests{now}.log" 
     log_format = "%(asctime)s %(levelname)-6s [%(module)s:%(lineno)s] %(message)s"
     log_date_format = "%Y-%m-%d %H:%M:%S"
