@@ -16,7 +16,7 @@ def setup_logger(log_path: str) -> logging.Logger:
     logging.getLogger("paramiko").setLevel(logging.ERROR)
     os.makedirs(Path(log_path).parent, exist_ok=True)
     logger = logging.Logger("acquisition")
-    logger.addHandler(logging.FileHandler("log/acquisition.log"))
+    logger.addHandler(logging.FileHandler(log_path))
     return logger
 
 def run_task_file(task_file) -> None:
