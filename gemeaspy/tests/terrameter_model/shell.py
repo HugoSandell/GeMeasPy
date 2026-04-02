@@ -201,20 +201,17 @@ class TerrameterShell(Cmd):
         match command:
             case "g":
                 # Get terrameter variable
-                try:
-                    variable = arg_split[0]
-                except Exception:
+                if len(arg_split) == 0:
                     self.print_line_sh()
                     return
-                if variable:
+                for variable in arg_split:
                     try:
-                        self.print_line_sh(f"{variable}\t{self.instrument.get_variable(variable)}\n")
+                        self.print_line_sh(
+                            f"{variable}\t{self.instrument.get_variable(variable)}"
+                        )
                     except Exception:
-                        self.print_line_sh()
-                        return
-                else:
-                    self.print_line_sh()
-                    return
+                        pass
+                self.print_line_sh()
             case "s":
                 # Set terrameter variable
                 if not self.terrameter_cli_active:
@@ -239,11 +236,24 @@ class TerrameterShell(Cmd):
             case "w":
                 # Read Terrameter settings from file
                 try:
-                    self.instrument.read_settings(self._split_args(args)[-1])
+                    path = arg_split[0]
+                except IndexError:
+                    self.print_line_sh()
+                    return
+                arg1 = 0  # TODO find out what this is
+                try:
+                    arg1 = int(arg_split[1])
+                except (IndexError, ValueError):
+                    pass
+                self.print_line_sh(f"Read settings from file: {path} {arg1}")
+                try:
+                    self.instrument.read_settings(path)
+                except FileNotFoundError:
+                    self.print_error_sh(f"Read settings error:{path}: cannot open file")
                 except OSError as e:
+                    # TODO improve
                     self.print_os_error("terrameter", e)
                     return
-                self.print_line_sh(f"Read settings from file: {args} 0") # assume 0
             case "Q":
                 # Quit terrameter
                 self.quit_terrameter()
