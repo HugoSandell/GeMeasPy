@@ -37,6 +37,7 @@ def main():
     config["timeout"] = 120.0
     config["excluded-modules"] = ["gemeaspy/tests"]
     config["distributor"]["name"] = "local"
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     for generator in requested_generators:
         print(f"Running mutation analysis on test case generator '{generator}'")

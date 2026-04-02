@@ -1,6 +1,8 @@
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 
+import gemeaspy
 from gemeaspy.acquisition import connections, utilities
 from gemeaspy.acquisition import monitoring_terrameter as monitoring
 
@@ -24,9 +26,9 @@ class Terrameter(Instrument):
     def __init__(self) -> None:
         self.params = utilities.read_terrameter_connection_parameters()
         self.connection = None
-        import gemeaspy, os
-        root_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/..")
-        self.logfile = open(f"{root_dir}/log/acquisition_instruments.log", 'a', 1)
+        log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log")
+        os.makedirs(log_dir, exist_ok=True)
+        self.logfile = open(f"{log_dir}/acquisition_instruments.log", "a", 1)
         self._write()
 
     def _write(self) -> None:
