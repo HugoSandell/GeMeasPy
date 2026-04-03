@@ -265,9 +265,7 @@ class TerrameterShell(Cmd):
             case "T":
                 # Create new Terrameter task
                 if len(arg_split) < 9:
-                    self.print_line_sh(
-                        " Too few arguments"
-                    )  # TODO: Should this have the space in the beginning?
+                    self.print_error_sh(" Too few arguments")
                     return
                 name = arg_split[0]
                 spread = arg_split[1]
@@ -285,9 +283,7 @@ class TerrameterShell(Cmd):
             case "S":
                 # Create new Terrameter station
                 if len(arg_split) < 1:
-                    self.print_line_sh(
-                        " Too few arguments"
-                    )  # TODO: Should this have the space in the beginning?
+                    self.print_error_sh(" Too few arguments")
                     return
                 station_id = arg_split[0]
                 try: 
