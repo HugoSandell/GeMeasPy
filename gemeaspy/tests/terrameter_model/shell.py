@@ -57,7 +57,7 @@ class TerrameterShell(Cmd):
 
     def _update_prompt(self):
         if self.terrameter_cli_active:
-            self.prompt = "> "
+            self.prompt = "\n>"
         else:
             cwd_str = self.cwd.as_posix()
             if cwd_str.startswith(self.homedir):
@@ -202,7 +202,6 @@ class TerrameterShell(Cmd):
             case "g":
                 # Get terrameter variable
                 if len(arg_split) == 0:
-                    self.print_line_sh()
                     return
                 for variable in arg_split:
                     try:
@@ -211,7 +210,6 @@ class TerrameterShell(Cmd):
                         )
                     except Exception:
                         pass
-                self.print_line_sh()
             case "s":
                 # Set terrameter variable
                 if not self.terrameter_cli_active:
@@ -220,25 +218,17 @@ class TerrameterShell(Cmd):
                     variable = arg_split[0]
                     value = arg_split[1]
                 except Exception:
-                    self.print_line_sh()
                     return
                 if variable and value:
                     try:
                         self.instrument.set_variable(variable, value)
-                        self.print_line_sh()
-                        return
                     except Exception:
-                        self.print_line_sh()
                         return
-                else:
-                    self.print_line_sh()
-                    return
             case "w":
                 # Read Terrameter settings from file
                 try:
                     path = arg_split[0]
                 except IndexError:
-                    self.print_line_sh()
                     return
                 arg1 = 0  # TODO find out what this is
                 try:
@@ -271,11 +261,13 @@ class TerrameterShell(Cmd):
                     self.print_line_sh("Failed to create new project!")
                     return
                 self.print_line_sh("Create a new Project")
-                self.print_line_sh(f"Created project: {created_project_name}\n")
+                self.print_line_sh(f"Created project: {created_project_name}")
             case "T":
                 # Create new Terrameter task
                 if len(arg_split) < 9:
-                    self.print_line_sh(" Too few arguments\n") # TODO: Should this have the space in the beginning?
+                    self.print_line_sh(
+                        " Too few arguments"
+                    )  # TODO: Should this have the space in the beginning?
                     return
                 name = arg_split[0]
                 spread = arg_split[1]
@@ -285,7 +277,7 @@ class TerrameterShell(Cmd):
                     unknown = (float(arg_split[6]), float(arg_split[7]), float(arg_split[8])) # TODO: What is this?
                     self.instrument.create_task(name, spread, protocol, spacing, unknown)
                 except ValueError:
-                    self.print_line_sh()
+                    pass
             case "m":
                 # Start/stop Terrameter measurement process
                 self.instrument.measure()
@@ -293,13 +285,15 @@ class TerrameterShell(Cmd):
             case "S":
                 # Create new Terrameter station
                 if len(arg_split) < 1:
-                    self.print_line_sh(" Too few arguments\n") # TODO: Should this have the space in the beginning?
+                    self.print_line_sh(
+                        " Too few arguments"
+                    )  # TODO: Should this have the space in the beginning?
                     return
                 station_id = arg_split[0]
                 try: 
                     self.instrument.create_station(station_id)
                 except ValueError:
-                    self.print_line_sh()
+                    pass
             case _:
                 self.print_line_sh(constants.TERRAMETER_UNKNOWN_COMMAND(command))
 

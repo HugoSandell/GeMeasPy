@@ -75,8 +75,7 @@ TerrameterApp: Waiting for all threads to be initialized...
 ##     H    Help = Show this message
 ##     Q    Quit
 ##
-############################################
-"""
+############################################"""
 
 TERRAMETER_OUTRO = """############################################
 ## User requested to quit the application ##
