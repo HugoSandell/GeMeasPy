@@ -272,8 +272,14 @@ class TerrameterShell(Cmd):
                 protocol = arg_split[2]
                 try: 
                     spacing = (float(arg_split[3]), float(arg_split[4]), float(arg_split[5]))
-                    unknown = (float(arg_split[6]), float(arg_split[7]), float(arg_split[8])) # TODO: What is this?
-                    self.instrument.create_task(name, spread, protocol, spacing, unknown)
+                    base_reference = (
+                        float(arg_split[6]),
+                        float(arg_split[7]),
+                        float(arg_split[8]),
+                    )
+                    self.instrument.create_task(
+                        name, spread, protocol, spacing, base_reference
+                    )
                 except ValueError:
                     pass
             case "m":

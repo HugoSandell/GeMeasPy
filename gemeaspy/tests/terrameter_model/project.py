@@ -2,15 +2,22 @@ import typing
 
 class Task:
     """A terrameter task"""
-    def __init__(self, id: int, name: str, 
-                 spread_file: str, protocol_file: str, 
-                 spacing: tuple[float, float, float], unknown: tuple[float, float, float]):
+
+    def __init__(
+        self,
+        id: int,
+        name: str,
+        spread_file: str,
+        protocol_file: str,
+        spacing: tuple[float, float, float],
+        base_reference: tuple[float, float, float],
+    ):
         self.id: int = id
         self.name: str = name
         self.spread_file: str = spread_file
         self.protocol_file: str = protocol_file
         self.spacing: tuple[float, float, float] = spacing
-        self.unknown: tuple[float, float, float] = unknown
+        self.base_reference: tuple[float, float, float] = base_reference
         self.is_complete: bool = False
 
 class Station:
@@ -25,9 +32,14 @@ class Project:
         self.tasks: list[Task] = []
         self.stations: list[Station] = []
 
-    def create_task(self, name: str, 
-                    spread_file: str, protocol_file: str, 
-                    spacing: tuple[float, float, float], unknown: tuple[float, float, float]) -> int:
+    def create_task(
+        self,
+        name: str,
+        spread_file: str,
+        protocol_file: str,
+        spacing: tuple[float, float, float],
+        base_reference: tuple[float, float, float],
+    ) -> int:
         """Add a task to the project. Returns the index of the task"""
         task_name_number = 1
         done = False
@@ -39,7 +51,14 @@ class Project:
                     task_name_number += 1
                     done = False # Counter-example found
         id = len(self.tasks) + 1
-        new_task = Task(id, f"{name}_{task_name_number}", spread_file, protocol_file, spacing, unknown)
+        new_task = Task(
+            id,
+            f"{name}_{task_name_number}",
+            spread_file,
+            protocol_file,
+            spacing,
+            base_reference,
+        )
         self.tasks.append(new_task)
         return id - 1
 
