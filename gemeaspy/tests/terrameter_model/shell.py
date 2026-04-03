@@ -267,21 +267,34 @@ class TerrameterShell(Cmd):
                 if len(arg_split) < 9:
                     self.print_error_sh(" Too few arguments")
                     return
+
+                def parse_float(name: str, value: str) -> float:
+                    try:
+                        return float(value)
+                    except ValueError:
+                        self.print_line_sh(f"Error: {name} ={value}")
+                        raise
+
+                try:
+                    spacing = (
+                        parse_float("Electrode spaceing x", arg_split[3]),
+                        parse_float("Electrode spaceing y", arg_split[4]),
+                        parse_float("Electrode spaceing z", arg_split[5]),
+                    )
+                    base_reference = (
+                        parse_float("Base reference  x", arg_split[6]),
+                        parse_float("Base reference  y", arg_split[7]),
+                        parse_float("Base reference  z", arg_split[8]),
+                    )
+                except ValueError:
+                    return
+
                 name = arg_split[0]
                 spread = arg_split[1]
                 protocol = arg_split[2]
-                try: 
-                    spacing = (float(arg_split[3]), float(arg_split[4]), float(arg_split[5]))
-                    base_reference = (
-                        float(arg_split[6]),
-                        float(arg_split[7]),
-                        float(arg_split[8]),
-                    )
-                    self.instrument.create_task(
-                        name, spread, protocol, spacing, base_reference
-                    )
-                except ValueError:
-                    pass
+                self.instrument.create_task(
+                    name, spread, protocol, spacing, base_reference
+                )
             case "m":
                 # Start/stop Terrameter measurement process
                 self.instrument.measure()
