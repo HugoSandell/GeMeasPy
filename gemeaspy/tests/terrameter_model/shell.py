@@ -282,6 +282,8 @@ class TerrameterShell(Cmd):
                 # TODO: Output
             case "S":
                 # Create new Terrameter station
+                self.print_line_sh("Create a new Station")
+                # TODO check if this is correct
                 if len(arg_split) < 1:
                     self.print_error_sh(" Too few arguments")
                     return
