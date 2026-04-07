@@ -6,6 +6,7 @@ import traceback
 
 from paramiko import ChannelException
 
+from gemeaspy.settings import config
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TransferError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
@@ -72,3 +73,22 @@ def run_acquisition(argv: list[str]) -> int:
             traceback.print_exception(e, file=sys.stderr)
         return 6
     return 0
+
+def cli_main():
+    # Read environment variables
+    for _var in config.__dict__:
+        if not hasattr(config, _var) or _var not in os.environ:
+            continue
+        try:
+            setattr(config, _var, type(_var)(os.environ[_var]))
+        except Exception:
+            print(f"Ignoring invalid environment variable {_var}='{os.environ[_var]}'")
+    try:
+        exit_code = run_acquisition(sys.argv)
+        sys.exit(exit_code)
+    except Exception as e:
+        print(f"Error: An unexpected error occured. Check logs for more information.")
+        logger.error(f"Unhandled exception.", exc_info=True)
+        if "DEBUG" in os.environ:
+            traceback.print_exception(e, file=sys.stderr)
+        sys.exit(1)
