@@ -294,9 +294,12 @@ class TerrameterShell(Cmd):
                 name = arg_split[0]
                 spread = arg_split[1]
                 protocol = arg_split[2]
-                self.instrument.create_task(
+                task_id = self.instrument.create_task(
                     name, spread, protocol, spacing, base_reference
                 )
+                array_code = -1  # default value, TODO read from protocol file
+                self.print_line_sh(f"Task ArrayCode {array_code}")
+                self.print_line_sh(f"Created task (ID = {task_id})")
             case "m":
                 # Start/stop Terrameter measurement process
                 self.instrument.measure()
