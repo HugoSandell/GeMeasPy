@@ -256,9 +256,11 @@ class TerrameterShell(Cmd):
                     else:
                         # Uses the last argument
                         created_project_name = self.instrument.create_project(arg_split[-1])
-                except: # TODO: Exception type
-                    self.print_line_sh("Failed to create Project directory")
-                    self.print_line_sh("Failed to create new project!")
+                except OSError as e:
+                    self.print_error_sh(
+                        f"Failed to create project directory ({e.filename})"
+                    )
+                    self.print_error_sh("Failed to create new project!")
                     return
                 self.print_line_sh("Create a new Project")
                 self.print_line_sh(f"Created project: {created_project_name}")
