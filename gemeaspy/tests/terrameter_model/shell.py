@@ -230,12 +230,16 @@ class TerrameterShell(Cmd):
                     path = arg_split[0]
                 except IndexError:
                     return
-                arg1 = 0  # TODO find out what this is
+                fmt = 0
                 try:
-                    arg1 = int(arg_split[1])
+                    fmt = int(arg_split[1])
                 except (IndexError, ValueError):
                     pass
-                self.print_line_sh(f"Read settings from file: {path} {arg1}")
+                self.print_line_sh(f"Read settings from file: {path} {fmt}")
+                if fmt in (2, 3):
+                    raise NotImplementedError(
+                        f"Terrameter settings format {fmt} is not implemented"
+                    )
                 try:
                     self.instrument.read_settings(path)
                 except FileNotFoundError:
