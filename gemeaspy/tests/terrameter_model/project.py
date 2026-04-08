@@ -40,7 +40,7 @@ class Project:
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
     ) -> int:
-        """Add a task to the project. Returns the index of the task"""
+        """Add a task to the project. Returns the id of the task"""
         task_name_number = 1
         done = False
         # Find unused number suffix
@@ -60,7 +60,7 @@ class Project:
             base_reference,
         )
         self.tasks.append(new_task)
-        return id - 1
+        return id
 
     def create_station(self, id: str):
         """Add a station to the project."""

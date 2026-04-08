@@ -186,11 +186,13 @@ class TerrameterLS():
         protocol_file: str,
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
-    ):
+    ) -> int:
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project = self._projects[self._current_project_name]
-        project.create_task(name, spread_file, protocol_file, spacing, base_reference)
+        return project.create_task(
+            name, spread_file, protocol_file, spacing, base_reference
+        )
 
     def create_station(self, id: str):
         #TODO: Should id be int or str? If changed, remember to change in project and shell as well
