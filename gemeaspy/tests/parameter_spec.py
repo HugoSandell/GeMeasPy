@@ -218,23 +218,22 @@ class Constraint:
     def __str__(self) -> str:
         return self.text
 
+class ACTSParameterType(Enum):
+    NUM = "0"
+    ENUM = "1"
+    BOOLEAN = "2"
 
-_ACTS_PARAMETER_TYPE_NUM = "0"
-_ACTS_PARAMETER_TYPE_ENUM = "1"
-_ACTS_PARAMETER_TYPE_BOOLEAN = "2"
-
-
-def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> str:
+def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> ACTSParameterType:
     """Determine the appropriate ACTS type for the given parameter"""
     if type(parameter_values) is tuple:
         parameter_values = [
             value for component in parameter_values for value in component
         ]
     if all(isinstance(v, bool) for v in parameter_values):
-        return _ACTS_PARAMETER_TYPE_BOOLEAN
+        return ACTSParameterType.BOOLEAN
     if all(isinstance(v, int) for v in parameter_values):
-        return _ACTS_PARAMETER_TYPE_NUM
-    return _ACTS_PARAMETER_TYPE_ENUM
+        return ACTSParameterType.NUM
+    return ACTSParameterType.ENUM
 
 
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
@@ -249,7 +248,7 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
         parameter_name = element + element_suffix
         parameter = ACQUISITION_PARAM_SPEC[parameter_name]
         parameter_base_case = util.string_to_acts_enum(json.dumps(parameter[0][0]))
-        if acts_type(parameter) == _ACTS_PARAMETER_TYPE_ENUM:
+        if acts_type(parameter) == ACTSParameterType.ENUM:
             parameter_base_case = f'"{parameter_base_case}"'
         consequent = f" => {parameter_name} == {parameter_base_case}"
         constraints.append(

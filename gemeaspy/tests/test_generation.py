@@ -44,7 +44,7 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     
     for id, param_name in enumerate(parameter_spec):
         param_type = acts_type(parameter_spec[param_name])
-        elem_parameter_attrib = {"id": str(id), "name": param_name, "type": param_type}
+        elem_parameter_attrib = {"id": str(id), "name": param_name, "type": str(param_type)}
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
         for valid_value in parameter_spec[param_name][0]:
