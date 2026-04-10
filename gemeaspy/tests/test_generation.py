@@ -253,7 +253,6 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         ]
     max_case_count_invalid: int = sum(combinations_invalid)
     max_total_case_count = max_case_count_valid + max_case_count_invalid
-    print(f"MAX CASE COUNT: {max_total_case_count}")
     
     # How many cass to generate?
     case_count = min(max_total_case_count, case_count)
