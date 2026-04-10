@@ -107,6 +107,7 @@ def try_load_cache(
         except KeyError as e:
             _logging.warning(f"Cache file contained invalid key {repr(e.args[0])}")
             return None
+    _logging.debug(f"Loaded cache for {id_str}")
     return suite
 
 
@@ -223,7 +224,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
 
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
-def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None) -> list[TestCase]:
+def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
     
     # Check cache
     cache = try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
@@ -257,8 +258,9 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
     # How many cass to generate?
     case_count = min(max_total_case_count, case_count)
     
-    # How many of the cases are invalid? Reflect the distribution in the spec
-    invalid_rate: float = max_case_count_invalid / max_total_case_count
+    # How many of the cases are invalid? Reflect the distribution in the spec if not provided
+    if invalid_rate < 0:
+        invalid_rate = max_case_count_invalid / max_total_case_count
 
     # Count to make sure we don't try to generate more than the maximum
     generated_invalid = 0
