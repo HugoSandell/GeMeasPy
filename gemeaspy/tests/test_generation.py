@@ -10,7 +10,7 @@ import random
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
@@ -253,6 +253,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         ]
     max_case_count_invalid: int = sum(combinations_invalid)
     max_total_case_count = max_case_count_valid + max_case_count_invalid
+    print(f"MAX CASE COUNT: {max_total_case_count}")
     
     # How many cass to generate?
     case_count = min(max_total_case_count, case_count)
@@ -317,10 +318,20 @@ def _main():
         sys.exit(1)
 
     @dataclass
-    class TestTestCase(TestCaseParameters):
+    class TestTestCaseParameters(TestCaseParameters):
         param_a: str = ""
         param_b: int = 0
         param_c: bool = False
+
+    @dataclass
+    class TestTestCase(TestCase[TestTestCaseParameters]):
+        _parameters: TestTestCaseParameters = field(default_factory=TestTestCaseParameters)
+        @property
+        def parameters(self) -> TestTestCaseParameters:
+            return self._parameters
+        @parameters.setter
+        def parameters(self, value: TestTestCaseParameters) -> None:
+            self._parameters = value
 
     @dataclass
     class TestParameterSpec(ParameterSpec):
