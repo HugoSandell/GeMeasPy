@@ -16,6 +16,7 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
 from gemeaspy.tests import _logging
+from gemeaspy.tests.generator import _cache
 from gemeaspy.tests.generator.parameter_spec import (
     ParameterSpec,
     ParameterValue,
@@ -28,7 +29,7 @@ from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
 from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
-_INPUT_CACHE_PATH = os.path.join(_ROOT_PATH, "test_data", "input_cache")
+_CACHE_DIR_PATH = os.path.join(_ROOT_PATH, "test_data", "input_cache")
 
 _ACTS_JAR = os.path.join(_ROOT_PATH, "bin", "ACTS", "acts_3.3.jar")
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
@@ -68,69 +69,11 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
 
     return path
 
-
-def get_cache_file_path(
-    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
-) -> str:
-    param_spec_hash = hashlib.sha256(
-        repr((param_spec, constraints)).encode()
-    ).hexdigest()
-    return f"{_INPUT_CACHE_PATH}/{param_spec_hash}_{id_str}.json"
-
-def try_load_cache(
-    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
-) -> None | list[TestCase[TestCaseParameters]]:
-    cache_file_path = get_cache_file_path(param_spec, constraints, id_str)
-    if not os.path.isfile(cache_file_path):
-        return None
-    with open(cache_file_path, "r") as fp:
-        suite_json = json.load(fp)
-        if type(suite_json) != list:
-            raise TypeError(f"Expected list in input cache file '{cache_file_path}'")
-    suite = []
-    for case_json in suite_json:
-        try:
-            parameters_json = case_json["parameters"]
-            case = param_spec.TestCaseType()
-            case.expect_failure = case_json["expect_failure"]
-            case.invalid_parameter = case_json["invalid_parameter"]
-            if case.expect_failure and (
-                str(case.invalid_parameter) not in param_spec
-                or case.invalid_parameter is None
-            ):
-                _logging.warning(f"Cache file contained invalid invalid_parameter {repr(case.invalid_parameter)}")
-                return None
-            for param_name in case.parameters:
-                case.parameters[param_name] = parameters_json[param_name]
-            suite.append(case)
-        except KeyError as e:
-            _logging.warning(f"Cache file contained invalid key {repr(e.args[0])}")
-            return None
-    _logging.debug(f"Loaded cache for {id_str}")
-    return suite
-
-
-def save_cache[T: TestCase](
-    suite: list[T],
-    param_spec: ParameterSpec,
-    constraints: list[Constraint] | None,
-    id_str: str,
-):
-    cache_file_path = get_cache_file_path(param_spec, constraints, id_str)
-    os.makedirs(_INPUT_CACHE_PATH, exist_ok=True)
-    with open(cache_file_path, "w") as fp:
-        json.dump([
-                {"parameters": case.parameters.__dict__, 
-                    "expect_failure": case.expect_failure, 
-                    "invalid_parameter": case.invalid_parameter
-                } for case in suite
-            ], fp)
-
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
     
     # Check cache
-    cache = try_load_cache(param_spec, constraints, f"t{strength}")
+    cache = _cache.try_load_cache(param_spec, constraints, f"t{strength}", _CACHE_DIR_PATH)
     if cache is not None:
         return cache
 
@@ -221,7 +164,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
                 case.invalid_parameter = parameter_name
         test_data.append(case)
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
-    save_cache(test_data, param_spec, constraints, f"t{strength}")
+    _cache.save_cache(test_data, param_spec, constraints, f"t{strength}", _CACHE_DIR_PATH)
     return test_data
 
 
@@ -229,7 +172,7 @@ RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
     
     # Check cache
-    cache = try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
+    cache = _cache.try_load_cache(param_spec, None, f"n{case_count}_s{seed}", _CACHE_DIR_PATH)
     if cache is not None:
         return cache
     
@@ -307,7 +250,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         assert not is_duplicate(case_a, case_b)
 
     _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
-    save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}")
+    _cache.save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}", _CACHE_DIR_PATH)
     return test_data
 
 # For manual testing
