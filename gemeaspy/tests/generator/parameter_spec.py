@@ -122,7 +122,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         "0"
     ], [""])
     # config.py
-    config_projects_folder: ParamSpecEntry[str] = param_values([VALID_PROJECTS_FOLDER],) #TODO: [INVALID_FILE])
+    config_projects_folder: ParamSpecEntry[str] = param_values([VALID_PROJECTS_FOLDER], [INVALID_FILE])
     config_local_data_path: ParamSpecEntry[str] = param_values([VALID_LOCAL_DATA_PATH], [INVALID_FILE])
     config_connection_file: ParamSpecEntry[str] = param_values([VALID_CONNECTION_FILE], [INVALID_FILE]) 
     # connection_settings.json
@@ -143,58 +143,58 @@ class AcquisitionParameterSpec(ParameterSpec):
 
     # Tasks 
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"], 
-         # TODO: ["#TaskX", ""]
+        ["Task1"],
+        ["#TaskX", ""],
         )
     taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
-        [VALID_SPREADFILE] # TODO: , [INVALID_FILE, ""]
+        [VALID_SPREADFILE], [INVALID_FILE, ""]
     )
     taskfile1_task1_protocol: ParamSpecEntry[str] = param_values(
-        [VALID_PROTOCOLFILE] # TODO: , [INVALID_FILE, ""]
+        [VALID_PROTOCOLFILE], [INVALID_FILE, ""]
     )
     taskfile1_task1_settings: ParamSpecEntry[str] = param_values(
-        [VALID_SETTINGSFILE] # TODO: , [INVALID_FILE, ""]
+        [VALID_SETTINGSFILE], [INVALID_FILE, ""]
     )
     taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-            # TODO: ["1 1 1 1", "I I I", ""]
+            ["1 1 1 1", "I I I", ""],
         )
     
     taskfile1_task2_name: ParamSpecEntry[str] = param_values(
         ["Task2"],
-         # TODO: ["#TaskX"]
+        ["#TaskX"],
         )
     taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
-        [VALID_SPREADFILE], # TODO:  [INVALID_FILE]
+        [VALID_SPREADFILE], [INVALID_FILE]
     )
     taskfile1_task2_protocol: ParamSpecEntry[str] = param_values(
-        [VALID_PROTOCOLFILE] # TODO: , [INVALID_FILE]
+        [VALID_PROTOCOLFILE], [INVALID_FILE]
     )
     taskfile1_task2_settings: ParamSpecEntry[str] = param_values(
-        [VALID_SETTINGSFILE] # TODO: , [INVALID_FILE]
+        [VALID_SETTINGSFILE], [INVALID_FILE]
     )
     taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-             # TODO: ["1 1 1 1", "I I I"]
-        )  
+            ["1 1 1 1", "I I I"],
+        )
 
     taskfile2_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"], 
-         # TODO: ["#TaskX"]
+        ["Task1"],
+        ["#TaskX"],
         )
     taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
-        [VALID_SPREADFILE] # TODO: , [INVALID_FILE]
+        [VALID_SPREADFILE], [INVALID_FILE]
     )
     taskfile2_task1_protocol: ParamSpecEntry[str] = param_values(
-        [VALID_PROTOCOLFILE] # TODO: , [INVALID_FILE]
+        [VALID_PROTOCOLFILE], [INVALID_FILE]
     )
     taskfile2_task1_settings: ParamSpecEntry[str] = param_values(
-        [VALID_SETTINGSFILE] # TODO: , [INVALID_FILE]
+        [VALID_SETTINGSFILE], [INVALID_FILE]
     )
     taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-             # TODO: ["1 1 1 1", "I I I"]
-        )  
+            ["1 1 1 1", "I I I"],
+        )
     
     taskfile2_task2_name: ParamSpecEntry[str] = param_values(
         ["Task2"], 
