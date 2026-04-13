@@ -75,9 +75,6 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         return path.replace("\\", "/")
     
     acts_config_path = generate_acts_file(param_spec, constraints)
-    print(acts_config_path)
-    with open(acts_config_path, "r") as fp:
-        print("\n".join(fp.readlines()))
     
     acts_arguments = [
         "java", f"-Xms{_ACTS_HEAP}", f"-Xmx{_ACTS_HEAP}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
