@@ -42,7 +42,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
     max_case_count_invalid: int = sum(combinations_invalid)
     max_total_case_count = max_case_count_valid + max_case_count_invalid
     
-    # How many cass to generate?
+    # How many cases to generate?
     case_count = min(max_total_case_count, case_count)
     
     # How many of the cases are invalid? Reflect the distribution in the spec if not provided
