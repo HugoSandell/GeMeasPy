@@ -40,13 +40,9 @@ def run_acquisition(argv: list[str]) -> int:
         logger.error(f"Acquisition was run with no input")
         return 2
     try: 
-        if nargs == 2:
-            task_file = argv[1]
+        task_files = argv[1:]
+        for task_file in task_files:
             run_task_file(task_file)
-        else:
-            task_files = argv[1:]
-            for task_file in task_files:
-                run_task_file(task_file)
     # NOTE: All fatal exceptions shall start with 'Error:'
     except ChannelException as e:
         print("Error: Failed to create SSH shell channel to Terrameter!")
