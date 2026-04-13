@@ -8,6 +8,7 @@ import gemeaspy
 
 logger = logging.getLogger("gemeaspy_tests")
 logger.setLevel(logging.DEBUG)
+_initialized = False
 
 debug = logger.debug
 critical = logger.critical
@@ -15,7 +16,10 @@ info = logger.info
 error = logger.error
 warning = logger.warning
 
-def initialise_logger():
+def initialize_logger():
+    global _initialized
+    if _initialized:
+        return
     now = datetime.now().strftime("%Y%m%d%H%M%S")
     log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log")
     log_file_path = f"{log_dir}/tests{now}.log"
@@ -27,5 +31,6 @@ def initialise_logger():
     tests_handler = logging.FileHandler(log_file_path)
     tests_handler.setFormatter(general_formatter)
     logger.addHandler(tests_handler)
+    _initialized = True
 
-initialise_logger()
+initialize_logger()
