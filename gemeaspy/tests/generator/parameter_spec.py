@@ -36,7 +36,7 @@ ParamSpecEntry: TypeAlias = tuple[list[T], list[T]]
 """A pair of lists, the first of valid values and the second of invalid values."""
 
 def param_values[T](valid: Sequence[T], invalid: Sequence[T] | None = None) -> ParamSpecEntry:
-    if type(valid) != list or (invalid != None and type(invalid) != list):
+    if type(valid) != list or (isinstance(invalid, Sequence) and type(invalid) != list):
         raise TypeError(f"Arguments must be lists! Got {type(valid)}, {type(invalid)}")
     return field(default_factory=lambda: (valid, invalid if invalid else []))
 

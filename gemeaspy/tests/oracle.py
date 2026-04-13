@@ -130,7 +130,7 @@ def evaluate_test(
             return _evaluate_arg_task_files(test_data, stdout)
         case "connection_port":
             return _evaluate_port(test_data, stdout, stderr)
-        case p if (match := re.match(RE_TASK, p)) != None:
+        case p if (match := re.match(RE_TASK, p)) is not None:
             file = int(match.group("file"))
             task = int(match.group("task"))
             property = str(match.group("property"))

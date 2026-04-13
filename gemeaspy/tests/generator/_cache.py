@@ -32,7 +32,7 @@ def try_load_cache(
         return None
     with open(cache_file_path, "r") as fp:
         suite_json = json.load(fp)
-        if type(suite_json) != list:
+        if not isinstance(suite_json, list):
             raise TypeError(f"Expected list in input cache file '{cache_file_path}'")
     suite = []
     for case_json in suite_json:
