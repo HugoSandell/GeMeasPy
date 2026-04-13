@@ -3,6 +3,9 @@ import time
 from collections.abc import Callable
 from typing import cast
 
+import gemeaspy
+import os
+from gemeaspy.tests.generator import _generator_acts
 from gemeaspy.tests.generator import test_generation
 from gemeaspy.tests.generator.parameter_spec import (ACQUISITION_CONSTRAINTS,
                                             ACQUISITION_PARAM_SPEC)
@@ -14,6 +17,8 @@ _HOUR = 60.0 * _MIN
 
 MAX_EXECUTION_TIME: float = 00 * _HOUR + 60 * _MIN + 0 * _SEC
 MAX_STRENGTH: int = 6
+
+_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), os.path.pardir))
 
 def timer[T](f: Callable[..., T]) -> Callable[..., tuple[T, float]]:
     def _f(*args) -> tuple[T, float]:
@@ -36,24 +41,25 @@ def generate_covering_array(strength: int) -> list[AcquisitionTestCase]:
 def generate_random_array(size: int) -> list[AcquisitionTestCase]:
     return cast(list[AcquisitionTestCase], test_generation.generate_random_data(
         param_spec=ACQUISITION_PARAM_SPEC,
+        constraints=ACQUISITION_CONSTRAINTS,
         case_count=size,
         seed=None
     ))
 
 def save_acts_suite(strength: int, suite: list[AcquisitionTestCase]):
-    filename = f"{test_generation._ROOT_PATH}/test_data/input_cache/suite_acts_{strength}.json"
+    filename = f"{_ROOT_PATH}/test_data/input_cache/suite_acts_{strength}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
 
 def save_random_suite(strength_equivalent: int, suite: list[AcquisitionTestCase]):
-    filename = f"{test_generation._ROOT_PATH}/test_data/input_cache/suite_random_{strength_equivalent}.json"
+    filename = f"{_ROOT_PATH}/test_data/input_cache/suite_random_{strength_equivalent}.json"
     with open(filename, "w") as fp:
         json.dump([case.__dict__ for case in suite], fp)
 
 if __name__ == "__main__":
     covering_arrays_metaparameters = []
     t = 1
-    test_generation._ACTS_TIMEOUT = MAX_EXECUTION_TIME
+    _generator_acts._ACTS_TIMEOUT = MAX_EXECUTION_TIME
     last_execution_time: float = 0.0
     
     suite_sizes: dict[int, int] = {}
