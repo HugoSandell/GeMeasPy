@@ -1,4 +1,4 @@
-from .task import Task
+from .task import Protocol, Spread, Task
 
 
 class Station:
@@ -18,10 +18,12 @@ class Project:
         name: str,
         spread_file: str,
         protocol_file: str,
+        spread: Spread | None,
+        protocol: Protocol | None,
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
-    ) -> int:
-        """Add a task to the project. Returns the id of the task"""
+    ) -> Task:
+        """Add a task to the project. Returns the task"""
         task_name_number = 1
         done = False
         # Find unused number suffix
@@ -37,11 +39,13 @@ class Project:
             f"{name}_{task_name_number}",
             spread_file,
             protocol_file,
+            spread,
+            protocol,
             spacing,
             base_reference,
         )
         self.tasks.append(new_task)
-        return id
+        return new_task
 
     def create_station(self, id: str):
         """Add a station to the project."""

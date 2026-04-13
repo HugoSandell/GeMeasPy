@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,6 +17,8 @@ class Task:
         name: str,
         spread_file: str,
         protocol_file: str,
+        spread: Spread | None,
+        protocol: Protocol | None,
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
     ):
@@ -22,6 +26,8 @@ class Task:
         self.name: str = name
         self.spread_file: str = spread_file
         self.protocol_file: str = protocol_file
+        self.spread: Spread | None = spread
+        self.protocol: Protocol | None = protocol
         self.spacing: tuple[float, float, float] = spacing
         self.base_reference: tuple[float, float, float] = base_reference
         self.is_complete: bool = False
