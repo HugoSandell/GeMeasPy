@@ -4,9 +4,9 @@ from dataclasses import dataclass
 import re
 
 from gemeaspy.tests import _logging
-from gemeaspy.tests.parameter_spec import AcquisitionParameterSpec
+from gemeaspy.tests.generator.parameter_spec import AcquisitionParameterSpec
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
 # Regular expressions for matching a "class" of paramters
 RE_TASK = re.compile(r"taskfile(?P<file>\d+)_task(?P<task>\d+)_(?P<property>spread|protocol|name|settings|spacing)")

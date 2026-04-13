@@ -1,10 +1,10 @@
 """Definition of an individual test case."""
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import typing
 from collections.abc import Iterator
 
-from gemeaspy.tests.parameters import ParameterValue
+from gemeaspy.tests.generator.parameters import ParameterValue
 
 class TestCaseParameters:
     def __iter__(self) -> Iterator[str]:

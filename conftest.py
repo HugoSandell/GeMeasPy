@@ -3,9 +3,9 @@ import os
 
 import pytest
 
-from gemeaspy.tests import test_generation
-from gemeaspy.tests.parameter_spec import ACQUISITION_PARAM_SPEC
-from gemeaspy.tests.util import random_string
+from gemeaspy.tests.generator import test_generation
+from gemeaspy.tests.generator.parameter_spec import ACQUISITION_PARAM_SPEC
+from gemeaspy.tests.generator.util import random_string
 
 @pytest.fixture(autouse=True)
 def environment_variable_debug():

@@ -5,9 +5,9 @@ import os
 import tempfile
 
 from gemeaspy.settings import config
-from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
-from gemeaspy.tests.util import random_string
+from gemeaspy.tests.generator import parameter_spec
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
+from gemeaspy.tests.generator.util import random_string
 
 
 def _create_connection_settings(test: AcquisitionTestCase, server_port: int):

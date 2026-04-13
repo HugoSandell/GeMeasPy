@@ -5,8 +5,8 @@ from re import Pattern
 
 import pytest
 
-from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.generator import parameter_spec
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 
 
 class ExceptionCheck:

@@ -15,9 +15,8 @@ from typing import TypeAlias
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 import gemeaspy
-import gemeaspy.acquisition
 from gemeaspy.tests import _logging
-from gemeaspy.tests.parameter_spec import (
+from gemeaspy.tests.generator.parameter_spec import (
     Constraint,
     ParameterSpec,
     ParameterValue,
@@ -25,13 +24,13 @@ from gemeaspy.tests.parameter_spec import (
     acts_type,
     param_values,
 )
-from gemeaspy.tests.test_case import TestCase, TestCaseParameters
-from gemeaspy.tests.util import acts_enum_to_string, string_to_acts_enum
+from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
+from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
-_INPUT_CACHE_PATH = f"{_ROOT_PATH}/test_data/input_cache"
+_INPUT_CACHE_PATH = os.path.join(_ROOT_PATH, "test_data", "input_cache")
 
-_ACTS_JAR = f"{_ROOT_PATH}/bin/ACTS/acts_3.3.jar"
+_ACTS_JAR = os.path.join(_ROOT_PATH, "bin", "ACTS", "acts_3.3.jar")
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
 _ACTS_CONSTRAINT_HANDLER = "forbiddentuples" # 'solver' or 'forbiddentuples' -- same result, but solver may be faster for complex constraints.
 _ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a problem
@@ -44,7 +43,7 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     
     for id, param_name in enumerate(parameter_spec):
         param_type = acts_type(parameter_spec[param_name])
-        elem_parameter_attrib = {"id": str(id), "name": param_name, "type": str(param_type)}
+        elem_parameter_attrib = {"id": str(id), "name": param_name, "type": param_type.value}
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
         for valid_value in parameter_spec[param_name][0]:
@@ -62,10 +61,11 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
         elem_constraint_parameters = SubElement(elem_constraint, "Parameters")
         for parameter in constraint.parameters:
             SubElement(elem_constraint_parameters, "Parameter", attrib={"name": parameter})
-    
+
     fd, path = tempfile.mkstemp(suffix=".xml", prefix="gemeaspytest", text=True)
     ElementTree(elem_system).write(path, xml_declaration=True)
     os.close(fd)
+
     return path
 
 
@@ -76,7 +76,6 @@ def get_cache_file_path(
         repr((param_spec, constraints)).encode()
     ).hexdigest()
     return f"{_INPUT_CACHE_PATH}/{param_spec_hash}_{id_str}.json"
-
 
 def try_load_cache(
     param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
@@ -145,6 +144,9 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         return path.replace("\\", "/")
     
     acts_config_path = generate_acts_file(param_spec, constraints)
+    print(acts_config_path)
+    with open(acts_config_path, "r") as fp:
+        print("\n".join(fp.readlines()))
     
     acts_arguments = [
         "java", f"-Xms{_ACTS_HEAP}", f"-Xmx{_ACTS_HEAP}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
@@ -343,9 +345,9 @@ def _main():
     param_spec: ParameterSpec = TestParameterSpec()
     
     constraints: list[Constraint] = [
-        Constraint("param_b < 3 => param_c = true", parameters=["param_b", "param_c"])
+        Constraint("param_b < 3 => param_c = true")
     ]
-    
+
     rng_seed = None
     if argc == 4:
         rng_seed = sys.argv[2]

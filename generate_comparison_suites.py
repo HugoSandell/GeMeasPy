@@ -3,10 +3,10 @@ import time
 from collections.abc import Callable
 from typing import cast
 
-from gemeaspy.tests import test_generation
-from gemeaspy.tests.parameter_spec import (ACQUISITION_CONSTRAINTS,
+from gemeaspy.tests.generator import test_generation
+from gemeaspy.tests.generator.parameter_spec import (ACQUISITION_CONSTRAINTS,
                                             ACQUISITION_PARAM_SPEC)
-from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 
 _SEC = 1.0
 _MIN = 60.0 * _SEC

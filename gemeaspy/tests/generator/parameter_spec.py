@@ -8,11 +8,11 @@ from enum import Enum
 from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
-from gemeaspy.tests import util
-from gemeaspy.tests.int_field_error import IntFieldError
-from gemeaspy.tests.parameters import ParameterValue
+from gemeaspy.tests.generator import util
+from gemeaspy.tests.generator.int_field_error import IntFieldError
+from gemeaspy.tests.generator.parameters import ParameterValue
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
-from gemeaspy.tests.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -252,7 +252,7 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
             parameter_base_case = f'"{parameter_base_case}"'
         consequent = f" => {parameter_name} == {parameter_base_case}"
         constraints.append(
-            Constraint(antecedent + consequent, [N_param, parameter_name])
+            Constraint(antecedent + consequent)
         )
     return constraints
 

@@ -12,7 +12,7 @@ from gemeaspy.settings import config as _config
 from gemeaspy.tests import oracle, setup_config, setup_task_files
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
-from gemeaspy.tests.test_case import AcquisitionTestCase
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 
 ACQUISITION_TIMEOUT = 3 # The greatest amount of time to wait for acquisition to finish
 

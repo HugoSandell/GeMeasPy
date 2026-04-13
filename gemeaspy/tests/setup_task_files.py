@@ -4,10 +4,10 @@ import tempfile
 from collections.abc import Callable
 from typing import Any
 
-from gemeaspy.tests import parameter_spec
-from gemeaspy.tests.int_field_error import IntFieldError
-from gemeaspy.tests.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
-from gemeaspy.tests.util import random_string
+from gemeaspy.tests.generator import parameter_spec
+from gemeaspy.tests.generator.int_field_error import IntFieldError
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
+from gemeaspy.tests.generator.util import random_string
 
 
 def _replace_file_placeholder(value: str, invalid_prefix: str) -> str:
