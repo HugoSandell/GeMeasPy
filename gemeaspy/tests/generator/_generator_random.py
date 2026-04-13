@@ -60,7 +60,7 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
     for case_index in range(case_count):
         initialized = False
         is_valids_complete = generated_valid >= max_case_count_valid
-        is_invalids_complete = generated_invalid < max_case_count_invalid
+        is_invalids_complete = generated_invalid >= max_case_count_invalid
         use_invalid_if_possible = random.random() < invalid_rate
         is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
         invalid_param: str | None = None
