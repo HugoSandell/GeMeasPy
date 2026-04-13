@@ -3,13 +3,13 @@ import os
 import threading
 import time
 import xml.etree.ElementTree as ElementTree
-from io import BytesIO
 from collections.abc import Callable
+from io import BytesIO
 
 from . import constants
 from .project import Project
+from .task import Protocol, Spread, Task
 from .vfs import Path, VirtualFileSystem
-
 
 type Value = str | int | float | bool
 
@@ -186,20 +186,55 @@ class TerrameterLS():
         protocol_file: str,
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
-    ) -> int:
+    ) -> tuple[Task, str]:
+        """Add a task to the current project. Returns the task and non-fatal errors."""
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project = self._projects[self._current_project_name]
-        return project.create_task(
-            name, spread_file, protocol_file, spacing, base_reference
+        errors = ""
+
+        def failed_to_open_file(path: str) -> str:
+            return f"""{path} Couldn't load {path} <ticpp.cpp@645>
+Description: Failed to open file
+File: {path}
+Line: 0
+Column: 0"""
+
+        spread = None
+        try:
+            spread = Spread.parse(self._filesystem.read(Path(spread_file)).decode())
+        except OSError:
+            errors += f"Load spread exception {failed_to_open_file(spread_file)}"
+
+        protocol = None
+        try:
+            protocol = Protocol.parse(
+                self._filesystem.read(Path(protocol_file)).decode()
+            )
+        except OSError:
+            # newline for protocol but not spread is intentional
+            errors += (
+                f"XML Protocol file exception: {failed_to_open_file(protocol_file)}\n"
+            )
+
+        return (
+            project.create_task(
+                name,
+                spread_file,
+                protocol_file,
+                spread,
+                protocol,
+                spacing,
+                base_reference,
+            ),
+            errors,
         )
 
-    def create_station(self, id: str):
-        #TODO: Should id be int or str? If changed, remember to change in project and shell as well
+    def create_station(self, index_selection: str) -> Task.CreateStationResult:
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project: Project = self._projects[self._current_project_name]
-        project.create_station(id)
+        return project.create_station(index_selection)
 
     def measure(self):
         """Perform measurements"""        

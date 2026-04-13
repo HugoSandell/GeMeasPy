@@ -1,29 +1,15 @@
-import typing
+from dataclasses import dataclass
 
-class Task:
-    """A terrameter task"""
+from .task import Protocol, Spread, Task, Vec3i
 
-    def __init__(
-        self,
-        id: int,
-        name: str,
-        spread_file: str,
-        protocol_file: str,
-        spacing: tuple[float, float, float],
-        base_reference: tuple[float, float, float],
-    ):
-        self.id: int = id
-        self.name: str = name
-        self.spread_file: str = spread_file
-        self.protocol_file: str = protocol_file
-        self.spacing: tuple[float, float, float] = spacing
-        self.base_reference: tuple[float, float, float] = base_reference
-        self.is_complete: bool = False
 
+@dataclass
 class Station:
     """A terrameter station"""
-    def __init__(self, id: str):
-        self.id: str = id
+
+    id: int
+    pos: Vec3i
+
 
 class Project:
     """A terrameter project"""
@@ -31,16 +17,19 @@ class Project:
         self.name: str = name
         self.tasks: list[Task] = []
         self.stations: list[Station] = []
+        self.current_task_index: int | None = None
 
     def create_task(
         self,
         name: str,
         spread_file: str,
         protocol_file: str,
+        spread: Spread | None,
+        protocol: Protocol | None,
         spacing: tuple[float, float, float],
         base_reference: tuple[float, float, float],
-    ) -> int:
-        """Add a task to the project. Returns the id of the task"""
+    ) -> Task:
+        """Add a task to the project. Returns the task"""
         task_name_number = 1
         done = False
         # Find unused number suffix
@@ -56,13 +45,20 @@ class Project:
             f"{name}_{task_name_number}",
             spread_file,
             protocol_file,
+            spread,
+            protocol,
             spacing,
             base_reference,
         )
         self.tasks.append(new_task)
-        return id
+        self.current_task_index = id - 1
+        return new_task
 
-    def create_station(self, id: str):
+    def create_station(self, index_selection: str) -> Task.CreateStationResult:
         """Add a station to the project."""
-        new_station = Station(id)
-        self.stations.append(new_station)
+        if self.current_task_index is None:
+            raise RuntimeError("Current task is not set")
+        id = len(self.stations) + 1
+        result = self.tasks[self.current_task_index].create_station(id, index_selection)
+        self.stations.append(result.station)
+        return result
