@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import re
 
 from gemeaspy.tests import _logging
-from gemeaspy.tests.generator.parameter_spec import AcquisitionParameterSpec
+from gemeaspy.tests.generator.parameter_spec import INVALID_FILE, AcquisitionParameterSpec
 from gemeaspy.tests.setup_config import ConfigState
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
@@ -62,11 +62,12 @@ def _evaluate_arg_task_files(
     if len(value) == 0:
         if "No task file given" in msg:
             return OracleResult(True)
-    else:
-        raise NotImplementedError(
-            f"Value {repr(value)} not implemented in arg_task_files evaluator"
-        )
-
+    elif INVALID_FILE in value:
+        if "Failed to read task file" in msg:
+            return OracleResult(True)
+        else:
+            return OracleResult(False, "Did not find error message 'Failed to read task file' in output.")
+    
     return OracleResult(
         False,
         f"Unexpected error message for invalid arg_task_files={repr(value)}: {msg}",
