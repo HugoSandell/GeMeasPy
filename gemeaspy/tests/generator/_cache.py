@@ -6,11 +6,15 @@ import os
 import typing
 from os import path
 
+import gemeaspy
 from gemeaspy.tests import _logging
 
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec
 from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
+
+_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
+_CACHE_DIR_PATH = os.path.join(_ROOT_PATH, "test_data", "input_cache")
 
 def _get_cache_file_path(
     param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
@@ -21,9 +25,9 @@ def _get_cache_file_path(
     return f"{param_spec_hash}_{id_str}.json"
 
 def try_load_cache(
-    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str, cache_dir: str
+    param_spec: ParameterSpec, constraints: list[Constraint] | None, id_str: str
 ) -> None | list[TestCase[TestCaseParameters]]:
-    cache_file_path = path.join(cache_dir, _get_cache_file_path(param_spec, constraints, id_str))
+    cache_file_path = path.join(_CACHE_DIR_PATH, _get_cache_file_path(param_spec, constraints, id_str))
     if not os.path.isfile(cache_file_path):
         return None
     with open(cache_file_path, "r") as fp:
@@ -57,11 +61,10 @@ def save_cache[T: TestCase](
     suite: list[T],
     param_spec: ParameterSpec,
     constraints: list[Constraint] | None,
-    id_str: str,
-    cache_dir: str
+    id_str: str
 ):
-    cache_file_path = path.join(cache_dir, _get_cache_file_path(param_spec, constraints, id_str))
-    os.makedirs(cache_dir, exist_ok=True)
+    cache_file_path = path.join(_CACHE_DIR_PATH, _get_cache_file_path(param_spec, constraints, id_str))
+    os.makedirs(_CACHE_DIR_PATH, exist_ok=True)
     with open(cache_file_path, "w") as fp:
         json.dump([
                 {"parameters": case.parameters.__dict__, 
