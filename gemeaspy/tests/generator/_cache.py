@@ -13,7 +13,7 @@ from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec
 from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
 
-_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
+_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), os.path.pardir))
 _CACHE_DIR_PATH = os.path.join(_ROOT_PATH, "test_data", "input_cache")
 
 def _get_cache_file_path(
