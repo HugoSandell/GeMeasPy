@@ -1,6 +1,9 @@
 """For generating tasklist files from test case parameters."""
 
+import os
 import tempfile
+from tempfile import _TemporaryFileWrapper, TemporaryDirectory
+
 from collections.abc import Callable
 from typing import Any
 
@@ -82,7 +85,10 @@ def resolve_task_files(test: AcquisitionTestCase):
 
     def _cleanup():
         for f in tempfiles:
-            f.__exit__(None, None, None)
+            if isinstance(f, TemporaryDirectory):
+                f.cleanup()
+            elif isinstance(f, _TemporaryFileWrapper):
+                os.unlink(f.name)
 
     return task_files, _cleanup
 

@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+from tempfile import _TemporaryFileWrapper, TemporaryDirectory
 
 from gemeaspy.settings import config
 from gemeaspy.tests.generator import parameter_spec
@@ -54,7 +55,7 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 
 class ConfigState:
     def __init__(self, test: AcquisitionTestCase, server_port: int):
-        self._tempfiles = []
+        self._tempfiles: list[_TemporaryFileWrapper | TemporaryDirectory] = []
         self._data_invalid_path = None
         self._data_invalid_content = None
         match test.parameters.config_projects_folder:
@@ -98,7 +99,10 @@ class ConfigState:
 
     def cleanup(self):
         for f in self._tempfiles:
-            f.__exit__(None, None, None)
+            if isinstance(f, TemporaryDirectory):
+                f.cleanup()
+            elif isinstance(f, _TemporaryFileWrapper):
+                os.unlink(f.name)
 
     def data_invalid_is_modified(self):
         if self._data_invalid_path is None or self._data_invalid_content is None:
