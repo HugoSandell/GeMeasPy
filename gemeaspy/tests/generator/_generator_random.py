@@ -6,12 +6,13 @@ from typing import TypeAlias
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator import _cache
+from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec
 from gemeaspy.tests.generator.test_case import TestCase
 
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
-def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
+def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint], case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
     
     # Check cache
     cache = _cache.try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
@@ -25,6 +26,9 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
             if test_data[case_a].parameters[param_name] != test_data[case_b].parameters[param_name]:
                 return False
         return True
+    
+    def valid_under_constraints(case: TestCase) -> bool:
+        return all(constraint.test(case.parameters) for constraint in constraints)
     
     _logging.debug("Random test case generator starting.")
 
@@ -65,9 +69,10 @@ def generate_random_data(param_spec: ParameterSpec, case_count: int, seed: RNGSe
         is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
         invalid_param: str | None = None
         
-        while not initialized or any(
-            is_duplicate(case_index, x) for x in range(case_index)
-        ):
+        # TODO: Make sure this cannot get stuck or anything due to constraints
+        while not initialized \
+        or any(is_duplicate(case_index, x) for x in range(case_index)) \
+        or not valid_under_constraints(test_data[case_index]):
             if is_case_invalid:
                 invalid_param = random.choice([*invalid_values.keys()])
                 invalid_value_i = random.randint(0, len(invalid_values[invalid_param])-1)

@@ -62,7 +62,7 @@ def _main():
         interaction_strength = len(param_spec)
     
     acts_tests: list[TestCase] = generate_covering_array(param_spec, constraints, interaction_strength, validate=False)
-    random_tests: list[TestCase] = generate_random_data(param_spec, len(acts_tests), rng_seed)
+    random_tests: list[TestCase] = generate_random_data(param_spec, constraints, len(acts_tests), rng_seed)
     
     # Print results 
     def print_centered(msg: str="", padding: str=" "):
