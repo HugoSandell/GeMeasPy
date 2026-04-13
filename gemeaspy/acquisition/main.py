@@ -7,7 +7,7 @@ import traceback
 from paramiko import ChannelException
 
 from gemeaspy.settings import config
-from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TransferError
+from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TaskFileIOError, TransferError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
@@ -68,6 +68,12 @@ def run_acquisition(argv: list[str]) -> int:
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         return 6
+    except TaskFileIOError as e:
+        print(f"Error: Failed to read task file {e.file!r}!")
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        logger.error(f"TaskFileIOError - {e!r}", exc_info=True)
+        return 7
     return 0
 
 def cli_main():

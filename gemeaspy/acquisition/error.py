@@ -17,3 +17,8 @@ class SSHConnectionError(GeMeasPyError):
     def __init__(self, msg: str, params: dict):
         GeMeasPyError.__init__(self, msg)
         self.params = params
+
+class TaskFileIOError(GeMeasPyError):
+    def __init__(self, file: str):
+        GeMeasPyError.__init__(self, "File could not be read")
+        self.file = file

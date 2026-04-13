@@ -1,4 +1,5 @@
 import datetime
+from io import StringIO, TextIOWrapper
 import json
 import os
 import sys
@@ -6,6 +7,7 @@ import time
 from typing import Any, TextIO
 
 from gemeaspy.acquisition import subvision_relay
+from gemeaspy.acquisition.error import TaskFileIOError
 from gemeaspy.settings import config
 
 
@@ -40,58 +42,66 @@ def time_stamp_string_from_datetime(time_stamp: datetime.datetime) -> str:
 def read_ignore_comments(in_file: TextIO) -> str:
     while True:
         line = in_file.readline()
+        print(line)
         if line.startswith('#'):
             continue
         return line.strip()
 
 
 def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
-    with open(task_file, 'r') as file:
-        list_of_tasks = []
-        task_id = 0
-        header = [int(n) for n in read_ignore_comments(file).split()]
-        number_of_tasks = header[0]
-        match header[1]:
-            case 0:
-                # no relay switches present
-                for task in range(number_of_tasks):
-                    task_id += 1
-                    task_dict = {"name": read_ignore_comments(file),
-                                "spread": read_ignore_comments(file),
-                                "protocol": read_ignore_comments(file),
-                                "settings": read_ignore_comments(file),
-                                "spacing": [float(n) for n in read_ignore_comments(file).split()],
-                                "id": task_id}
-                    list_of_tasks.append(task_dict)
-            case 1:
-                # relay switches present
-                for task in range(number_of_tasks):
-                    task_id += 1
-                    task_dict = {"name": read_ignore_comments(file),
-                                "spread": read_ignore_comments(file),
-                                "protocol": read_ignore_comments(file),
-                                "settings": read_ignore_comments(file),
-                                "spacing": [float(n) for n in read_ignore_comments(file).split()],
-                                "reset": [int(n) for n in read_ignore_comments(file).split()],
-                                "set": [int(n) for n in read_ignore_comments(file).split()],
-                                "id": task_id}
-                    list_of_tasks.append(task_dict)
-            case 2:
-            # 'new' relay switches present (subvision, 2018)
-                for task in range(number_of_tasks):
-                    task_id += 1
-                    task_dict = {"name": read_ignore_comments(file),
-                                "spread": read_ignore_comments(file),
-                                "protocol": read_ignore_comments(file),
-                                "settings": read_ignore_comments(file),
-                                "spacing": [float(n) for n in read_ignore_comments(file).split()],
-                                "reset": [n for n in read_ignore_comments(file).split()],
-                                "set": [n for n in read_ignore_comments(file).split()],
-                                "id": task_id}
-                    list_of_tasks.append(task_dict)
-            case _:
-                print("wrong input")
-        return list_of_tasks
+    contents = StringIO()
+    try: 
+        with open(task_file, 'r') as file:
+            contents.write(file.read())
+            contents.seek(0)
+    except (FileNotFoundError, IsADirectoryError, PermissionError):
+        raise TaskFileIOError(file=task_file)
+    
+    list_of_tasks = []
+    task_id = 0
+    header = [int(n) for n in read_ignore_comments(contents).split()]
+    number_of_tasks = header[0]
+    match header[1]:
+        case 0:
+            # no relay switches present
+            for task in range(number_of_tasks):
+                task_id += 1
+                task_dict = {"name": read_ignore_comments(contents),
+                            "spread": read_ignore_comments(contents),
+                            "protocol": read_ignore_comments(contents),
+                            "settings": read_ignore_comments(contents),
+                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
+                            "id": task_id}
+                list_of_tasks.append(task_dict)
+        case 1:
+            # relay switches present
+            for task in range(number_of_tasks):
+                task_id += 1
+                task_dict = {"name": read_ignore_comments(contents),
+                            "spread": read_ignore_comments(contents),
+                            "protocol": read_ignore_comments(contents),
+                            "settings": read_ignore_comments(contents),
+                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
+                            "reset": [int(n) for n in read_ignore_comments(contents).split()],
+                            "set": [int(n) for n in read_ignore_comments(contents).split()],
+                            "id": task_id}
+                list_of_tasks.append(task_dict)
+        case 2:
+        # 'new' relay switches present (subvision, 2018)
+            for task in range(number_of_tasks):
+                task_id += 1
+                task_dict = {"name": read_ignore_comments(contents),
+                            "spread": read_ignore_comments(contents),
+                            "protocol": read_ignore_comments(contents),
+                            "settings": read_ignore_comments(contents),
+                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
+                            "reset": [n for n in read_ignore_comments(contents).split()],
+                            "set": [n for n in read_ignore_comments(contents).split()],
+                            "id": task_id}
+                list_of_tasks.append(task_dict)
+        case _:
+            print("wrong input")
+    return list_of_tasks
 
 
 def switch_relay(task: dict[str, Any]) -> None:
