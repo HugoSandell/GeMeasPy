@@ -1,6 +1,5 @@
 """Specification for parameter names and values. Used as input for test generation."""
-# TODO: Implement invalid task data / settings file path handling in emulator and uncomment corresponding invalid parameters here
- 
+
 import json
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
@@ -143,8 +142,8 @@ class AcquisitionParameterSpec(ParameterSpec):
 
     # Tasks 
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"],
-        ["#TaskX", ""],
+        ["Task1"], 
+        ["#TaskX", ""]
         )
     taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE, ""]
@@ -157,12 +156,12 @@ class AcquisitionParameterSpec(ParameterSpec):
     )
     taskfile1_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-            ["1 1 1 1", "I I I", ""],
+            ["1 1 1 1", "I I I", ""]
         )
     
     taskfile1_task2_name: ParamSpecEntry[str] = param_values(
-        ["Task2"],
-        ["#TaskX"],
+        ["Task2"], 
+        ["#TaskX"]
         )
     taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
@@ -175,12 +174,12 @@ class AcquisitionParameterSpec(ParameterSpec):
     )
     taskfile1_task2_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-            ["1 1 1 1", "I I I"],
-        )
+            ["1 1 1 1", "I I I"]
+        )  
 
     taskfile2_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"],
-        ["#TaskX"],
+        ["Task1"], 
+        ["#TaskX"]
         )
     taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
@@ -193,8 +192,8 @@ class AcquisitionParameterSpec(ParameterSpec):
     )
     taskfile2_task1_spacing: ParamSpecEntry[str] = param_values(
             ["1 1 1"],
-            ["1 1 1 1", "I I I"],
-        )
+            ["1 1 1 1", "I I I"]
+        )  
     
     taskfile2_task2_name: ParamSpecEntry[str] = param_values(
         ["Task2"], 

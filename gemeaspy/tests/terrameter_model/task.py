@@ -43,15 +43,12 @@ class Task:
 
     def create_station(self, id: int, index_selection: str) -> CreateStationResult:
         first = len(self.stations) == 0
-        default_index_selection = 1 if first else 2
         try:
             actual_index_selection = int(index_selection)
         except ValueError:
-            actual_index_selection = default_index_selection
+            actual_index_selection = 1 if first else 2
         rollalongs = self.spread.get_rollalongs() if self.spread else [Vec3i(0, 0, 0)]
-        if len(rollalongs) == 1:
-            actual_index_selection = 0
-        elif actual_index_selection not in range(0, len(rollalongs)):
+        if actual_index_selection not in range(0, len(rollalongs)):
             actual_index_selection = len(rollalongs) - 1
         pos_now = Vec3i(0, 0, 0) if first else self.stations[-1].pos
         rollalong = rollalongs[actual_index_selection]
