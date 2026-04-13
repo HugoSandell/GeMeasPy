@@ -54,7 +54,7 @@ def _main():
     ]
 
     rng_seed = None
-    if argc == 4:
+    if argc == 3:
         rng_seed = sys.argv[2]
     interaction_strength = int(sys.argv[1])
     
