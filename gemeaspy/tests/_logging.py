@@ -6,7 +6,8 @@ from datetime import datetime
 
 import gemeaspy
 
-logger = logging.Logger("gemeaspy_tests", logging.DEBUG)
+logger = logging.getLogger("gemeaspy_tests")
+logger.setLevel(logging.DEBUG)
 
 debug = logger.debug
 critical = logger.critical
