@@ -45,7 +45,7 @@ def run_acquisition(argv: list[str]) -> int:
             run_task_file(task_file)
     # NOTE: All fatal exceptions shall start with 'Error:'
     except ChannelException as e:
-        print("Error: Failed to create SSH shell channel to Terrameter!")
+        print("Error: Failed to create SSH channel connection to Terrameter!")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
