@@ -76,7 +76,7 @@ class SSHConnection():
             print("Connected!")
             return True
         except paramiko.AuthenticationException:
-            print('Failed!')
+            print('Authentication failed!')
         return False
 
     def disconnect(self) -> None:
