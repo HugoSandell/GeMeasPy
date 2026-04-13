@@ -1,4 +1,4 @@
-"""This module is responsible for reviewing test execution data and determining whether or not a failure has occured"""
+"""This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
 from dataclasses import dataclass
 import re
@@ -8,7 +8,7 @@ from gemeaspy.tests.generator.parameter_spec import AcquisitionParameterSpec
 from gemeaspy.tests.setup_config import ConfigState
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
-# Regular expressions for matching a "class" of paramters
+# Regular expressions for matching a "class" of parameters
 RE_TASK = re.compile(r"taskfile(?P<file>\d+)_task(?P<task>\d+)_(?P<property>spread|protocol|name|settings|spacing)")
 
 @dataclass
