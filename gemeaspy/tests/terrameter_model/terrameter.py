@@ -230,12 +230,11 @@ Column: 0"""
             errors,
         )
 
-    def create_station(self, id: str):
-        #TODO: Should id be int or str? If changed, remember to change in project and shell as well
+    def create_station(self, index_selection: str) -> Task.CreateStationResult:
         if self._current_project_name not in self._projects:
             raise RuntimeError("Current project is not set or does not exist.")
         project: Project = self._projects[self._current_project_name]
-        project.create_station(id)
+        return project.create_station(index_selection)
 
     def measure(self):
         """Perform measurements"""        

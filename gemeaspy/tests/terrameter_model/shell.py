@@ -313,15 +313,16 @@ class TerrameterShell(Cmd):
             case "S":
                 # Create new Terrameter station
                 self.print_line_sh("Create a new Station")
-                # TODO check if this is correct
-                if len(arg_split) < 1:
-                    self.print_error_sh(" Too few arguments")
-                    return
-                station_id = arg_split[0]
-                try: 
-                    self.instrument.create_station(station_id)
-                except ValueError:
-                    pass
+                index_selection = ""
+                if len(arg_split) >= 1:
+                    index_selection = arg_split[0]
+                result = self.instrument.create_station(index_selection)
+                self.print_line_sh(
+                    f"Use station index={result.index_selection} of {result.max_index_selection} PositionNow={result.pos_before} Rollalong={result.rollalong} "
+                )
+                self.print_line_sh(
+                    f"Created new station (ID = {result.station.id}) dp=0 selection={result.index_selection} pos={result.station.pos} "
+                )
             case _:
                 self.print_line_sh(constants.TERRAMETER_UNKNOWN_COMMAND(command))
 

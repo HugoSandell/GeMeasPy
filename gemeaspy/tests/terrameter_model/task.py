@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from . import terrameter
+from . import project, terrameter
 
 
 class Task:
@@ -30,7 +30,40 @@ class Task:
         self.protocol: Protocol | None = protocol
         self.spacing: tuple[float, float, float] = spacing
         self.base_reference: tuple[float, float, float] = base_reference
+        self.stations: list[project.Station] = []
         self.is_complete: bool = False
+
+    @dataclass
+    class CreateStationResult:
+        station: project.Station
+        index_selection: int
+        max_index_selection: int
+        pos_before: Vec3i
+        rollalong: Vec3i
+
+    def create_station(self, id: int, index_selection: str) -> CreateStationResult:
+        first = len(self.stations) == 0
+        default_index_selection = 1 if first else 2
+        try:
+            actual_index_selection = int(index_selection)
+        except ValueError:
+            actual_index_selection = default_index_selection
+        rollalongs = self.spread.get_rollalongs() if self.spread else [Vec3i(0, 0, 0)]
+        if len(rollalongs) == 1:
+            actual_index_selection = 0
+        elif actual_index_selection not in range(0, len(rollalongs)):
+            actual_index_selection = len(rollalongs) - 1
+        pos_now = Vec3i(0, 0, 0) if first else self.stations[-1].pos
+        rollalong = rollalongs[actual_index_selection]
+        new_station = project.Station(id=id, pos=pos_now + rollalong)
+        self.stations.append(new_station)
+        return self.CreateStationResult(
+            station=new_station,
+            index_selection=actual_index_selection,
+            max_index_selection=len(rollalongs) - 1,
+            pos_before=pos_now,
+            rollalong=rollalong,
+        )
 
 
 def _parse_child[T](parent: ET.Element, tag: str, t: Callable[[Any], T]) -> T:
@@ -90,11 +123,13 @@ class Vec3i:
         x = _parse_optional_child(el, "X", int) or 0
         y = _parse_optional_child(el, "Y", int) or 0
         z = _parse_optional_child(el, "Z", int) or 0
-        return Vec3i(
-            x=x,
-            y=y,
-            z=z,
-        )
+        return Vec3i(x=x, y=y, z=z)
+
+    def __add__(self, rhs: Vec3i) -> Vec3i:
+        return Vec3i(x=self.x + rhs.x, y=self.y + rhs.y, z=self.z + rhs.z)
+
+    def __str__(self) -> str:
+        return f"{self.x};{self.y};{self.z}"
 
 
 @dataclass
@@ -134,6 +169,17 @@ class Spread:
             rollalong=rollalong,
             pole_mode=pole_mode,
         )
+
+    def get_rollalongs(self) -> list[Vec3i]:
+        if self.create_stations:
+            return [Vec3i(0, 0, 0)] + [
+                Vec3i(create_station.x, create_station.y, create_station.z)
+                for create_station in self.create_stations
+            ]
+        elif self.rollalong:
+            return [Vec3i(0, 0, 0), Vec3i(0, 0, 0), self.rollalong]
+        else:
+            return [Vec3i(0, 0, 0)]
 
 
 @dataclass

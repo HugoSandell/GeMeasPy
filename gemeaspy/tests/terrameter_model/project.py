@@ -1,10 +1,15 @@
-from .task import Protocol, Spread, Task
+from dataclasses import dataclass
+
+from .task import Protocol, Spread, Task, Vec3i
 
 
+@dataclass
 class Station:
     """A terrameter station"""
-    def __init__(self, id: str):
-        self.id: str = id
+
+    id: int
+    pos: Vec3i
+
 
 class Project:
     """A terrameter project"""
@@ -12,6 +17,7 @@ class Project:
         self.name: str = name
         self.tasks: list[Task] = []
         self.stations: list[Station] = []
+        self.current_task_index: int | None = None
 
     def create_task(
         self,
@@ -45,9 +51,14 @@ class Project:
             base_reference,
         )
         self.tasks.append(new_task)
+        self.current_task_index = id - 1
         return new_task
 
-    def create_station(self, id: str):
+    def create_station(self, index_selection: str) -> Task.CreateStationResult:
         """Add a station to the project."""
-        new_station = Station(id)
-        self.stations.append(new_station)
+        if self.current_task_index is None:
+            raise RuntimeError("Current task is not set")
+        id = len(self.stations) + 1
+        result = self.tasks[self.current_task_index].create_station(id, index_selection)
+        self.stations.append(result.station)
+        return result
