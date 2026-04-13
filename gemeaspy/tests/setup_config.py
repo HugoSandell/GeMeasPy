@@ -53,11 +53,10 @@ def _create_connection_settings(test: AcquisitionTestCase, server_port: int):
 
 
 class ConfigState:
-    _tempfiles = []
-    _data_invalid_path = None
-    _data_invalid_content = None
-
     def __init__(self, test: AcquisitionTestCase, server_port: int):
+        self._tempfiles = []
+        self._data_invalid_path = None
+        self._data_invalid_content = None
         match test.parameters.config_projects_folder:
             case parameter_spec.INVALID_FILE:
                 config.TERRAMETER_PROJECTS_FOLDER = (
