@@ -17,13 +17,13 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 import gemeaspy
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator.parameter_spec import (
-    Constraint,
     ParameterSpec,
     ParameterValue,
     ParamSpecEntry,
     acts_type,
     param_values,
 )
+from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
 from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 

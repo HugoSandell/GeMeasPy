@@ -9,6 +9,7 @@ from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
 from gemeaspy.tests.generator import util
+from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
 from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
@@ -210,13 +211,6 @@ class AcquisitionParameterSpec(ParameterSpec):
             ["1 1 1"],
             []
         )  
-
-@dataclass
-class Constraint:
-    text: str = ""
-    parameters: list[str] = field(default_factory=list)
-    def __str__(self) -> str:
-        return self.text
 
 class ACTSParameterType(Enum):
     NUM = "0"
