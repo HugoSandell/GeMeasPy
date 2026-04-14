@@ -13,4 +13,5 @@ addopts = [
     "--capture=fd",
     "--cache-clear",
     "--maxfail=10",
+    "--showlocals"
 ]
