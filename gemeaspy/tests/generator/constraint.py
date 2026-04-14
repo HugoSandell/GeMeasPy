@@ -290,7 +290,7 @@ class _ConstraintParser:
         """Parse a parameter name, int literal, bool literal, or string literal."""
         tok = self._peek()
         if tok is None:
-            raise ValueError("Unexpected end of constraint — expected a term")
+            raise ValueError("Expected a term (parameter, int, bool, or string), but reached end of constraint.")
         kind, val = tok
         if kind == _TokenKind.IDENTIFIER:
             self._consume()
@@ -304,7 +304,7 @@ class _ConstraintParser:
         if kind == _TokenKind.STRING:
             self._consume()
             return val[1:-1]  # strip surrounding quotes
-        raise ValueError(f"Expected a term (parameter, int, bool, or string), got {kind!r} ({val!r})")
+        raise ValueError(f"Expected a term (parameter, int, bool, or string), got {kind!r} ({val!r}).")
 
 
 # Public class

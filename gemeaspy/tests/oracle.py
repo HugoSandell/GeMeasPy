@@ -1,7 +1,23 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
 from dataclasses import dataclass
+from enum import Enum, auto
 import re
+
+
+class Port22Status(Enum):
+    """State of port 22 on the test host, detected once per session.
+
+    Set by the patch_transport_default_port fixture and read by the oracle
+    to select the right expected error when connection_port is None
+    (i.e. paramiko would default to port 22).
+    """
+    CLOSED = auto()            # connection refused / timeout / unreachable
+    NON_SSH = auto()           # something listening but SSH handshake fails
+    SSH_AUTH_REQUIRED = auto() # SSH up, rejects our credentials
+    SSH_OPEN = auto()          # SSH up, accepts a valid test credential
+
+port22_status: Port22Status = Port22Status.CLOSED
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator.parameter_spec import INVALID_FILE, AcquisitionParameterSpec
@@ -74,12 +90,34 @@ def _evaluate_arg_task_files(
     )
 
 
-def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> OracleResult:
+def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     """Bad port number"""
-    if _find_stdout_error_message(stdout):
-        return OracleResult(True)
     value = test_data.parameters.connection_port
-    return OracleResult(False, f"No error message found for invalid connection port value {repr(value)}")
+    if value is None:
+        # Port key absent from JSON; paramiko defaults to 22.
+        # What we expect depends on what's actually running on port 22.
+        if port22_status == Port22Status.SSH_AUTH_REQUIRED:
+            expected_error_msg = "Authentication failed"
+        elif port22_status == Port22Status.NON_SSH:
+            expected_error_msg = "Could not establish an SSH session"
+        else:  # CLOSED: connection refused or timeout
+            expected_error_msg = "Could not reach the server"
+
+    elif not isinstance(value, int) or isinstance(value, bool):
+        expected_error_msg = "Port number should be an integer"
+    elif not (1 <= value <= 65535):
+        expected_error_msg = "not in valid range"
+    else:
+        # Valid range but nothing listening on this port in the test environment
+        expected_error_msg = "Could not reach the server"
+
+    if not _find_stdout_error_message(stdout):
+        return OracleResult(False, f"No error message found for invalid connection port value {repr(value)}")
+    if expected_error_msg not in stdout:
+        _logging.info(f"Expected '{expected_error_msg}' in stdout, got:\n{stdout}")
+        return OracleResult(False, f"Wrong error message found for invalid connection port value {repr(value)}.")
+
+    return OracleResult(True)
 
 def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int, property: str, stdout: str) -> OracleResult:
     """Any invalid property of a task"""

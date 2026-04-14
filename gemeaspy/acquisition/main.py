@@ -6,19 +6,11 @@ import traceback
 
 from paramiko import ChannelException
 
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TaskFileIOError, TransferError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
-
-logger: logging.Logger = logging.root
-
-def setup_logger(log_path: str) -> logging.Logger:
-    logging.getLogger("paramiko").setLevel(logging.ERROR)
-    os.makedirs(Path(log_path).parent, exist_ok=True)
-    logger = logging.Logger("acquisition")
-    logger.addHandler(logging.FileHandler(log_path))
-    return logger
 
 def run_task_file(task_file) -> None:
 	# read connection and measurement settings
@@ -30,7 +22,6 @@ def run_task_file(task_file) -> None:
     ls.disconnect()
 
 def run_acquisition(argv: list[str]) -> int:
-    logger: logging.Logger = setup_logger("log/acquisition.log")
     verbose = "DEBUG" in os.environ
     
     nargs = len(argv)
@@ -72,7 +63,7 @@ def run_acquisition(argv: list[str]) -> int:
         print(f"Error: Failed to read task file {e.file!r}!")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"TaskFileIOError - {e!r}", exc_info=True)
+        logger.error(f"TaskFileIOError - Failed to read {e.file!r}", exc_info=True)
         return 7
     return 0
 

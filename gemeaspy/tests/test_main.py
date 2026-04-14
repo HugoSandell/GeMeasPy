@@ -2,9 +2,10 @@
 import asyncio
 import logging
 import os
+from socket import socket
 import sys
-import time
 from asyncio import subprocess
+import socket
 
 import pytest
 
@@ -37,7 +38,7 @@ def task_files(test_case: AcquisitionTestCase):
     cleanup()
 
 @pytest.mark.asyncio
-async def test_main(test_case: AcquisitionTestCase, config, task_files):
+async def test_main(test_case: AcquisitionTestCase, config, task_files, configure_default_port_handling):
     logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     env = {
@@ -62,6 +63,7 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files):
 
     oracle_result: OracleResult = oracle.evaluate_test(
         test_case, config, task_files,
-        stdout_bytes.decode(), stderr_bytes.decode(),
+        stdout_bytes.decode(encoding="utf-8", errors="backslashreplace"), 
+        stderr_bytes.decode(encoding="utf-8", errors="backslashreplace"),
     )
     assert oracle_result.ok, oracle_result.msg
