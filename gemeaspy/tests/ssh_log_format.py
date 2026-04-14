@@ -56,14 +56,14 @@ def parse_ssh_log_file(filepath: str) -> list[dict[str, str | bytes | int]]:
     return log_entries
 
 
-def parse_ssh_log_line(line: str) -> dict[str, str | bytes | int]:
+def parse_ssh_log_line(line: str) -> dict[str, str | bytes | int | None]:
     """Parse a single line from the ssh log file.
     returns
         A dictionary with keys 'type', 'timestamp', 'direction', 'data', and 'exit_status'.
     raises
         ValueError if the line is not in the correct format
     """
-    log_entry = {
+    log_entry: dict[str, int | str | bytes | None] = {
         "type": "",
         "timestamp": 0,
         "direction": "",
