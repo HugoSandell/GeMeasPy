@@ -18,7 +18,7 @@ INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
 VALID_TASKFILE2 = "__VALID_TASKFILE2__"
 VALID_SPREADFILE = "2X21.xml"
-VALID_PROTOCOLFILE = "Gradient_2x21.xml"
+VALID_PROTOCOLFILE = "DipoleDipole2x21.xml"
 VALID_SETTINGSFILE = "testing1s.settings"
 
 VALID_PROJECTS_FOLDER = "/media/mmcblk0p1/projects"
