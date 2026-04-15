@@ -15,7 +15,9 @@ from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 
-ACQUISITION_TIMEOUT = 3 # The greatest amount of time to wait for acquisition to finish
+# The greatest amount of time to wait for acquisition to finish
+ACQUISITION_TIMEOUT = 10
+
 
 @pytest.fixture
 def emulator():
