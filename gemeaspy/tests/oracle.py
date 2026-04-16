@@ -1,8 +1,15 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
-import re
+
+from gemeaspy.tests import _logging
+from gemeaspy.tests.generator.parameter_spec import (INVALID_FILE,
+                                                     AcquisitionParameterSpec)
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.setup_config import ConfigState
+from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
 
 
 class Port22Status(Enum):
@@ -18,11 +25,6 @@ class Port22Status(Enum):
     SSH_OPEN = auto()          # SSH up, accepts a valid test credential
 
 port22_status: Port22Status = Port22Status.CLOSED
-
-from gemeaspy.tests import _logging
-from gemeaspy.tests.generator.parameter_spec import INVALID_FILE, AcquisitionParameterSpec
-from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
 # Regular expressions for matching a "class" of parameters
 RE_TASK = re.compile(r"taskfile(?P<file>\d+)_task(?P<task>\d+)_(?P<property>spread|protocol|name|settings|spacing)")
@@ -119,6 +121,31 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
 
     return OracleResult(True)
 
+def _evaluate_emulator_behaviour(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
+    try:
+        behaviour: TerrameterBehaviour = TerrameterBehaviour[str(test_data["emulator_behaviour"])]
+    except KeyError:
+        raise NotImplementedError(f"Terrameter behaviour {test_data["emulator_behaviour"]!r} not ")
+    error_message = _find_stdout_error_message(stdout)
+    
+    match behaviour:
+        case TerrameterBehaviour.DROPPED_MESSAGES: 
+            if error_message is None:
+                return OracleResult(True) # Allow the possibility of powering through the issues 
+            elif "A connection error occured" in error_message:
+                return OracleResult(True) # Allow a graceful exit
+            else:
+                return OracleResult(False, "Wrong error message for emulator running with messages being dropped")
+        case TerrameterBehaviour.RESTART_DURING_MEASUREMENT:
+            if error_message is None:
+                return OracleResult(True) # Allow the possibility of powering through the issues 
+            elif "A connection error occured" in error_message:
+                return OracleResult(True) # Allow a graceful exit
+            else:
+                return OracleResult(False, "Wrong error message for emulator starting durireng measurement")
+        case _:
+            raise NotImplementedError(f"Terrameter behaviour {behaviour.name} not implemented")
+
 def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int, property: str, stdout: str) -> OracleResult:
     """Any invalid property of a task"""
     parameter_name = f"taskfile{file}_task{task}_{property}"
@@ -174,6 +201,8 @@ def evaluate_test(
             task = int(match.group("task"))
             property = str(match.group("property"))
             return _evaluate_task_property(test_data, file, task, property, stdout)
+        case "emulator_behaviour":
+            return _evaluate_emulator_behaviour(test_data, stdout, stderr)
         case _:
             if invalid_parameter not in param_spec:
                 return OracleResult(False, f"invalid_parameter set to invalid value {repr(invalid_parameter)}")
