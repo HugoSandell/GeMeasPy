@@ -8,5 +8,5 @@ class TerrameterBehaviour(Enum):
     RESTART_AFTER_FIRST_TASK = auto()
     CREATE_EMPTY_FILE = auto()
     DELETE_PROJECT_BEFORE_TRANSFER = auto()
-    PACKET_LOSS = auto() # Lose every Nth incoming packet
+    DROPPED_MESSAGES = auto() # Lose every Nth incoming message
     TIMEOUT = auto() # Timeout before first measurement

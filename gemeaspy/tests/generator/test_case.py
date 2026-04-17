@@ -41,6 +41,8 @@ class TestCase[T: TestCaseParameters](ABC):
         return self.parameters[key]
     def __setitem__(self, key: str, value: ParameterValue) -> None:
         self.parameters[key] = value
+    def __contains__(self, key: str) -> bool:
+        return key in self.parameters
     def __len__(self) -> int:
         return len(self.parameters)
 

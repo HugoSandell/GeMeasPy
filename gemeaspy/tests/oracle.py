@@ -3,8 +3,12 @@
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import NoReturn
+
+from sqlalchemy import true
 
 from gemeaspy.tests import _logging
+from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameter_spec import (INVALID_FILE,
                                                      AcquisitionParameterSpec)
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
@@ -36,6 +40,13 @@ class OracleResult:
     def __bool__(self) -> bool:
         return self.ok
 
+def _raise_unimplemented(test_case: TestCase) -> NoReturn:
+    param_name = test_case.invalid_parameter
+    if param_name is None or param_name not in test_case:
+        raise ValueError(f"invalid_parameter {param_name!r} not found in test case.")
+    param_value = test_case[param_name]
+    raise NotImplementedError(f"Invalid value {param_name}={param_value!r} not implemented in Oracle.")
+
 # Common checks
 def _find_stdout_error_message(stdout: str) -> str | None:
     """Checks returns first line with reported error, or None if one wasn't found"""
@@ -44,6 +55,20 @@ def _find_stdout_error_message(stdout: str) -> str | None:
     if len(error_lines) <= 0:
         return None
     return error_lines[0]
+
+def _expect_error_message(test_case: TestCase, expected_error: str, stdout: str, allow_without_error = False) -> OracleResult:
+    """Evaluate stdout, expecting an error message and return an OracleResult accordingly."""
+    param_name = test_case.invalid_parameter
+    param_value = test_case[str(param_name)]
+    error_message = _find_stdout_error_message(stdout)
+    if error_message is None:
+        if allow_without_error:
+            return OracleResult(True)
+    if error_message is not None and expected_error.lower() in error_message.lower():
+        return OracleResult(True)
+    else:
+        _logging.info(f"Expected '{expected_error}' in stdout, got:\n{stdout}")
+        return OracleResult(False, f"Did not find error message containing {expected_error!r} in output for invalid parameter {param_name} = {param_value!r}.")
 
 def _was_project_transferred() -> bool:
     """Checks whether the project has been transferred correctly"""
@@ -78,19 +103,38 @@ def _evaluate_arg_task_files(
         )
 
     if len(value) == 0:
-        if "No task file given" in msg:
-            return OracleResult(True)
+        return _expect_error_message(test_data, "No task file given", stdout)
     elif INVALID_FILE in value:
-        if "Failed to read task file" in msg:
-            return OracleResult(True)
-        else:
-            return OracleResult(False, "Did not find error message 'Failed to read task file' in output.")
+        return _expect_error_message(test_data, "Failed to read task file", stdout)
     
     return OracleResult(
         False,
         f"Unexpected error message for invalid arg_task_files={repr(value)}: {msg}",
     )
 
+def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
+    if not test_data.invalid_parameter:
+        raise ValueError("Test must have invalid parameter")
+    elif test_data.invalid_parameter not in ("taskfile1_number_of_tasks_error", "taskfile2_number_of_tasks_error"):
+        raise ValueError("Invalid parameter must be taskfile#_number_of_tasks_error")
+    error_type = test_data[test_data.invalid_parameter]
+    error_message = _find_stdout_error_message(stdout)
+    
+    match error_type:
+        case IntFieldError.CORRECT.name:
+            raise ValueError("Parameter is marked as invalid, but has a valid value.")
+        case _ if error_message is None:
+            return OracleResult(False)
+        case IntFieldError.EMPTY.name:
+            return _expect_error_message(test_data, "task file header", stdout)
+        case IntFieldError.STRING.name:
+            return _expect_error_message(test_data, "task file header", stdout)
+        case IntFieldError.MINUS_1.name:
+            return _expect_error_message(test_data, "number of tasks", stdout)
+        case IntFieldError.PLUS_1.name:
+            return _expect_error_message(test_data, "number of tasks", stdout)
+        case _:
+            _raise_unimplemented(test_data)
 
 def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     """Bad port number"""
@@ -112,14 +156,7 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
     else:
         # Valid range but nothing listening on this port in the test environment
         expected_error_msg = "Could not reach the server"
-
-    if not _find_stdout_error_message(stdout):
-        return OracleResult(False, f"No error message found for invalid connection port value {repr(value)}")
-    if expected_error_msg not in stdout:
-        _logging.info(f"Expected '{expected_error_msg}' in stdout, got:\n{stdout}")
-        return OracleResult(False, f"Wrong error message found for invalid connection port value {repr(value)}.")
-
-    return OracleResult(True)
+    return _expect_error_message(test_data, expected_error_msg, stdout)
 
 def _evaluate_emulator_behaviour(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     try:
@@ -130,27 +167,17 @@ def _evaluate_emulator_behaviour(test_data: AcquisitionTestCase, stdout: str, st
     
     match behaviour:
         case TerrameterBehaviour.DROPPED_MESSAGES: 
-            if error_message is None:
-                return OracleResult(True) # Allow the possibility of powering through the issues 
-            elif "A connection error occured" in error_message:
-                return OracleResult(True) # Allow a graceful exit
-            else:
-                return OracleResult(False, "Wrong error message for emulator running with messages being dropped")
+            return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
         case TerrameterBehaviour.RESTART_DURING_MEASUREMENT:
-            if error_message is None:
-                return OracleResult(True) # Allow the possibility of powering through the issues 
-            elif "A connection error occured" in error_message:
-                return OracleResult(True) # Allow a graceful exit
-            else:
-                return OracleResult(False, "Wrong error message for emulator starting durireng measurement")
+            return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
         case _:
-            raise NotImplementedError(f"Terrameter behaviour {behaviour.name} not implemented")
+            _raise_unimplemented(test_data)
 
 def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int, property: str, stdout: str) -> OracleResult:
     """Any invalid property of a task"""
     parameter_name = f"taskfile{file}_task{task}_{property}"
     parameter_value = test_case.parameters[parameter_name]
-    msg_no_error_found = f"No error message found for invalid task {property} {parameter_name}={repr(parameter_value)}"
+    msg_no_error_found = f"No error message found for invalid task {property} {parameter_name}={parameter_value!r}"
     
     match property:
         case "name":
@@ -203,12 +230,12 @@ def evaluate_test(
             return _evaluate_task_property(test_data, file, task, property, stdout)
         case "emulator_behaviour":
             return _evaluate_emulator_behaviour(test_data, stdout, stderr)
+        case "taskfile1_number_of_tasks_error" | "taskfile2_number_of_tasks_error":
+            return _evaluate_number_of_tasks_error(test_data, stdout, stderr)
         case _:
-            if invalid_parameter not in param_spec:
-                return OracleResult(False, f"invalid_parameter set to invalid value {repr(invalid_parameter)}")
             if (msg := _find_stdout_error_message(stdout)) is not None:
                 _logging.warning(
                     f"No specific evaluator exists for invalid parameter {invalid_parameter}. Assuming this is the expected error: {msg}"
                 )
                 return OracleResult(True)
-            raise NotImplementedError(f"Invalid value {invalid_parameter}={repr(test_data.parameters[invalid_parameter])} not implemented in Oracle.")
+            _raise_unimplemented(test_data)
