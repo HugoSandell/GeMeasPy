@@ -13,7 +13,7 @@ from gemeaspy.tests.generator.parameter_spec import (INVALID_FILE,
                                                      AcquisitionParameterSpec)
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
+from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
 
 
 class Port22Status(Enum):
@@ -158,21 +158,21 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
         expected_error_msg = "Could not reach the server"
     return _expect_error_message(test_data, expected_error_msg, stdout)
 
-def _evaluate_emulator_behaviour(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
+def _evaluate_emulator_behavior(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     try:
-        behaviour: TerrameterBehaviour = TerrameterBehaviour[str(test_data["emulator_behaviour"])]
+        behavior: TerrameterBehavior = TerrameterBehavior[str(test_data["emulator_behavior"])]
     except KeyError:
-        raise NotImplementedError(f"Terrameter behaviour {test_data["emulator_behaviour"]!r} not ")
+        raise NotImplementedError(f"Terrameter behavior {test_data["emulator_behavior"]!r} not ")
     error_message = _find_stdout_error_message(stdout)
     
-    match behaviour:
-        case TerrameterBehaviour.DROPPED_MESSAGES: 
+    match behavior:
+        case TerrameterBehavior.DROPPED_MESSAGES: 
             return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        case TerrameterBehaviour.RESTART_DURING_MEASUREMENT:
+        case TerrameterBehavior.RESTART_DURING_MEASUREMENT:
             return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        case TerrameterBehaviour.DELETE_PROJECT_BEFORE_TRANSFER:
+        case TerrameterBehavior.DELETE_PROJECT_BEFORE_TRANSFER:
             return _expect_error_message(test_data, "Failed to transfer project", stdout)
-        case TerrameterBehaviour.TIMEOUT:
+        case TerrameterBehavior.TIMEOUT:
             return _expect_error_message(test_data, "A connection error occured", stdout)
         case _:
             _raise_unimplemented(test_data)
@@ -232,8 +232,8 @@ def evaluate_test(
             task = int(match.group("task"))
             property = str(match.group("property"))
             return _evaluate_task_property(test_data, file, task, property, stdout)
-        case "emulator_behaviour":
-            return _evaluate_emulator_behaviour(test_data, stdout, stderr)
+        case "emulator_behavior":
+            return _evaluate_emulator_behavior(test_data, stdout, stderr)
         case "taskfile1_number_of_tasks_error" | "taskfile2_number_of_tasks_error":
             return _evaluate_number_of_tasks_error(test_data, stdout, stderr)
         case _:

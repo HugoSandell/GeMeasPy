@@ -1,8 +1,8 @@
 """This module defines various behavioural patterns for testing"""
 
-from enum import Enum, auto
+from enum import StrEnum, auto
 
-class TerrameterBehaviour(Enum):
+class TerrameterBehavior(StrEnum):
     IDEAL = auto()
     RESTART_DURING_MEASUREMENT = auto()
     RESTART_AFTER_FIRST_TASK = auto()

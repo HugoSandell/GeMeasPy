@@ -48,6 +48,7 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files, configur
         "TERRAMETER_PROJECTS_FOLDER": _config.TERRAMETER_PROJECTS_FOLDER,
         "LOCAL_PATH_TO_DATA": _config.LOCAL_PATH_TO_DATA,
         "TERRAMETER_CONNECTION_FILE": _config.TERRAMETER_CONNECTION_FILE,
+        "TERRAMETER_EMULATOR_BEHAVIOR": test_case.parameters.emulator_behavior
     }
     proc = await asyncio.create_subprocess_exec(
         sys.executable, "-m", "gemeaspy.acquisition", *task_files,

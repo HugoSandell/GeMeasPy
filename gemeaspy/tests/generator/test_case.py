@@ -65,7 +65,7 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     connection_port: int | str | None = None
     connection_password: str | None = None
     # emulator
-    emulator_behaviour: str = ""
+    emulator_behavior: str = ""
     
     taskfile1_task1_name: str = ""
     taskfile1_task1_spread: str = ""

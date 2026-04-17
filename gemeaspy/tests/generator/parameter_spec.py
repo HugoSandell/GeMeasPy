@@ -11,7 +11,7 @@ from gemeaspy.tests.generator import util
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.terrameter_model.behaviours import TerrameterBehaviour
+from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
@@ -136,8 +136,8 @@ class AcquisitionParameterSpec(ParameterSpec):
     )
     
     # emulator
-    emulator_behaviour: ParamSpecEntry[str] = enum_param_values(
-        TerrameterBehaviour, [TerrameterBehaviour.IDEAL]
+    emulator_behavior: ParamSpecEntry[str] = enum_param_values(
+        TerrameterBehavior, [TerrameterBehavior.IDEAL]
     )
 
     # Tasks 

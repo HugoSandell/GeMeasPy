@@ -6,6 +6,8 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from io import BytesIO
 
+from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
+
 from . import constants
 from .project import Project
 from .task import Protocol, Spread, Task
@@ -25,6 +27,7 @@ class ParseError(Exception):
 
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
+
     def __init__(self):
         self.allow_login: bool = True
         self.is_shut_down: bool = False
@@ -36,6 +39,12 @@ class TerrameterLS():
         self._settings: dict[str, int | float | bool | list[float]] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: dict[str, Project] = {} # "name": object
         self._current_project_name: str = "" # Name of current project, if any
+        self._behavior: TerrameterBehavior = TerrameterBehavior.IDEAL
+        try:        
+            behavior_str = os.environ["TERRAMETER_EMULATOR_BEHAVIOR"]
+            self._behavior = TerrameterBehavior(behavior_str.lower())
+        except (KeyError, ValueError):
+            pass
 
     def _shutdown(self):
         # "Reboot"
