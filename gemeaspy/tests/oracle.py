@@ -170,6 +170,10 @@ def _evaluate_emulator_behaviour(test_data: AcquisitionTestCase, stdout: str, st
             return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
         case TerrameterBehaviour.RESTART_DURING_MEASUREMENT:
             return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
+        case TerrameterBehaviour.DELETE_PROJECT_BEFORE_TRANSFER:
+            return _expect_error_message(test_data, "Failed to transfer project", stdout)
+        case TerrameterBehaviour.TIMEOUT:
+            return _expect_error_message(test_data, "A connection error occured", stdout)
         case _:
             _raise_unimplemented(test_data)
 
