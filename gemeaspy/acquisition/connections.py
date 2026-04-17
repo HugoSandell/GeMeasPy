@@ -1,12 +1,12 @@
+import os
+import socket
+from datetime import datetime
 from typing import Any
 
-import socket
-import os
 import paramiko
 
 import gemeaspy
-from gemeaspy.acquisition import logger
-from gemeaspy.acquisition import utilities
+from gemeaspy.acquisition import logger, utilities
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError
 from gemeaspy.settings import config
 
@@ -123,7 +123,12 @@ class _DebugLogger:
         if "DEBUG" in os.environ:
             log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log")
             os.makedirs(log_dir, exist_ok=True)
-            self.logfile = open(os.path.join(log_dir, "ssh.log"), "a")
+            self.logfile = open(
+                os.path.join(
+                    log_dir, f"ssh.{datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')}.log"
+                ),
+                "a",
+            )
         else:
             self.logfile = None
 
