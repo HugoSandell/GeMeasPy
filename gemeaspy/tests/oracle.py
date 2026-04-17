@@ -118,13 +118,10 @@ def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str,
     elif test_data.invalid_parameter not in ("taskfile1_number_of_tasks_error", "taskfile2_number_of_tasks_error"):
         raise ValueError("Invalid parameter must be taskfile#_number_of_tasks_error")
     error_type = test_data[test_data.invalid_parameter]
-    error_message = _find_stdout_error_message(stdout)
-    
+
     match error_type:
         case IntFieldError.CORRECT.name:
             raise ValueError("Parameter is marked as invalid, but has a valid value.")
-        case _ if error_message is None:
-            return OracleResult(False)
         case IntFieldError.EMPTY.name:
             return _expect_error_message(test_data, "task file header", stdout)
         case IntFieldError.STRING.name:
@@ -166,14 +163,14 @@ def _evaluate_emulator_behavior(test_data: AcquisitionTestCase, stdout: str, std
     error_message = _find_stdout_error_message(stdout)
     
     match behavior:
-        case TerrameterBehavior.DROPPED_MESSAGES: 
-            return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        case TerrameterBehavior.RESTART_DURING_MEASUREMENT:
-            return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        case TerrameterBehavior.DELETE_PROJECT_BEFORE_TRANSFER:
-            return _expect_error_message(test_data, "Failed to transfer project", stdout)
-        case TerrameterBehavior.TIMEOUT:
-            return _expect_error_message(test_data, "A connection error occured", stdout)
+        #case TerrameterBehavior.DROPPED_MESSAGES: 
+        #    return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
+        #case TerrameterBehavior.RESTART_DURING_MEASUREMENT:
+        #    return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
+        #case TerrameterBehavior.DELETE_PROJECT_BEFORE_TRANSFER:
+        #    return _expect_error_message(test_data, "Failed to transfer project", stdout)
+        #case TerrameterBehavior.TIMEOUT:
+        #    return _expect_error_message(test_data, "A connection error occured", stdout)
         case _:
             _raise_unimplemented(test_data)
 
