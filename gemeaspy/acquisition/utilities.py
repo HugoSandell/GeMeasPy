@@ -7,7 +7,7 @@ import time
 from typing import Any, TextIO
 
 from gemeaspy.acquisition import subvision_relay
-from gemeaspy.acquisition.error import TaskFileIOError
+from gemeaspy.acquisition.error import TaskFileIOError, TaskFileParseError
 from gemeaspy.settings import config
 
 
@@ -39,10 +39,17 @@ def time_stamp_string_from_datetime(time_stamp: datetime.datetime) -> str:
 
 
 
-def read_ignore_comments(in_file: TextIO) -> str:
+def read_ignore_comments(in_file: TextIO, value_name: str  = "value") -> str:
+    """
+        Returns the next non-comment line of in_file, stripped.
+        value_name is an identifier for the expected value, used in any raised exception.
+        A TaskFileParseError exception is raised if EOF is reached.
+    """
     while True:
         line = in_file.readline()
         print(line)
+        if line == "":  # EOF
+            raise TaskFileParseError(f"Task file ended before expected {value_name} could be read")
         if line.startswith('#'):
             continue
         return line.strip()
@@ -50,57 +57,85 @@ def read_ignore_comments(in_file: TextIO) -> str:
 
 def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
     contents = StringIO()
-    try: 
+    try:
         with open(task_file, 'r') as file:
             contents.write(file.read())
             contents.seek(0)
     except (FileNotFoundError, IsADirectoryError, PermissionError):
         raise TaskFileIOError(file=task_file)
-    
+
+    # Header format: "<number_of_tasks> <relay_type>" (two integers separated by a space)
     list_of_tasks = []
     task_id = 0
-    header = [int(n) for n in read_ignore_comments(contents).split()]
-    number_of_tasks = header[0]
-    match header[1]:
+    
+    try:
+        header_line = read_ignore_comments(contents)
+        parts = header_line.split()
+        number_of_tasks = int(parts[0])
+        relay_type = int(parts[1])
+    except (ValueError, IndexError, TaskFileParseError):
+        raise TaskFileParseError(f"Invalid task file header in {task_file!r}", file=task_file)
+
+    def _read_task_name() -> str:
+        """Read the name field of the next task, raising an error if EOF is reached."""
+        try:
+            name = read_ignore_comments(contents)
+        except TaskFileParseError:
+            raise TaskFileParseError(
+                f"Declared number of tasks does not match actual number of tasks in {task_file!r}",
+                file=task_file,
+            )
+        return name
+
+    match relay_type:
         case 0:
             # no relay switches present
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": read_ignore_comments(contents),
-                            "spread": read_ignore_comments(contents),
-                            "protocol": read_ignore_comments(contents),
-                            "settings": read_ignore_comments(contents),
-                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
+                task_dict = {"name": _read_task_name(),
+                            "spread": read_ignore_comments(contents, "spread file path"),
+                            "protocol": read_ignore_comments(contents, "protocol file path"),
+                            "settings": read_ignore_comments(contents, "settings file path"),
+                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
                             "id": task_id}
                 list_of_tasks.append(task_dict)
         case 1:
             # relay switches present
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": read_ignore_comments(contents),
-                            "spread": read_ignore_comments(contents),
-                            "protocol": read_ignore_comments(contents),
-                            "settings": read_ignore_comments(contents),
-                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
-                            "reset": [int(n) for n in read_ignore_comments(contents).split()],
-                            "set": [int(n) for n in read_ignore_comments(contents).split()],
+                task_dict = {"name": _read_task_name(),
+                            "spread": read_ignore_comments(contents, "spread file path"),
+                            "protocol": read_ignore_comments(contents, "file path"),
+                            "settings": read_ignore_comments(contents, "file path"),
+                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
+                            "reset": [int(n) for n in read_ignore_comments(contents, "relay reset").split()],
+                            "set": [int(n) for n in read_ignore_comments(contents, "relay set").split()],
                             "id": task_id}
                 list_of_tasks.append(task_dict)
         case 2:
-        # 'new' relay switches present (subvision, 2018)
+            # 'new' relay switches present (subvision, 2018)
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": read_ignore_comments(contents),
+                task_dict = {"name": _read_task_name(),
                             "spread": read_ignore_comments(contents),
                             "protocol": read_ignore_comments(contents),
                             "settings": read_ignore_comments(contents),
-                            "spacing": [float(n) for n in read_ignore_comments(contents).split()],
-                            "reset": [n for n in read_ignore_comments(contents).split()],
-                            "set": [n for n in read_ignore_comments(contents).split()],
+                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
+                            "reset": [int(n) for n in read_ignore_comments(contents, "relay reset").split()],
+                            "set": [int(n) for n in read_ignore_comments(contents, "relay set").split()],
                             "id": task_id}
                 list_of_tasks.append(task_dict)
         case _:
-            print("wrong input")
+            raise TaskFileParseError(f"Invalid relay type {relay_type}")
+
+    # Check for remaining non-comment content: indicates declared count < actual
+    bad_task_count = len(list_of_tasks) != number_of_tasks
+    remaining = contents.read()
+    if bad_task_count or any(line.strip() and not line.strip().startswith('#') for line in remaining.splitlines()):
+        raise TaskFileParseError(
+            f"Declared number of tasks does not match actual number of tasks in {task_file!r}",
+            file=task_file,
+        )
     return list_of_tasks
 
 

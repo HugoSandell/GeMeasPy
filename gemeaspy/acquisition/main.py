@@ -8,7 +8,7 @@ from paramiko import ChannelException
 
 from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
-from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TaskFileIOError, TransferError
+from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TaskFileIOError, TaskFileParseError, TransferError
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
 
@@ -65,6 +65,12 @@ def run_acquisition(argv: list[str]) -> int:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"TaskFileIOError - Failed to read {e.file!r}", exc_info=True)
         return 7
+    except TaskFileParseError as e:
+        print(f"Error: {e.msg}")
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        logger.error(f"TaskFileParseError - {e.msg}", exc_info=True)
+        return 8
     return 0
 
 def cli_main():

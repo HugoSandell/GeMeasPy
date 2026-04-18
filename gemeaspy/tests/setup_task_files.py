@@ -26,17 +26,17 @@ def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
 
     def param[T](param: str, t: Callable[[Any], T], prefix: str = prefix) -> T:
         """Get the given attribute of test case as `T` or throw an exception."""
-        return t(test_case.parameters[prefix + param])
+        return t(test_case[prefix + param])
 
     number_of_tasks = param("number_of_tasks", int)
-    num_tasks_error = param("number_of_tasks_error", IntFieldError.__getitem__)
+    num_tasks_error: IntFieldError = param("number_of_tasks_error", lambda s: IntFieldError(str.lower(s)))
     relay_type = param("relay_type", str)
-
+    
     f = tempfile.NamedTemporaryFile(
         mode="w", prefix="gemeaspytest_task_file_", delete_on_close=False
     )
-    f.write(f"{num_tasks_error.resolve(number_of_tasks)} {relay_type}\n")
 
+    f.write(f"{num_tasks_error.resolve(number_of_tasks)} {relay_type}\n")
     for taskid in range(1, number_of_tasks + 1):
         task_prefix = f"{prefix}task{taskid}_"
 
@@ -109,4 +109,38 @@ if __name__ == "__main__":
         taskfile1_task2_settings=parameter_spec.INVALID_FILE,
         taskfile1_task2_spacing="1 1 1 1",
     ))
-    print(resolve_task_files(test_case))
+    print("- - - - - - - - - - - - - - -")
+    resolved = resolve_task_files(test_case)
+    print(resolved[0])
+    print(resolved[1])
+    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
+        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        taskfile1_number_of_tasks=1,
+        taskfile1_number_of_tasks_error = IntFieldError.MINUS_1,
+        taskfile1_relay_type="",
+        taskfile1_task1_name="Task1",
+        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+        taskfile1_task1_spacing="1 1 1",
+    ))
+    print("- - - - - - - - - - - - - - -")
+    resolved = resolve_task_files(test_case)
+    print(resolved[0])
+    print(resolved[1])
+    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
+        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        taskfile1_number_of_tasks=1,
+        taskfile1_number_of_tasks_error = IntFieldError.PLUS_1,
+        taskfile1_relay_type="",
+        taskfile1_task1_name="Task1",
+        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+        taskfile1_task1_spacing="1 1 1",
+    ))
+    print("- - - - - - - - - - - - - - -")
+    resolved = resolve_task_files(test_case)
+    print(resolved[0])
+    print(resolved[1])
+    input("")

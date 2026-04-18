@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import typing
 from collections.abc import Iterator
 
+from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
 
 class TestCaseParameters:
@@ -51,10 +52,10 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     arg_task_files: list[str] = field(default_factory=list)
     # Task file headers
     taskfile1_number_of_tasks: int = 1
-    taskfile1_number_of_tasks_error: str = ""
+    taskfile1_number_of_tasks_error: str = IntFieldError.CORRECT
     taskfile1_relay_type: str = ""
     taskfile2_number_of_tasks: int = 1
-    taskfile2_number_of_tasks_error: str = ""
+    taskfile2_number_of_tasks_error: str = IntFieldError.CORRECT
     taskfile2_relay_type: str = ""
     # config.py
     config_projects_folder: str = ""
