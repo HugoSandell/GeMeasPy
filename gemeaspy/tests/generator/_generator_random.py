@@ -10,6 +10,30 @@ from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec
 from gemeaspy.tests.generator.test_case import TestCase
 
+def _max_valid_cases(param_spec: ParameterSpec, constraints: list[Constraint]):
+    param_names = list(param_spec)
+    param_valid_values = [param_spec[p][0] for p in param_names]
+    return sum(
+        1 for combination in itertools.product(*param_valid_values)
+        if all(c.test(dict(zip(param_names, combination))) for c in constraints)
+    )
+
+def _max_invalid_cases(param_spec: ParameterSpec, constraints: list[Constraint]) -> int:
+    param_names = list(param_spec)
+    total = 0
+    for invalid_param in param_names:
+        invalid_values = param_spec[invalid_param][1]
+        if not invalid_values:
+            continue
+        other_names = [p for p in param_names if p != invalid_param]
+        other_valid_values = [param_spec[p][0] for p in other_names]
+        for invalid_value in invalid_values:
+            for combo in itertools.product(*other_valid_values):
+                params = dict(zip(other_names, combo))
+                params[invalid_param] = invalid_value
+                if all(c.test(params) for c in constraints):
+                    total += 1
+    return total
 
 RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint], case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
@@ -32,20 +56,13 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     
     _logging.debug("Random test case generator starting.")
 
-    def product(iterable) -> int: 
-        return functools.reduce(lambda product, x: product * x, iterable, 1)
-    
-    param_sizes_valid = [len(param_spec[param][0]) for param in param_spec]
-    max_case_count_valid = product(param_sizes_valid)
-    param_sizes_invalid = [len(param_spec[param][1]) for param in param_spec]
-    
-    combinations_invalid = [
-            int((max_case_count_valid / param_sizes_valid[i]) * param_sizes_invalid[i]) 
-            for i in range(len(param_spec))
-        ]
-    max_case_count_invalid: int = sum(combinations_invalid)
+    max_case_count_valid = _max_valid_cases(param_spec, constraints)
+    max_case_count_invalid = _max_invalid_cases(param_spec, constraints)
     max_total_case_count = max_case_count_valid + max_case_count_invalid
     
+    _logging.debug("Max valid: " + str(max_case_count_valid))
+    
+    _logging.debug("Max invalid: " + str(max_case_count_invalid))
     # How many cases to generate?
     case_count = min(max_total_case_count, case_count)
     
@@ -69,7 +86,6 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
         is_case_invalid = is_valids_complete or (not is_invalids_complete and use_invalid_if_possible)
         invalid_param: str | None = None
         
-        # TODO: Make sure this cannot get stuck or anything due to constraints
         while not initialized \
         or any(is_duplicate(case_index, x) for x in range(case_index)) \
         or not valid_under_constraints(test_data[case_index]):

@@ -1,5 +1,6 @@
 """Implements constraints according to the ACTS constraint spec"""
 
+import json
 import random
 import re
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from enum import Enum
 from collections.abc import Mapping
 
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.util import string_to_acts_enum
+from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
 
 class _BooleanOp(Enum):
@@ -104,7 +105,7 @@ def _tokenize(s: str) -> list[tuple[_TokenKind, str]]:
     for m in _TOKEN_REGEX.finditer(s):
         v = m.group()
         if v[0] == '"':
-            tokens.append((_TokenKind.STRING, string_to_acts_enum(v)))
+            tokens.append((_TokenKind.STRING, v[1:-1]))
         elif v in _BOOLEAN_OPS:
             tokens.append((_TokenKind.BOOLEAN_OP, v))
         elif v in _RELATION_OPS:
@@ -307,7 +308,7 @@ class _ConstraintParser:
             return val == "true"
         if kind == _TokenKind.STRING:
             self._consume()
-            return val[1:-1]  # strip surrounding quotes
+            return acts_enum_to_string(val)
         raise ValueError(f"Expected a term (parameter, int, bool, or string), got {kind!r} ({val!r}).")
 
 
@@ -336,7 +337,7 @@ class Constraint:
             if isinstance(v, int):
                 return str(v)
             if isinstance(v, str):
-                return '"' + string_to_acts_enum(v) + '"'
+                return '"' + string_to_acts_enum(json.dumps(v)) + '"'
             raise TypeError(f"Unsupported literal type: {type(v)}")
 
         def _render_term(t: _Term) -> str:

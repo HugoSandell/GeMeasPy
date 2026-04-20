@@ -1,6 +1,5 @@
 """Specification for parameter names and values. Used as input for test generation."""
 
-import json
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
@@ -234,7 +233,7 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
     for element_suffix in suffixes:
         parameter_name = element + element_suffix
         parameter = ACQUISITION_PARAM_SPEC[parameter_name]
-        parameter_base_case = util.string_to_acts_enum(json.dumps(parameter[0][0]))
+        parameter_base_case = util.string_to_acts_enum(str(parameter[0][0]))
         if acts_type(parameter) == ACTSParameterType.ENUM:
             parameter_base_case = f'"{parameter_base_case}"'
         consequent = f" => {parameter_name} == {parameter_base_case}"
