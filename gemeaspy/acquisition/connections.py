@@ -6,8 +6,9 @@ from typing import Any
 import paramiko
 
 import gemeaspy
-from gemeaspy.acquisition import logger, utilities
+from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
 
 
