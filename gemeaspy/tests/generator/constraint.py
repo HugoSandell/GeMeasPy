@@ -377,7 +377,6 @@ class Constraint:
             TypeError:  An operator is applied to operands of incompatible types.
             ZeroDivisionError: A division or modulo by zero occurs during evaluation.
         """
-        print(params)
         missing = [p for p in self.parameters if p not in params]
         if missing:
             raise KeyError(f"Missing parameters: {missing}")
@@ -447,3 +446,4 @@ if __name__ == "__main__":
     except Exception:
         print("✖ Unexpected exception caught!")
         raise
+    
