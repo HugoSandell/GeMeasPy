@@ -42,8 +42,6 @@ def task_files(test_case: AcquisitionTestCase):
 
 @pytest.mark.asyncio
 async def test_main(test_case: AcquisitionTestCase, config, task_files, configure_default_port_handling):
-    if test_case.parameters.num_args != 1 or test_case.invalid_parameter != "taskfile2_number_of_tasks_error":
-        return
     logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     env = {
