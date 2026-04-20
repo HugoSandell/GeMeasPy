@@ -100,6 +100,8 @@ class SSHConnection():
             raise SSHConnectionError("Authentication failed - check the username and password in the connection settings file.", self.params)
         except paramiko.SSHException:
             raise SSHConnectionError("Could not establish an SSH session - the server may not be running SSH on this port.", self.params)
+        except socket.gaierror:
+            raise SSHConnectionError("Could not resolve hostname - check its value in the connection settings file.", self.params)
         except socket.timeout:
             raise SSHConnectionError("Connection timed out - check that the hostname and port are reachable.", self.params)
         except Exception as e:

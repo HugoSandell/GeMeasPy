@@ -141,6 +141,10 @@ def _evaluate_hostname(test_data: AcquisitionTestCase, stdout: str) -> OracleRes
     value = test_data.parameters.connection_hostname
 
     match value:
+        case parameter_spec.INVALID_HOSTNAME | "":
+            return _expect_error_message(
+                test_data, "Could not resolve hostname", stdout
+            )
         case None:
             return _expect_error_message(
                 test_data, "Missing entry in connection parameters", stdout
