@@ -67,7 +67,9 @@ def _expect_error_message(test_case: TestCase, expected_error: str, stdout: str,
     if error_message is not None and expected_error.lower() in error_message.lower():
         return OracleResult(True)
     else:
-        _logging.info(f"Expected '{expected_error}' in stdout, got:\n{stdout}")
+        _logging.info(
+            f"Expected error containing '{expected_error}' in stdout, got:\n{stdout}"
+        )
         return OracleResult(False, f"Did not find error message containing {expected_error!r} in output for invalid parameter {param_name} = {param_value!r}.")
 
 def _was_project_transferred() -> bool:
