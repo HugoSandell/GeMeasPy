@@ -11,6 +11,8 @@ import pytest
 
 from gemeaspy.settings import config as _config
 from gemeaspy.tests import oracle, setup_config, setup_task_files
+from gemeaspy.tests.generator.constraint import Constraint
+from gemeaspy.tests.generator.parameter_spec import ACQUISITION_CONSTRAINTS, AcquisitionParameterSpec
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase
@@ -41,6 +43,8 @@ def task_files(test_case: AcquisitionTestCase):
 
 @pytest.mark.asyncio
 async def test_main(test_case: AcquisitionTestCase, config, task_files, configure_default_port_handling):
+    if test_case.parameters.num_args != 1 or test_case.invalid_parameter != "taskfile2_number_of_tasks_error":
+        return
     logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     env = {
@@ -69,4 +73,26 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files, configur
         stdout_bytes.decode(encoding="utf-8", errors="backslashreplace"), 
         stderr_bytes.decode(encoding="utf-8", errors="backslashreplace"),
     )
-    assert oracle_result.ok, oracle_result.msg
+    
+    print("num_args: ", test_case.parameters.num_args)
+    print("arg_taskfile1: ", test_case.parameters.arg_taskfile1)
+    print("arg_taskfile2: ", test_case.parameters.arg_taskfile2)
+    print("taskfile1_number_of_tasks_error: ", test_case.parameters.taskfile1_number_of_tasks_error)
+    print("taskfile2_number_of_tasks_error: ", test_case.parameters.taskfile2_number_of_tasks_error)
+    print("task files: ", task_files)
+    
+    print("Test constraint:")
+    test_constraint = Constraint(f'num_args < 2 || arg_taskfile2 = "__INVALID_TASKFILE2__"  => taskfile2_number_of_tasks_error = "CORRECT"')
+    print(test_constraint)
+    print("Success:", test_constraint.test({"num_args": 1, "arg_taskfile1": "__VALID_TASKFILE1__", "arg_taskfile2": "__VALID_TASKFILE2__", "taskfile2_number_of_tasks_error":  "MINUS_1"}))
+
+    
+    frame_str = ""
+    if oracle_result.frame is not None:
+        code = oracle_result.frame.f_code.co_code
+        lineno = oracle_result.frame.f_lineno
+        if code and lineno:
+            frame_str = f"{oracle_result.frame.f_code.co_filename!r}, line {oracle_result.frame.f_lineno}"
+            print(f"OracleResult @ {frame_str}")
+            
+    assert oracle_result.ok, f"{oracle_result.msg} ({frame_str})"

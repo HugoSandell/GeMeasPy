@@ -12,7 +12,7 @@ from gemeaspy.tests.generator import _cache
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec, acts_type
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.test_case import TestCase
+from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
 from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
@@ -44,7 +44,7 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     
     elem_constraints = SubElement(elem_system, "Constraints")
     for constraint in constraints:
-        elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.text})
+        elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.acts_safe_text()})
         elem_constraint_parameters = SubElement(elem_constraint, "Parameters")
         for parameter in constraint.parameters:
             SubElement(elem_constraint_parameters, "Parameter", attrib={"name": parameter})
@@ -52,14 +52,11 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     fd, path = tempfile.mkstemp(suffix=".xml", prefix="gemeaspytest", text=True)
     ElementTree(elem_system).write(path, xml_declaration=True)
     os.close(fd)
-
     return path
-
-
 
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
     """Generate a Covering Array of given strength based on the provided ACTS config file"""
-    
+
     # Check cache
     cache = _cache.try_load_cache(param_spec, constraints, f"t{strength}")
     if cache is not None:
@@ -148,6 +145,17 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
                 case.expect_failure = True
                 case.invalid_parameter = parameter_name
         test_data.append(case)
+    
+    # Verify against constraints
+    for case in test_data:
+        for constraint in constraints:
+            if not constraint.test(case.parameters):
+                rows = []
+                for parameter in constraint.parameters:
+                    rows.append(f'{parameter} = {case[parameter]!r}')
+                _logging.error(f"ACTS output violated constraint.\nParameters:\n{'\n'.join(rows)}\nConstraint: {constraint!r}")
+                raise RuntimeError(f"ACTS output violated constraint. See {_logging.file_path}")
+    
     _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
     _cache.save_cache(test_data, param_spec, constraints, f"t{strength}")
     return test_data

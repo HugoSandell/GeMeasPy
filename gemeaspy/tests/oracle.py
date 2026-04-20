@@ -1,11 +1,11 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from types import FrameType
 from typing import NoReturn
-
-from sqlalchemy import true
+import inspect
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator.int_field_error import IntFieldError
@@ -33,10 +33,25 @@ port22_status: Port22Status = Port22Status.CLOSED
 # Regular expressions for matching a "class" of parameters
 RE_TASK = re.compile(r"taskfile(?P<file>\d+)_task(?P<task>\d+)_(?P<property>spread|protocol|name|settings|spacing)")
 
+
+
 @dataclass
 class OracleResult:
     ok: bool
     msg: str = ""
+    def __init__(self, ok: bool, msg: str = "", context: int = 0):
+        """context is how many steps out to get the frame, 0 being the call to this constructor"""
+        self.ok = ok
+        self.msg = msg
+        # To find the origin of this OracleResult
+        self.frame: None | FrameType = inspect.currentframe()
+        """A frame to help identify where the result was determined"""
+        for _ in range(context + 1):
+            if self.frame is not None:
+                self.frame = self.frame.f_back
+            else:
+                break
+            
     def __bool__(self) -> bool:
         return self.ok
 
@@ -63,12 +78,12 @@ def _expect_error_message(test_case: TestCase, expected_error: str, stdout: str,
     error_message = _find_stdout_error_message(stdout)
     if error_message is None:
         if allow_without_error:
-            return OracleResult(True)
+            return OracleResult(True, context=1)
     if error_message is not None and expected_error.lower() in error_message.lower():
-        return OracleResult(True)
+        return OracleResult(True, context=1)
     else:
         _logging.info(f"Expected '{expected_error}' in stdout, got:\n{stdout}")
-        return OracleResult(False, f"Did not find error message containing {expected_error!r} in output for invalid parameter {param_name} = {param_value!r}.")
+        return OracleResult(False, f"Did not find error message containing {expected_error!r} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
 def _was_project_transferred() -> bool:
     """Checks whether the project has been transferred correctly"""
@@ -95,21 +110,20 @@ def _evaluate_valid(test_data: TestCase, stdout: str, stderr:str) -> OracleResul
 def _evaluate_arg_task_files(
     test_data: AcquisitionTestCase, stdout: str
 ) -> OracleResult:
-    value = test_data.parameters.arg_task_files
+    invalid_taskfile = str(test_data.invalid_parameter)
+    invalid_value: str = str(test_data[invalid_taskfile])
 
     if not (msg := _find_stdout_error_message(stdout)):
         return OracleResult(
-            False, f"No error message found for invalid arg_task_files={repr(value)}"
+            False, f"No error message found for invalid {invalid_taskfile}={invalid_value!r}"
         )
 
-    if len(value) == 0:
-        return _expect_error_message(test_data, "No task file given", stdout)
-    elif INVALID_FILE in value:
+    if INVALID_FILE in invalid_value:
         return _expect_error_message(test_data, "Failed to read task file", stdout)
     
     return OracleResult(
         False,
-        f"Unexpected error message for invalid arg_task_files={repr(value)}: {msg}",
+        f"Unexpected error message for invalid {invalid_taskfile}={invalid_value!r}: {msg}",
     )
 
 def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
@@ -220,7 +234,9 @@ def evaluate_test(
     match invalid_parameter:
         case None:
             return _evaluate_valid(test_data, stdout, stderr)
-        case "arg_task_files":
+        case "num_args":
+            return _expect_error_message(test_data, "No task file given", stdout)
+        case "arg_taskfile1" | "arg_taskfile2":
             return _evaluate_arg_task_files(test_data, stdout)
         case "connection_port":
             return _evaluate_port(test_data, stdout, stderr)
@@ -240,3 +256,7 @@ def evaluate_test(
                 )
                 return OracleResult(True)
             _raise_unimplemented(test_data)
+
+if __name__ == "__main__":
+    print(OracleResult(False, "Message"))
+    print((OracleResult(False, "Message").frame or FrameType()))

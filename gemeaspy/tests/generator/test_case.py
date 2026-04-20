@@ -2,12 +2,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import typing
-from collections.abc import Iterator
+from typing import Any
+from collections.abc import Iterator, Mapping
 
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
 
-class TestCaseParameters:
+class TestCaseParameters(dict[str, ParameterValue]):
     def __iter__(self) -> Iterator[str]:
         return iter(vars(self))
     def __setitem__(self, name: str, value: ParameterValue) -> None:
@@ -24,10 +25,12 @@ class TestCaseParameters:
         return str(vars(self))
     def __repr__(self) -> str:
         return repr(vars(self))
+    def __contains__(self, key: object) -> bool:
+        return key in vars(self)
 
 
 @dataclass
-class TestCase[T: TestCaseParameters](ABC):
+class TestCase[T: TestCaseParameters](ABC, Mapping[str, ParameterValue]):
     expect_failure: bool = False
     invalid_parameter: str | None = None
     @property
@@ -42,14 +45,19 @@ class TestCase[T: TestCaseParameters](ABC):
         return self.parameters[key]
     def __setitem__(self, key: str, value: ParameterValue) -> None:
         self.parameters[key] = value
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key: object) -> bool:
         return key in self.parameters
     def __len__(self) -> int:
         return len(self.parameters)
+    def __iter__(self) -> Iterator:
+        return iter(self.parameters)
 
 @dataclass
 class AcquisitionTestCaseParameters(TestCaseParameters):
-    arg_task_files: list[str] = field(default_factory=list)
+    num_args: int = 1
+    arg_taskfile1: str = ""
+    arg_taskfile2: str = ""
+    
     # Task file headers
     taskfile1_number_of_tasks: int = 1
     taskfile1_number_of_tasks_error: str = IntFieldError.CORRECT

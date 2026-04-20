@@ -9,6 +9,7 @@ from gemeaspy.tests import oracle
 from gemeaspy.tests.oracle import Port22Status
 from gemeaspy.tests.generator import test_generation
 from gemeaspy.tests.generator.parameter_spec import (
+    ACQUISITION_CONSTRAINTS,
     ACQUISITION_PARAM_SPEC,
     VALID_HOSTNAME,
 )
@@ -115,7 +116,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
             raise ValueError("Interaction strength must be greater than 0")
         elif t > len(ACQUISITION_PARAM_SPEC):
             raise ValueError(f"Interaction strength must not be greater than {len(ACQUISITION_PARAM_SPEC)}")
-        test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=[], strength=t)
+        test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS, strength=t)
         metafunc.parametrize("test_case", test_data)
     elif generator_name == "random":
         max_N: int = reduce(lambda x, p: x * len(ACQUISITION_PARAM_SPEC[p]), ACQUISITION_PARAM_SPEC, 1)
@@ -123,7 +124,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
             raise ValueError("Test suite size must be greater than 0")
         if N > max_N:
             raise ValueError(f"Test suite size must not be greater than {max_N}")    
-        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, constraints=[] ,case_count=N, seed=random_seed)
+        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS ,case_count=N, seed=random_seed)
         metafunc.parametrize("test_case", test_data)
     else:
         raise ValueError(f"'{generator_name}' is not a valid test case generator.")

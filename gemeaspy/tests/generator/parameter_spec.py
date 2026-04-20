@@ -86,17 +86,11 @@ class ParameterSpec:
 @dataclass
 class AcquisitionParameterSpec(ParameterSpec):
     TestCaseType: type[TestCase] = AcquisitionTestCase
+
+    num_args: ParamSpecEntry[int] = param_values([1, 2], [0])    
+    arg_taskfile1: ParamSpecEntry[str] = param_values([VALID_TASKFILE1],[INVALID_FILE])
+    arg_taskfile2: ParamSpecEntry[str] = param_values([VALID_TASKFILE2],[INVALID_FILE])
     
-    arg_task_files: ParamSpecEntry[list[str]] = param_values([
-            [VALID_TASKFILE1],
-            [VALID_TASKFILE1, VALID_TASKFILE2]
-        ],[
-            [], 
-            [INVALID_FILE], 
-            [INVALID_FILE, VALID_TASKFILE1], 
-            [VALID_TASKFILE1, INVALID_FILE]
-        ]
-    )
     # Task file headers
     taskfile1_number_of_tasks: ParamSpecEntry[int] = param_values([
         0,
@@ -255,6 +249,12 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
     *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
     *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
+    Constraint(f'num_args < 1 => arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}"'), # Since it will not be included anyway
+    Constraint(f'num_args < 2 => arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}"'), # Since it will not be included anyway
+    Constraint(f'arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile1_number_of_tasks = 0'),
+    Constraint(f'arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile2_number_of_tasks = 0'),
+    Constraint(f'num_args < 1 || arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile1_number_of_tasks_error = "CORRECT"'),
+    Constraint(f'num_args < 2 || arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}"  => taskfile2_number_of_tasks_error = "CORRECT"'),
 ]
 
 if __name__=="__main__":
@@ -266,5 +266,3 @@ if __name__=="__main__":
         print(f"Constraints for element #{element_index} ({element}) in a collection of {N_param} elements:")
         for constraint in constraints_for_empty_task(N_param, element, element_index):
             print(constraint)
-    
-    

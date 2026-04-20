@@ -4,6 +4,10 @@ import random
 import re
 from dataclasses import dataclass
 from enum import Enum
+from collections.abc import Mapping
+
+from gemeaspy.tests.generator.parameters import ParameterValue
+from gemeaspy.tests.generator.util import string_to_acts_enum
 
 
 class _BooleanOp(Enum):
@@ -37,7 +41,7 @@ class _TokenKind(Enum):
     BOOL              = "BOOL"
     IDENTIFIER        = "IDENTIFIER"
 
-type _Value = int | str | bool
+type _Value = ParameterValue
 type _Term = _ArithmeticTerm | _Parameter | _Value
 type _Constraint = _SimpleConstraint | _BooleanTerm
 
@@ -100,7 +104,7 @@ def _tokenize(s: str) -> list[tuple[_TokenKind, str]]:
     for m in _TOKEN_REGEX.finditer(s):
         v = m.group()
         if v[0] == '"':
-            tokens.append((_TokenKind.STRING, v))
+            tokens.append((_TokenKind.STRING, string_to_acts_enum(v)))
         elif v in _BOOLEAN_OPS:
             tokens.append((_TokenKind.BOOLEAN_OP, v))
         elif v in _RELATION_OPS:
@@ -151,7 +155,7 @@ def _extract_parameters(node: _Constraint) -> list[str]:
 
 
 # Constraint evaluation
-def _eval_term(term: _Term, params: dict[str, _Value]) -> _Value:
+def _eval_term(term: _Term, params: Mapping[str, _Value]) -> _Value:
     """Resolve a term to a concrete value using the supplied parameter bindings."""
     if isinstance(term, _Parameter):
         if term.p_name not in params:
@@ -174,7 +178,7 @@ def _eval_term(term: _Term, params: dict[str, _Value]) -> _Value:
     return term
 
 
-def _eval_constraint(node: _Constraint, params: dict[str, _Value]) -> bool:
+def _eval_constraint(node: _Constraint, params: Mapping[str, _Value]) -> bool:
     """Recursively evaluate a parsed constraint tree against parameter bindings."""
     if isinstance(node, _BooleanTerm):
         match node.op:
@@ -324,13 +328,55 @@ class Constraint:
     def __repr__(self) -> str:
         return f"Constraint('{str(self)}')"
 
-    def test(self, params: dict[str, _Value]) -> bool:
+    def acts_safe_text(self) -> str:
+        """Get string representation compatible with ACTS"""
+        def _render_value(v: _Value) -> str:
+            if isinstance(v, bool):
+                return "true" if v else "false"
+            if isinstance(v, int):
+                return str(v)
+            if isinstance(v, str):
+                return '"' + string_to_acts_enum(v) + '"'
+            raise TypeError(f"Unsupported literal type: {type(v)}")
+
+        def _render_term(t: _Term) -> str:
+            if isinstance(t, _Parameter):
+                return t.p_name
+            if isinstance(t, _ArithmeticTerm):
+                return f"{_render_term(t.left)} {t.op.value} {_render_term(t.right)}"
+            return _render_value(t)
+
+        _PREC = {_BooleanOp.CONDITION: 0, _BooleanOp.OR: 1, _BooleanOp.AND: 2}
+        _RIGHT_ASSOC = {_BooleanOp.CONDITION}
+
+        def _render_constraint(node: _Constraint) -> str:
+            if isinstance(node, _SimpleConstraint):
+                return f"{_render_term(node.left)} {node.op.value} {_render_term(node.right)}"
+            op, prec = node.op, _PREC[node.op]
+
+            def _maybe_paren(child: _Constraint, is_right: bool) -> str:
+                s = _render_constraint(child)
+                if not isinstance(child, _BooleanTerm):
+                    return s
+                child_prec = _PREC[child.op]
+                if is_right:
+                    needs = child_prec < prec or (child_prec == prec and op not in _RIGHT_ASSOC)
+                else:
+                    needs = child_prec < prec or (child_prec == prec and op in _RIGHT_ASSOC)
+                return f"({s})" if needs else s
+
+            return f"{_maybe_paren(node.left, False)} {op.value} {_maybe_paren(node.right, True)}"
+
+        return _render_constraint(self.value)
+
+    def test(self, params: Mapping[str, _Value]) -> bool:
         """Return True if the constraint holds for the given parameter bindings.
         Raises:
             KeyError:   A parameter referenced by the constraint is absent from params.
             TypeError:  An operator is applied to operands of incompatible types.
             ZeroDivisionError: A division or modulo by zero occurs during evaluation.
         """
+        print(params)
         missing = [p for p in self.parameters if p not in params]
         if missing:
             raise KeyError(f"Missing parameters: {missing}")

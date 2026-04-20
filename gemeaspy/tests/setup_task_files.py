@@ -12,14 +12,12 @@ from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters
 from gemeaspy.tests.generator.util import random_string
 
-
 def _replace_file_placeholder(value: str, invalid_prefix: str) -> str:
     match value:
         case parameter_spec.INVALID_FILE:
             return f"{invalid_prefix}_{random_string()}"
         case x:
             return x
-
 
 def _create_task_file(test_case: AcquisitionTestCase, file_no: int):
     prefix = f"taskfile{file_no}_"
@@ -69,11 +67,8 @@ def resolve_task_files(test: AcquisitionTestCase):
             created_task_files[file_no] = f.name
         return created_task_files[file_no]
 
-    if type(test.parameters.arg_task_files) is not list:
-        raise TypeError("Parameter 'arg_task_files' has an invalid type")
-
-    for task_file in test.parameters.arg_task_files:
-        match task_file:
+    for id in range(test.parameters.num_args):
+        match test[f"arg_taskfile{id+1}"]:
             case parameter_spec.INVALID_FILE:
                 task_files.append(f"task_file_{random_string()}")
             case parameter_spec.VALID_TASKFILE1:
@@ -95,7 +90,9 @@ def resolve_task_files(test: AcquisitionTestCase):
 
 if __name__ == "__main__":
     test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        num_args=2,
+        arg_taskfile1=parameter_spec.VALID_TASKFILE1,
+        arg_taskfile2=parameter_spec.VALID_TASKFILE2,
         taskfile1_number_of_tasks=2,
         taskfile1_relay_type="",
         taskfile1_task1_name="Task1",
@@ -114,7 +111,8 @@ if __name__ == "__main__":
     print(resolved[0])
     print(resolved[1])
     test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        num_args=1,
+        arg_taskfile1=parameter_spec.VALID_TASKFILE1,
         taskfile1_number_of_tasks=1,
         taskfile1_number_of_tasks_error = IntFieldError.MINUS_1,
         taskfile1_relay_type="",
@@ -129,7 +127,8 @@ if __name__ == "__main__":
     print(resolved[0])
     print(resolved[1])
     test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        arg_task_files=[parameter_spec.VALID_TASKFILE1, parameter_spec.INVALID_FILE],
+        num_args=1,
+        arg_taskfile1=parameter_spec.INVALID_FILE,
         taskfile1_number_of_tasks=1,
         taskfile1_number_of_tasks_error = IntFieldError.PLUS_1,
         taskfile1_relay_type="",

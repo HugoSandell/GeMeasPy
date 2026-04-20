@@ -96,6 +96,17 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     for case_a, case_b in itertools.combinations(range(case_count), 2):
         assert not is_duplicate(case_a, case_b)
 
+    # Verify against constraints
+    for case in test_data:
+        for constraint in constraints:
+            if not constraint.test(case.parameters):
+                rows = []
+                for parameter in constraint.parameters:
+                    rows.append(f'{parameter} = {case[parameter]!r}')
+                _logging.error(f"Random generator output violated constraint.\nParameters:\n{'\n'.join(rows)}\nConstraint: {constraint!r}")
+                raise RuntimeError(f"Random generator violated constraint. See {_logging.file_path}")
+    
+
     _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
     _cache.save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}")
     return test_data
