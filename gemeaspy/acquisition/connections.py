@@ -1,13 +1,14 @@
+import os
+import socket
+from datetime import datetime
 from typing import Any
 
-import socket
-import os
 import paramiko
 
 import gemeaspy
-from gemeaspy.acquisition import logger
 from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
 
 
@@ -99,6 +100,8 @@ class SSHConnection():
             raise SSHConnectionError("Authentication failed - check the username and password in the connection settings file.", self.params)
         except paramiko.SSHException:
             raise SSHConnectionError("Could not establish an SSH session - the server may not be running SSH on this port.", self.params)
+        except socket.gaierror:
+            raise SSHConnectionError("Could not resolve hostname - check its value in the connection settings file.", self.params)
         except socket.timeout:
             raise SSHConnectionError("Connection timed out - check that the hostname and port are reachable.", self.params)
         except Exception as e:
@@ -123,7 +126,12 @@ class _DebugLogger:
         if "DEBUG" in os.environ:
             log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log")
             os.makedirs(log_dir, exist_ok=True)
-            self.logfile = open(os.path.join(log_dir, "ssh.log"), "a")
+            self.logfile = open(
+                os.path.join(
+                    log_dir, f"ssh.{datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')}.log"
+                ),
+                "a",
+            )
         else:
             self.logfile = None
 

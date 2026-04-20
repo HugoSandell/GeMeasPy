@@ -8,9 +8,12 @@ from typing import NoReturn
 import inspect
 
 from gemeaspy.tests import _logging
+from gemeaspy.tests.generator import parameter_spec
 from gemeaspy.tests.generator.int_field_error import IntFieldError
-from gemeaspy.tests.generator.parameter_spec import (INVALID_FILE,
-                                                     AcquisitionParameterSpec)
+from gemeaspy.tests.generator.parameter_spec import (
+    INVALID_FILE,
+    AcquisitionParameterSpec,
+)
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
 from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
@@ -147,6 +150,23 @@ def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str,
         case _:
             _raise_unimplemented(test_data)
 
+
+def _evaluate_hostname(test_data: AcquisitionTestCase, stdout: str) -> OracleResult:
+    value = test_data.parameters.connection_hostname
+
+    match value:
+        case parameter_spec.INVALID_HOSTNAME | "":
+            return _expect_error_message(
+                test_data, "Could not resolve hostname", stdout
+            )
+        case None:
+            return _expect_error_message(
+                test_data, "Missing entry in connection parameters", stdout
+            )
+        case _:
+            _raise_unimplemented(test_data)
+
+
 def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     """Bad port number"""
     value = test_data.parameters.connection_port
@@ -168,6 +188,21 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
         # Valid range but nothing listening on this port in the test environment
         expected_error_msg = "Could not reach the server"
     return _expect_error_message(test_data, expected_error_msg, stdout)
+
+
+def _evaluate_password(test_data: AcquisitionTestCase, stdout: str) -> OracleResult:
+    value = test_data.parameters.connection_password
+
+    match value:
+        case parameter_spec.INVALID_PASSWORD:
+            return _expect_error_message(test_data, "Authentication failed", stdout)
+        case None:
+            return _expect_error_message(
+                test_data, "Missing entry in connection parameters", stdout
+            )
+        case _:
+            _raise_unimplemented(test_data)
+
 
 def _evaluate_emulator_behavior(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
     try:
@@ -238,8 +273,12 @@ def evaluate_test(
             return _expect_error_message(test_data, "No task file given", stdout)
         case "arg_taskfile1" | "arg_taskfile2":
             return _evaluate_arg_task_files(test_data, stdout)
+        case "connection_hostname":
+            return _evaluate_hostname(test_data, stdout)
         case "connection_port":
             return _evaluate_port(test_data, stdout, stderr)
+        case "connection_password":
+            return _evaluate_password(test_data, stdout)
         case p if (match := re.match(RE_TASK, p)) is not None:
             file = int(match.group("file"))
             task = int(match.group("task"))

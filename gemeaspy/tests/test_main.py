@@ -1,21 +1,20 @@
 """PyTest entry point for end-to-end testing of acquisition."""
+
 import asyncio
 import logging
 import os
-from socket import socket
 import sys
 from asyncio import subprocess
-import socket
 
 import pytest
 
 from gemeaspy.settings import config as _config
-from gemeaspy.tests import oracle, setup_config, setup_task_files
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ACQUISITION_CONSTRAINTS, AcquisitionParameterSpec
+from gemeaspy.tests import _logging, oracle, setup_config, setup_task_files
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
-from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 
 # The greatest amount of time to wait for acquisition to finish
 ACQUISITION_TIMEOUT = 10
@@ -54,6 +53,7 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files, configur
         "TERRAMETER_CONNECTION_FILE": _config.TERRAMETER_CONNECTION_FILE,
         "TERRAMETER_EMULATOR_BEHAVIOR": test_case.parameters.emulator_behavior
     }
+    _logging.info(f"Testing acquisition with parameters: {test_case}")
     proc = await asyncio.create_subprocess_exec(
         sys.executable, "-m", "gemeaspy.acquisition", *task_files,
         stdout=subprocess.PIPE,
