@@ -227,29 +227,21 @@ def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int
     """Any invalid property of a task"""
     parameter_name = f"taskfile{file}_task{task}_{property}"
     parameter_value = test_case.parameters[parameter_name]
-    msg_no_error_found = f"No error message found for invalid task {property} {parameter_name}={parameter_value!r}"
-    
+
+    if parameter_value == "" or str(parameter_value).startswith("#"):
+        return _expect_error_message(test_case, "missing row", stdout)
+
     match property:
         case "name":
-            if _find_stdout_error_message(stdout):
-                return OracleResult(True)
-            return OracleResult(False, msg_no_error_found)
+            return _expect_error_message(test_case, "task name", stdout)
         case "settings":
-            if _find_stdout_error_message(stdout):
-                return OracleResult(True)
-            return OracleResult(False, msg_no_error_found)
+            return _expect_error_message(test_case, "task settings", stdout)
         case "spread":
-            if _find_stdout_error_message(stdout):
-                return OracleResult(True)
-            return OracleResult(False, msg_no_error_found)
+            return _expect_error_message(test_case, "task spread", stdout)
         case "protocol":
-            if _find_stdout_error_message(stdout):
-                return OracleResult(True)
-            return OracleResult(False, msg_no_error_found)
+            return _expect_error_message(test_case, "protocol file", stdout)
         case "spacing":
-            if _find_stdout_error_message(stdout):
-                return OracleResult(True)
-            return OracleResult(False, msg_no_error_found)
+            return _expect_error_message(test_case, "spacing", stdout)
     return OracleResult(True)
 
 def evaluate_test(
