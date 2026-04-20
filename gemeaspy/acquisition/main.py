@@ -1,23 +1,28 @@
-import logging
 import os
-from pathlib import Path
 import sys
 import traceback
 
 from paramiko import ChannelException
 
-from gemeaspy.acquisition.logger import logger
-from gemeaspy.settings import config
-from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError, TaskFileIOError, TaskFileParseError, TransferError
+from gemeaspy.acquisition.error import (
+    ConfigFileError,
+    MissingFileError,
+    SSHConnectionError,
+    TaskFileIOError,
+    TaskFileParseError,
+    TransferError,
+)
 from gemeaspy.acquisition.instruments import Terrameter
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition.utilities import read_monitoring_tasks
+from gemeaspy.settings import config
+
 
 def run_task_file(task_file) -> None:
 	# read connection and measurement settings
     ls = Terrameter()
     ls.connect()
-    if ls.check_input(read_monitoring_tasks(task_file)) is False:
-        print('Error in the task file: possible spreads/protocols missing!')
+    ls.check_input(read_monitoring_tasks(task_file))
     ls.start_monitoring(task_file)
     ls.disconnect()
 
@@ -71,6 +76,12 @@ def run_acquisition(argv: list[str]) -> int:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"TaskFileParseError - {e.msg}", exc_info=True)
         return 8
+    except MissingFileError as e:
+        print(f"Error: Task file references a non-existent file - {e.msg} {e.file!r}")
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        logger.error(f"MissingFileError - {e.msg} {e.file!r}", exc_info=True)
+        return 9
     return 0
 
 def cli_main():

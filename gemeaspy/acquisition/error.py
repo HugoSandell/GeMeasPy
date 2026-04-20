@@ -27,3 +27,9 @@ class TaskFileParseError(GeMeasPyError):
     def __init__(self, msg: str, file: str | None = None):
         GeMeasPyError.__init__(self, msg)
         self.file = file
+
+
+class MissingFileError(GeMeasPyError):
+    def __init__(self, msg: str, file: str):
+        GeMeasPyError.__init__(self, msg)
+        self.file = file

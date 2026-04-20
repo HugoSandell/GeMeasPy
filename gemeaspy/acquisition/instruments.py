@@ -5,6 +5,7 @@ from typing import Any
 import gemeaspy
 from gemeaspy.acquisition import connections, utilities
 from gemeaspy.acquisition import monitoring_terrameter as monitoring
+from gemeaspy.acquisition.error import MissingFileError
 
 
 class Instrument(ABC):
@@ -57,7 +58,7 @@ class Terrameter(Instrument):
         self.connection.disconnect()
         self.logfile.close()
 
-    def check_input(self, tasks: list[dict[str, Any]]) -> bool:
+    def check_input(self, tasks: list[dict[str, Any]]) -> None:
         if self.connection is None:
             raise Exception("No Active Connection")
         print("--------------------------------")
@@ -69,18 +70,17 @@ class Terrameter(Instrument):
             buffer = stdout.readline().strip()
             if buffer.find("MISSING") != -1:
                 print(task['name'])
-                return False
+                raise MissingFileError("Missing task spread file", task["spread"])
             command = "[ -e /home/root/protocols/{0:} ] && echo 'OK' || echo 'MISSING'".format(task['protocol'])
             stdin, stdout, stderr = self.connection.send_command_shell(command, 0)
             _ = stdout.channel.recv_exit_status()  # wait for exit status
             buffer = stdout.readline().strip()
             if buffer.find("MISSING") != -1:
                 print(task['protocol'])
-                return False
+                raise MissingFileError("Missing task protocol file", task["protocol"])
             print("--------------------------------")
         else:
-            print('All protocol/spread files exist!')
-            return True
+            print("All protocol/spread files exist!")
 
     def check_input_report(self, tasks) -> None:
         if self.connection is None:
