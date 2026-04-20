@@ -390,6 +390,7 @@ if __name__ == "__main__":
     constraint = Constraint(constraint_str)
     print("Created constraint:       " + str(constraint))
     print("Parameters:               " + str(constraint.parameters))
+    print("ACTS safe:                " + constraint.acts_safe_text())
     print("Testing all cominations in domain: ")
 
     domains: dict[str, range | list] = {
