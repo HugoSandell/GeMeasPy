@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from enum import Enum
 from collections.abc import Mapping, MutableMapping
 
-from gemeaspy.tests import _logging
 from gemeaspy.tests.generator.parameters import ParameterValue
 from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
@@ -344,7 +343,6 @@ class Constraint:
             val = params[param]
             if isinstance(val, str):
                 params[param] = string_to_acts_enum(val)
-        _logging.debug("Testing constraint " + repr(self))
         return _eval_constraint(self.value, params)
 
 # For manual testing
