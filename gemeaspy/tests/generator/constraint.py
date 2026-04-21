@@ -5,8 +5,9 @@ import random
 import re
 from dataclasses import dataclass
 from enum import Enum
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 
+from gemeaspy.tests import _logging
 from gemeaspy.tests.generator.parameters import ParameterValue
 from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
 
@@ -49,7 +50,6 @@ type _Constraint = _SimpleConstraint | _BooleanTerm
 @dataclass
 class _Parameter[T: _Value]:
     p_name: str
-    p_type: type[T]
 
 @dataclass
 class _ArithmeticTerm:
@@ -197,7 +197,7 @@ def _eval_constraint(node: _Constraint, params: Mapping[str, _Value]) -> bool:
             if not isinstance(left_val, int) or not isinstance(right_val, int):
                 raise TypeError(
                     f"Relational operator '{node.op.value}' requires integer operands, "
-                    f"got {type(left_val).__name__} and {type(right_val).__name__}"
+                    f"got {type(left_val).__name__} {node.left} and {type(right_val).__name__} {node.right}"
                 )
         match node.op:
             case _RelationalOp.EQ:  return left_val == right_val
@@ -299,7 +299,7 @@ class _ConstraintParser:
         kind, val = tok
         if kind == _TokenKind.IDENTIFIER:
             self._consume()
-            return _Parameter(p_name=val, p_type=str)
+            return _Parameter(p_name=val)
         if kind == _TokenKind.INT:
             self._consume()
             return int(val)
@@ -308,7 +308,7 @@ class _ConstraintParser:
             return val == "true"
         if kind == _TokenKind.STRING:
             self._consume()
-            return acts_enum_to_string(val)
+            return json.loads(acts_enum_to_string(val))
         raise ValueError(f"Expected a term (parameter, int, bool, or string), got {kind!r} ({val!r}).")
 
 
@@ -329,48 +329,7 @@ class Constraint:
     def __repr__(self) -> str:
         return f"Constraint('{str(self)}')"
 
-    def acts_safe_text(self) -> str:
-        """Get string representation compatible with ACTS"""
-        def _render_value(v: _Value) -> str:
-            if isinstance(v, bool):
-                return "true" if v else "false"
-            if isinstance(v, int):
-                return str(v)
-            if isinstance(v, str):
-                return '"' + string_to_acts_enum(json.dumps(v)) + '"'
-            raise TypeError(f"Unsupported literal type: {type(v)}")
-
-        def _render_term(t: _Term) -> str:
-            if isinstance(t, _Parameter):
-                return t.p_name
-            if isinstance(t, _ArithmeticTerm):
-                return f"{_render_term(t.left)} {t.op.value} {_render_term(t.right)}"
-            return _render_value(t)
-
-        _PREC = {_BooleanOp.CONDITION: 0, _BooleanOp.OR: 1, _BooleanOp.AND: 2}
-        _RIGHT_ASSOC = {_BooleanOp.CONDITION}
-
-        def _render_constraint(node: _Constraint) -> str:
-            if isinstance(node, _SimpleConstraint):
-                return f"{_render_term(node.left)} {node.op.value} {_render_term(node.right)}"
-            op, prec = node.op, _PREC[node.op]
-
-            def _maybe_paren(child: _Constraint, is_right: bool) -> str:
-                s = _render_constraint(child)
-                if not isinstance(child, _BooleanTerm):
-                    return s
-                child_prec = _PREC[child.op]
-                if is_right:
-                    needs = child_prec < prec or (child_prec == prec and op not in _RIGHT_ASSOC)
-                else:
-                    needs = child_prec < prec or (child_prec == prec and op in _RIGHT_ASSOC)
-                return f"({s})" if needs else s
-
-            return f"{_maybe_paren(node.left, False)} {op.value} {_maybe_paren(node.right, True)}"
-
-        return _render_constraint(self.value)
-
-    def test(self, params: Mapping[str, _Value]) -> bool:
+    def test(self, params: MutableMapping[str, _Value]) -> bool:
         """Return True if the constraint holds for the given parameter bindings.
         Raises:
             KeyError:   A parameter referenced by the constraint is absent from params.
@@ -380,8 +339,13 @@ class Constraint:
         missing = [p for p in self.parameters if p not in params]
         if missing:
             raise KeyError(f"Missing parameters: {missing}")
+        # Safety check
+        for param in params:
+            val = params[param]
+            if isinstance(val, str):
+                params[param] = string_to_acts_enum(val)
+        _logging.debug("Testing constraint " + repr(self))
         return _eval_constraint(self.value, params)
-
 
 # For manual testing
 if __name__ == "__main__":
@@ -390,7 +354,6 @@ if __name__ == "__main__":
     constraint = Constraint(constraint_str)
     print("Created constraint:       " + str(constraint))
     print("Parameters:               " + str(constraint.parameters))
-    print("ACTS safe:                " + constraint.acts_safe_text())
     print("Testing all cominations in domain: ")
 
     domains: dict[str, range | list] = {
@@ -408,7 +371,7 @@ if __name__ == "__main__":
 
     mismatch_found = False
     for i in range(n_combinations):
-        k = {
+        k: dict[str, _Value] = {
             "param_a": random.randint(-8,8),
             "param_b": random.randint(0,8),
             "param_c": random.randint(-2,2),

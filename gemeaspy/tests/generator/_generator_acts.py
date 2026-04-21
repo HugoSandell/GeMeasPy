@@ -13,7 +13,7 @@ from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec, acts_type
 from gemeaspy.tests.generator.parameters import ParameterValue
 from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
-from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
+from gemeaspy.tests.generator.util import acts_enum_to_string, obj2acts, string_to_acts_enum
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
 
@@ -34,17 +34,17 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
         elem_parameter = SubElement(elem_parameters, "Parameter", attrib=elem_parameter_attrib)
         elem_values = SubElement(elem_parameter, "values")
         for valid_value in parameter_spec[param_name][0]:
-            SubElement(elem_values, "value").text = string_to_acts_enum(json.dumps(valid_value))
+            SubElement(elem_values, "value").text = obj2acts(valid_value)
         SubElement(elem_parameter, "basechoices")
         elem_invalid_values = SubElement(elem_parameter, "invalidValues")
         for invalid_value in parameter_spec[param_name][1]:
-            SubElement(elem_invalid_values, "invalidValue").text = f"{string_to_acts_enum(json.dumps(invalid_value))}"
+            SubElement(elem_invalid_values, "invalidValue").text = f"{obj2acts(invalid_value)}"
     SubElement(elem_system, "OutputParameters")
     SubElement(elem_system, "Relations")
     
     elem_constraints = SubElement(elem_system, "Constraints")
     for constraint in constraints:
-        elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.acts_safe_text()})
+        elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.text})
         elem_constraint_parameters = SubElement(elem_constraint, "Parameters")
         for parameter in constraint.parameters:
             SubElement(elem_constraint_parameters, "Parameter", attrib={"name": parameter})
@@ -52,6 +52,7 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     fd, path = tempfile.mkstemp(suffix=".xml", prefix="gemeaspytest", text=True)
     ElementTree(elem_system).write(path, xml_declaration=True)
     os.close(fd)
+    
     return path
 
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
@@ -145,14 +146,16 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
                 case.expect_failure = True
                 case.invalid_parameter = parameter_name
         test_data.append(case)
-    
     # Verify against constraints
     for case in test_data:
+        acts_safe_parameters = dict()
+        for param in case:
+            acts_safe_parameters[param] = obj2acts(case[param])
         for constraint in constraints:
             if not constraint.test(case.parameters):
                 rows = []
                 for parameter in constraint.parameters:
-                    rows.append(f'{parameter} = {case[parameter]!r}')
+                    rows.append(f'{parameter} = {acts_safe_parameters[parameter]}')
                 _logging.error(f"ACTS output violated constraint.\nParameters:\n{'\n'.join(rows)}\nConstraint: {constraint!r}")
                 raise RuntimeError(f"ACTS output violated constraint. See {_logging.file_path}")
     

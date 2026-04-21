@@ -2,11 +2,12 @@
 
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
+import json
 from enum import Enum
 from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
-from gemeaspy.tests.generator import util
+from gemeaspy.tests.generator.util import obj2acts
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
@@ -233,10 +234,10 @@ def constraints_for_empty_task(N_param: str, element: str, element_index: int) -
     for element_suffix in suffixes:
         parameter_name = element + element_suffix
         parameter = ACQUISITION_PARAM_SPEC[parameter_name]
-        parameter_base_case = util.string_to_acts_enum(str(parameter[0][0]))
+        parameter_base_case = obj2acts(parameter[0][0])
         if acts_type(parameter) == ACTSParameterType.ENUM:
             parameter_base_case = f'"{parameter_base_case}"'
-        consequent = f" => {parameter_name} == {parameter_base_case}"
+        consequent = f" => {parameter_name} = {parameter_base_case}"
         constraints.append(
             Constraint(antecedent + consequent)
         )
@@ -248,12 +249,12 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
     *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
     *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
-    Constraint(f'num_args < 1 => arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}"'), # Since it will not be included anyway
-    Constraint(f'num_args < 2 => arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}"'), # Since it will not be included anyway
-    Constraint(f'arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile1_number_of_tasks = 0'),
-    Constraint(f'arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile2_number_of_tasks = 0'),
-    Constraint(f'num_args < 1 || arg_taskfile1 = "{util.string_to_acts_enum(INVALID_FILE)}" => taskfile1_number_of_tasks_error = "CORRECT"'),
-    Constraint(f'num_args < 2 || arg_taskfile2 = "{util.string_to_acts_enum(INVALID_FILE)}"  => taskfile2_number_of_tasks_error = "CORRECT"'),
+    Constraint(f'num_args < 1 => arg_taskfile1 = "{obj2acts(INVALID_FILE)}"'), # Since it will not be included anyway
+    Constraint(f'num_args < 2 => arg_taskfile2 = "{obj2acts(INVALID_FILE)}"'), # Since it will not be included anyway
+    Constraint(f'arg_taskfile1 = "{obj2acts(INVALID_FILE)}" => taskfile1_number_of_tasks = 0'),
+    Constraint(f'arg_taskfile2 = "{obj2acts(INVALID_FILE)}" => taskfile2_number_of_tasks = 0'),
+    Constraint(f'num_args < 1 || arg_taskfile1 = "{obj2acts(INVALID_FILE)}" => taskfile1_number_of_tasks_error = "{obj2acts("CORRECT")}"'),
+    Constraint(f'num_args < 2 || arg_taskfile2 = "{obj2acts(INVALID_FILE)}"  => taskfile2_number_of_tasks_error = "{obj2acts("CORRECT")}"'),
 ]
 
 if __name__=="__main__":
