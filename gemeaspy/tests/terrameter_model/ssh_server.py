@@ -165,8 +165,6 @@ class SSHTestServerSession(paramiko.ServerInterface):
                     self.channels.append(new_channel)
                 case paramiko_channel:  # Shell request
                     pty = self._pty_requests.pop(paramiko_channel.chanid, None)
-                    if not pty:
-                        continue
                     new_channel = SSHTestServerChannel(
                         session=self, paramiko_channel=paramiko_channel, pty=pty
                     )
