@@ -75,11 +75,7 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
         if self._socket:
             self._socket.close()
             self._socket = None
-    
-    def is_listening(self):
-        if self._listen_thread:
-            return self._listen_thread.is_alive() and self.is_running.is_set()
-    
+
     def _connect(self, client: socket.socket):
         """Establish a new session with the client on the given socket"""
         try:
@@ -227,7 +223,6 @@ class SSHTestServerSession():
         self.is_open = threading.Event()
         self._server = server
         self.channels: list[SSHTestServerChannel] = []
-        self.pseudoterminals: list[PtyRequest] = []
         self._transport = transport
         self._thread = threading.Thread(target = self._serve)
         self.__close_event = threading.Event() # Signifies that the session is closing
