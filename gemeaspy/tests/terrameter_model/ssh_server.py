@@ -55,7 +55,7 @@ class InstrumentServerEmulator(paramiko.ServerInterface):
             pass
 
         self._socket.settimeout(0.1) # Use timeout to prevent multithreading deadlocks
-        self._socket.bind((host, 0))
+        self._socket.bind((host, port))
         self.address = self._socket.getsockname()
         
         self._listen_thread = threading.Thread(target=self._listen)
