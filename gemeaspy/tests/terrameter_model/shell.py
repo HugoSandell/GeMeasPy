@@ -29,7 +29,7 @@ class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile, stdout: IO[str] | paramiko.BufferedFile, stderr: IO[str] | paramiko.BufferedFile | None = None, pty: PtyRequest | None = None):
         super(TerrameterShell, self).__init__(completekey="tab", stdin=cast(IO[str], stdin), stdout=cast(IO[str], stdout))
-        if stderr or pty:
+        if stderr and not pty:
             self.stderr: IO[str]=cast(IO, stderr)
         else:
             self.stderr: IO[str] =self.stdout # Fallback
