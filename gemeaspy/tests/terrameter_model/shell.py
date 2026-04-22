@@ -25,10 +25,32 @@ class PtyRequest:
         self.height_pixels: int = height_pixels
 
 
+_NEWLINE_RE = re.compile(r"\r?\n")
+
+
+class _CrLfWriter:
+    """Wrapper that converts written newlines from LF to CRLF"""
+
+    _inner: IO[str] | paramiko.BufferedFile
+
+    def __init__(self, inner: IO[str] | paramiko.BufferedFile):
+        self._inner = inner
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def write(self, s: str, /) -> int | None:
+        return self._inner.write(_NEWLINE_RE.sub("\r\n", s))
+
+
 class TerrameterShell(Cmd):
     """Provides a shell to accept commands (for interacting with the terrameter software)"""
     def __init__(self, instrument: TerrameterLS, stdin: IO[str] | paramiko.BufferedFile, stdout: IO[str] | paramiko.BufferedFile, stderr: IO[str] | paramiko.BufferedFile | None = None, pty: PtyRequest | None = None):
-        super(TerrameterShell, self).__init__(completekey="tab", stdin=cast(IO[str], stdin), stdout=cast(IO[str], stdout))
+        super(TerrameterShell, self).__init__(
+            completekey="tab",
+            stdin=cast(IO[str], stdin),
+            stdout=cast(IO[str], _CrLfWriter(stdout) if pty else stdout),
+        )
         if stderr and not pty:
             self.stderr: IO[str]=cast(IO, stderr)
         else:
@@ -50,9 +72,6 @@ class TerrameterShell(Cmd):
         if pty:
             self.width = pty.width
             self.height = pty.height
-            self.line_terminator = "\r\n"
-        else:
-            self.line_terminator = "\n"
         self._update_prompt()
 
     def _update_prompt(self):
@@ -647,14 +666,14 @@ class TerrameterShell(Cmd):
         
     def print_line_sh(self, chars: str = ""):
         """Write string to stdout with an appended line terminator"""
-        self.print_sh(chars + self.line_terminator)
+        self.print_sh(chars + "\n")
 
     def print_error_sh(self, chars: str):
         """Write string to stderr with an appended line terminator"""
         if not self.stderr or self.stderr.closed:
             return
         self.stderr.write(chars)
-        self.stderr.write(self.line_terminator)
+        self.stderr.write("\n")
         self.stderr.flush()
 
     def emptyline(self) -> bool:
