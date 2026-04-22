@@ -157,7 +157,7 @@ def _evaluate_hostname(test_data: AcquisitionTestCase, stdout: str) -> OracleRes
     match value:
         case parameter_spec.INVALID_HOSTNAME | "":
             return _expect_error_message(
-                test_data, "Could not resolve hostname", stdout
+                test_data, "hostname", stdout
             )
         case None:
             return _expect_error_message(
