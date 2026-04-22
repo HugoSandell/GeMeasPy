@@ -79,5 +79,6 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files, configur
         if code and lineno:
             frame_str = f"{oracle_result.frame.f_code.co_filename!r}, line {oracle_result.frame.f_lineno}"
             print(f"OracleResult @ {frame_str}")
-            
+    print("stdout:")
+    print(stdout_bytes.decode(errors="replace"))
     assert oracle_result.ok, f"{oracle_result.msg} ({frame_str})"

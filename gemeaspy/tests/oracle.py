@@ -229,7 +229,7 @@ def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int
     parameter_value = test_case.parameters[parameter_name]
 
     if parameter_value == "" or str(parameter_value).startswith("#"):
-        return _expect_error_message(test_case, "missing row", stdout)
+        return _expect_error_message(test_case, "task file ended before", stdout)
 
     match property:
         case "name":

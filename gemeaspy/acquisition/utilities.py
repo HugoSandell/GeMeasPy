@@ -54,6 +54,15 @@ def read_ignore_comments(in_file: TextIO, value_name: str  = "value") -> str:
             continue
         return line.strip()
 
+def read_spacing(data: StringIO, filename: str):
+    spacing_str = read_ignore_comments(data, "spacing").split()
+    try: 
+        spacing = [float(n) for n in spacing_str]
+        if len(spacing) != 3:
+            raise ValueError()
+        return spacing
+    except ValueError as e:
+        raise TaskFileParseError(f"Invalid spacing {spacing_str!r}", filename)
 
 def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
     contents = StringIO()
@@ -92,38 +101,41 @@ def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
             # no relay switches present
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": _read_task_name(),
-                            "spread": read_ignore_comments(contents, "spread file path"),
-                            "protocol": read_ignore_comments(contents, "protocol file path"),
-                            "settings": read_ignore_comments(contents, "settings file path"),
-                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
-                            "id": task_id}
+                task_dict = {}
+                task_dict["name"] = _read_task_name()
+                task_dict["spread"] = read_ignore_comments(contents, "spread file path")
+                task_dict["protocol"] = read_ignore_comments(contents, "file path")
+                task_dict["settings"] = read_ignore_comments(contents, "file path")
+                task_dict["spacing"] = read_spacing(contents, task_file)
+                task_dict["id"] = task_id
                 list_of_tasks.append(task_dict)
         case 1:
             # relay switches present
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": _read_task_name(),
-                            "spread": read_ignore_comments(contents, "spread file path"),
-                            "protocol": read_ignore_comments(contents, "file path"),
-                            "settings": read_ignore_comments(contents, "file path"),
-                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
-                            "reset": [int(n) for n in read_ignore_comments(contents, "relay reset").split()],
-                            "set": [int(n) for n in read_ignore_comments(contents, "relay set").split()],
-                            "id": task_id}
+                task_dict = {}
+                task_dict["name"] = _read_task_name()
+                task_dict["spread"] = read_ignore_comments(contents, "spread file path")
+                task_dict["protocol"] = read_ignore_comments(contents, "file path")
+                task_dict["settings"] = read_ignore_comments(contents, "file path")
+                task_dict["spacing"] = read_spacing(contents, task_file)
+                task_dict["reset"] = [int(n) for n in read_ignore_comments(contents, "relay reset").split()]
+                task_dict["set"] = [int(n) for n in read_ignore_comments(contents, "relay set").split()]
+                task_dict["id"] = task_id
                 list_of_tasks.append(task_dict)
         case 2:
             # 'new' relay switches present (subvision, 2018)
             for task in range(number_of_tasks):
                 task_id += 1
-                task_dict = {"name": _read_task_name(),
-                            "spread": read_ignore_comments(contents),
-                            "protocol": read_ignore_comments(contents),
-                            "settings": read_ignore_comments(contents),
-                            "spacing": [float(n) for n in read_ignore_comments(contents, "spacing").split()],
-                            "reset": [int(n) for n in read_ignore_comments(contents, "relay reset").split()],
-                            "set": [int(n) for n in read_ignore_comments(contents, "relay set").split()],
-                            "id": task_id}
+                task_dict = {}
+                task_dict["name"] = _read_task_name()
+                task_dict["spread"] = read_ignore_comments(contents, "spread file path")
+                task_dict["protocol"] = read_ignore_comments(contents, "file path")
+                task_dict["settings"] = read_ignore_comments(contents, "file path")
+                task_dict["spacing"] = read_spacing(contents, task_file)
+                task_dict["reset"] = [int(n) for n in read_ignore_comments(contents, "relay reset").split()]
+                task_dict["set"] = [int(n) for n in read_ignore_comments(contents, "relay set").split()]
+                task_dict["id"] = task_id
                 list_of_tasks.append(task_dict)
         case _:
             raise TaskFileParseError(f"Invalid relay type {relay_type}")
