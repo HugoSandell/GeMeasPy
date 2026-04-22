@@ -50,6 +50,8 @@ def read_ignore_comments(in_file: TextIO, value_name: str  = "value") -> str:
         print(line)
         if line == "":  # EOF
             raise TaskFileParseError(f"Task file ended before expected {value_name} could be read")
+        if line.strip() == "": # Empty line -- skip
+            continue
         if line.startswith('#'):
             continue
         return line.strip()
