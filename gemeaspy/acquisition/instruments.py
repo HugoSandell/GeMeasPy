@@ -62,7 +62,7 @@ class Terrameter(Instrument):
         if self.connection is None:
             raise Exception("No Active Connection")
         print("--------------------------------")
-        print('Checking protocol/spread files...')
+        print('Checking remote files...')
         for task in tasks:
             command = "[ -e /home/root/protocols/{0:} ] && echo 'OK' || echo 'MISSING'".format(task['spread'])
             stdin, stdout, stderr = self.connection.send_command_shell(command, 0)
@@ -78,9 +78,16 @@ class Terrameter(Instrument):
             if buffer.find("MISSING") != -1:
                 print(task['protocol'])
                 raise MissingFileError("Missing task protocol file", task["protocol"])
+            command = "[ -e /home/root/settings/{0:} ] && echo 'OK' || echo 'MISSING'".format(task['settings'])
+            stdin, stdout, stderr = self.connection.send_command_shell(command, 0)
+            _ = stdout.channel.recv_exit_status()  # wait for exit status
+            buffer = stdout.readline().strip()
+            if buffer.find("MISSING") != -1:
+                print(task['settings'])
+                raise MissingFileError("Missing task settings file", task["settings"])
             print("--------------------------------")
         else:
-            print("All protocol/spread files exist!")
+            print("All remote files exist!")
 
     def check_input_report(self, tasks) -> None:
         if self.connection is None:

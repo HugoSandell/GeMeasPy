@@ -81,4 +81,6 @@ async def test_main(test_case: AcquisitionTestCase, config, task_files, configur
             print(f"OracleResult @ {frame_str}")
     print("stdout:")
     print(stdout_bytes.decode(errors="replace"))
+    print("stderr:")
+    print(stderr_bytes.decode(errors="replace"))
     assert oracle_result.ok, f"{oracle_result.msg} ({frame_str})"
