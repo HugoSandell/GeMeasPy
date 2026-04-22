@@ -229,7 +229,7 @@ def _evaluate_task_property(test_case: AcquisitionTestCase, file: int, task: int
     parameter_value = test_case.parameters[parameter_name]
 
     if parameter_value == "" or str(parameter_value).startswith("#"):
-        return _expect_error_message(test_case, "task file ended before", stdout)
+        return _expect_error_message(test_case, "Failed to parse task file", stdout)
 
     match property:
         case "name":

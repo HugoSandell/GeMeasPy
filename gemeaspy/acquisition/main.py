@@ -71,7 +71,10 @@ def run_acquisition(argv: list[str]) -> int:
         logger.error(f"TaskFileIOError - Failed to read {e.file!r}", exc_info=True)
         return 7
     except TaskFileParseError as e:
-        print(f"Error: {e.msg}")
+        if e.file is None:
+            print(f"Error: Failed to parse task file: {e.msg}")
+        else:
+            print(f"Error: Failed to parse task file {e.file!r}: {e.msg}")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"TaskFileParseError - {e.msg}", exc_info=True)
