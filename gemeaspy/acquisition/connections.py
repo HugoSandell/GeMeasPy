@@ -131,6 +131,7 @@ class _DebugLogger:
                     log_dir, f"ssh.{datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')}.log"
                 ),
                 "a",
+                1,
             )
         else:
             self.logfile = None
