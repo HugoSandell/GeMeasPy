@@ -10,10 +10,10 @@ from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError
 from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
-
+import pdb
 
 class SSHConnection():
-    def __init__(self, params: dict[str, str | int | bool | None]) -> None:
+    def __init__(self, params: dict[str, str | int | bool | float | None]) -> None:
         required_params = ("hostname", "username", "password")
         if not all(key in params.keys() for key in required_params):
             raise ConfigFileError("Missing entry in connection parameters.", file=config.TERRAMETER_CONNECTION_FILE)
@@ -23,7 +23,8 @@ class SSHConnection():
             raise ConfigFileError(f"Port number should be an integer, got {type(params["port"])}", file=config.TERRAMETER_CONNECTION_FILE)
         elif not (1 <= params["port"] <= 65535):
             raise ConfigFileError(f"Port number {(params["port"])} not in valid range.", file=config.TERRAMETER_CONNECTION_FILE)
-            
+        if "timeout" not in params:
+            params["timeout"] = 1.0 if "USETERRAMETEREMULATOR" in os.environ else 10.0
         
         self.params: dict[str, Any] = params
         self.ssh = None
@@ -87,7 +88,6 @@ class SSHConnection():
                 self.channel = transport.open_session()
             else:
                 raise SSHConnectionError("Failed to establish connection.", self.params)
-                 
             self.channel.get_pty()
             self.channel.invoke_shell()
             print("Connected!")
