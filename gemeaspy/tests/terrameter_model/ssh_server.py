@@ -243,43 +243,45 @@ class SSHTestServerChannel():
 
     def _serve(self):
         """Serve channel. Either handles a single command or starts a Shell."""
-        if self._exec_command:
-            # Serve command execution request
-            try:
-                stdin = self._paramiko_channel.makefile_stdin("rU")
-                stdout = self._paramiko_channel.makefile("wU")
-                stderr = self._paramiko_channel.makefile_stderr("wU")
-                shell = TerrameterShell(
-                    self._session._server.instrument, stdin, stdout, stderr=stderr
-                )
-                shell.user = self._session._server._username
-                exec_command = shell.precmd(self._exec_command)
-                stop = shell.onecmd(exec_command)
-                shell.postcmd(stop, exec_command)
-                self._paramiko_channel.send_exit_status(0)
-                stdin.close()
-                stdout.close()
-            except socket.error as e:
-                if "Socket is closed" not in e.args:
-                    raise e
-        else:
-            # Serve shell request
-            try:
-                stdin = self._paramiko_channel.makefile_stdin("rU")
-                stdout = self._paramiko_channel.makefile("wU")
-                stderr = self._paramiko_channel.makefile_stderr("wU")
-                shell = TerrameterShell(
-                    self._session._server.instrument,
-                    stdin,
-                    stdout,
-                    stderr=stderr,
-                    pty=self._pty,
-                )
-                shell.cmdloop()
-            except socket.error as e:
-                if "Socket is closed" not in e.args:
-                    raise e
-        self.close()
+        try:
+            if self._exec_command:
+                # Serve command execution request
+                try:
+                    stdin = self._paramiko_channel.makefile_stdin("rU")
+                    stdout = self._paramiko_channel.makefile("wU")
+                    stderr = self._paramiko_channel.makefile_stderr("wU")
+                    shell = TerrameterShell(
+                        self._session._server.instrument, stdin, stdout, stderr=stderr
+                    )
+                    shell.user = self._session._server._username
+                    exec_command = shell.precmd(self._exec_command)
+                    stop = shell.onecmd(exec_command)
+                    shell.postcmd(stop, exec_command)
+                    self._paramiko_channel.send_exit_status(0)
+                    stdin.close()
+                    stdout.close()
+                except socket.error as e:
+                    if "Socket is closed" not in e.args:
+                        raise e
+            else:
+                # Serve shell request
+                try:
+                    stdin = self._paramiko_channel.makefile_stdin("rU")
+                    stdout = self._paramiko_channel.makefile("wU")
+                    stderr = self._paramiko_channel.makefile_stderr("wU")
+                    shell = TerrameterShell(
+                        self._session._server.instrument,
+                        stdin,
+                        stdout,
+                        stderr=stderr,
+                        pty=self._pty,
+                    )
+                    shell.cmdloop()
+                except socket.error as e:
+                    if "Socket is closed" not in e.args:
+                        raise e
+        finally:
+            self.close()
 
 
 # Run server. For manual testing.
