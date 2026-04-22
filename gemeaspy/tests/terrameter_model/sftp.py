@@ -95,8 +95,6 @@ if __name__ == "__main__":
     import socket
 
     class TestServerInterface(ServerInterface):
-        def __init__(self):
-            super(TestServerInterface, self).__init__()
         def check_auth_password(self, username, password):
             return paramiko.common.AUTH_SUCCESSFUL
         def get_allowed_auths(self, username):

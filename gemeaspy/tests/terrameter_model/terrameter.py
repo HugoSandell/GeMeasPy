@@ -22,8 +22,8 @@ class _Variable:
         self.readonly = readonly
 
 class ParseError(Exception):
-    def __init__(self, *args: object):
-        super(ParseError, self).__init__(*args)
+    pass
+
 
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
