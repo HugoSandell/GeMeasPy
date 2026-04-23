@@ -11,6 +11,10 @@ class Station:
     pos: Vec3i
 
 
+class NoTaskError(Exception):
+    """Raised when an operation needs a task but none is active"""
+
+
 class Project:
     """A terrameter project"""
     def __init__(self, name: str):
@@ -57,7 +61,7 @@ class Project:
     def create_station(self, index_selection: str) -> Task.CreateStationResult:
         """Add a station to the project."""
         if self.current_task_index is None:
-            raise RuntimeError("Current task is not set")
+            raise NoTaskError()
         id = len(self.stations) + 1
         result = self.tasks[self.current_task_index].create_station(id, index_selection)
         self.stations.append(result.station)

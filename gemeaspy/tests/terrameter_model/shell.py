@@ -9,7 +9,8 @@ from typing import IO, cast
 import paramiko
 
 from . import constants, vfs
-from .terrameter import TerrameterLS
+from .project import NoTaskError
+from .terrameter import NoProjectError, TerrameterLS
 
 
 class PtyRequest:
@@ -317,9 +318,13 @@ class TerrameterShell(Cmd):
                 name = arg_split[0]
                 spread = arg_split[1]
                 protocol = arg_split[2]
-                task, errors = self.instrument.create_task(
-                    name, spread, protocol, spacing, base_reference
-                )
+                try:
+                    task, errors = self.instrument.create_task(
+                        name, spread, protocol, spacing, base_reference
+                    )
+                except NoProjectError:
+                    self.print_error_sh(constants.TERRAMETER_NO_PROJECT_ERROR)
+                    return
                 self.print_sh(errors)
                 array_code = task.protocol.arraycode if task.protocol else -1
                 self.print_line_sh(f"Task ArrayCode {array_code}")
@@ -335,7 +340,14 @@ class TerrameterShell(Cmd):
                 index_selection = ""
                 if len(arg_split) >= 1:
                     index_selection = arg_split[0]
-                result = self.instrument.create_station(index_selection)
+                try:
+                    result = self.instrument.create_station(index_selection)
+                except NoProjectError:
+                    self.print_error_sh(constants.TERRAMETER_NO_PROJECT_ERROR)
+                    return
+                except NoTaskError:
+                    self.print_line_sh("Error: No task ID")
+                    return
                 self.print_line_sh(
                     f"Use station index={result.index_selection} of {result.max_index_selection} PositionNow={result.pos_before} Rollalong={result.rollalong} "
                 )

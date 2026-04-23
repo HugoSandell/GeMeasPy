@@ -25,6 +25,10 @@ class ParseError(Exception):
     pass
 
 
+class NoProjectError(Exception):
+    """Raised when an operation needs a project but none is active"""
+
+
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
 
@@ -188,6 +192,9 @@ class TerrameterLS():
 
         return resolved_name
 
+    def has_active_project(self) -> bool:
+        return self._current_project_name in self._projects
+
     def create_task(
         self,
         name: str,
@@ -197,8 +204,8 @@ class TerrameterLS():
         base_reference: tuple[float, float, float],
     ) -> tuple[Task, str]:
         """Add a task to the current project. Returns the task and non-fatal errors."""
-        if self._current_project_name not in self._projects:
-            raise RuntimeError("Current project is not set or does not exist.")
+        if not self.has_active_project():
+            raise NoProjectError()
         project = self._projects[self._current_project_name]
         errors = ""
 
@@ -240,16 +247,17 @@ Column: 0"""
         )
 
     def create_station(self, index_selection: str) -> Task.CreateStationResult:
-        if self._current_project_name not in self._projects:
-            raise RuntimeError("Current project is not set or does not exist.")
+        if not self.has_active_project():
+            raise NoProjectError()
         project: Project = self._projects[self._current_project_name]
         return project.create_station(index_selection)
 
     def measure(self):
         """Perform measurements"""        
         # Get the project and tasks to work on
-        if self._current_project_name not in self._projects:
-            return
+        if not self.has_active_project():
+            # this may be incorrect
+            raise NoProjectError()
         project = self._projects[self._current_project_name]
         unfinished_tasks = [task for task in project.tasks if not task.is_complete]
         

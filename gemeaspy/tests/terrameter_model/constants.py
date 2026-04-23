@@ -92,6 +92,9 @@ TXSPI:OUT --> MyId=212 TxId=205 M_REQ_VALUE 0
 ---- Assume correct cid=212"""
 """Example of error that is repeated when two instances of terrameter are launched"""
 
+TERRAMETER_NO_PROJECT_ERROR = "No active project! Press P to create a new project."
+
+
 def TERRAMETER_UNKNOWN_COMMAND(command: str):
     return f"""*** Unknown Command ({command[0] or ' '})
     Type ? for a list of known commands."""
