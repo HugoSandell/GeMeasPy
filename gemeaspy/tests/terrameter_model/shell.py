@@ -294,6 +294,10 @@ class TerrameterShell(Cmd):
                     self.print_error_sh(" Too few arguments")
                     return
 
+                if not self.instrument.has_active_project():
+                    self.print_error_sh(constants.TERRAMETER_NO_PROJECT_ERROR)
+                    return
+
                 def parse_float(name: str, value: str) -> float:
                     try:
                         return float(value)
@@ -318,13 +322,9 @@ class TerrameterShell(Cmd):
                 name = arg_split[0]
                 spread = arg_split[1]
                 protocol = arg_split[2]
-                try:
-                    task, errors = self.instrument.create_task(
-                        name, spread, protocol, spacing, base_reference
-                    )
-                except NoProjectError:
-                    self.print_error_sh(constants.TERRAMETER_NO_PROJECT_ERROR)
-                    return
+                task, errors = self.instrument.create_task(
+                    name, spread, protocol, spacing, base_reference
+                )
                 self.print_sh(errors)
                 array_code = task.protocol.arraycode if task.protocol else -1
                 self.print_line_sh(f"Task ArrayCode {array_code}")
