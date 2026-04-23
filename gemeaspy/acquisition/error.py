@@ -28,8 +28,12 @@ class TaskFileParseError(GeMeasPyError):
         GeMeasPyError.__init__(self, msg)
         self.file = file
 
-
 class MissingFileError(GeMeasPyError):
     def __init__(self, msg: str, file: str):
         GeMeasPyError.__init__(self, msg)
         self.file = file
+        
+class InvalidLocalDirectory(GeMeasPyError):
+    def __init__(self, msg: str, dir: str):
+        GeMeasPyError.__init__(self, msg)
+        self.dir = dir

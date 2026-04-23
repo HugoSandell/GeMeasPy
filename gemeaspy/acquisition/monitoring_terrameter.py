@@ -1,10 +1,13 @@
+import os
 import time
 from typing import TextIO
 
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition.connections import SSHConnection
-
 from gemeaspy.acquisition import terrameter_commands as tc
 from gemeaspy.acquisition import utilities
+from gemeaspy.acquisition.error import InvalidLocalDirectory
+from gemeaspy.settings import config
 
 is_meas_delay = 60
 MAX_TRANSFER_TRIES = 5 # How many times to attempt project transfer
@@ -13,6 +16,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
     # Read Info
     task_list = utilities.read_monitoring_tasks(task_file)
     if len(task_list) == 0:
+        logger.info(f"No tasks found in file {task_file!r}")
         return
     
     # TODO: This should start only if there are measurements todo.
