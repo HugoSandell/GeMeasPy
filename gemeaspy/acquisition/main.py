@@ -6,8 +6,9 @@ from paramiko import ChannelException
 
 from gemeaspy.acquisition.error import (
     ConfigFileError,
-    InvalidLocalDirectory,
+    InvalidLocalDirectoryError,
     MissingFileError,
+    ProjectTransferError,
     SSHConnectionError,
     TaskFileIOError,
     TaskFileParseError,
@@ -33,7 +34,7 @@ def run_task_file(task_file) -> None:
         logger.warning(f"{config.LOCAL_PATH_TO_DATA!r} exists, but is not a directory!")
         is_local_data_directory_ok = False
     if not is_local_data_directory_ok:
-        raise InvalidLocalDirectory("Failed to create directory.", config.LOCAL_PATH_TO_DATA)
+        raise InvalidLocalDirectoryError("Failed to create directory.", config.LOCAL_PATH_TO_DATA)
     logger.debug(f"Ensured local data directory {config.LOCAL_PATH_TO_DATA!r} exists")   
     
 	# read connection and measurement settings
@@ -104,11 +105,17 @@ def run_acquisition(argv: list[str]) -> int:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"MissingFileError - {e.msg} {e.file!r}", exc_info=True)
         return 9
-    except InvalidLocalDirectory as e:
+    except InvalidLocalDirectoryError as e:
         print(f"Error: Local data directory {e.dir!r} could not be used - {e.msg}")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"InvalidLocalDirectory - {e.msg} {e.dir!r}", exc_info=True)
+        return 10
+    except ProjectTransferError as e:
+        print(f"Error: Project transfer from remote directory {e.remote_dir} to local directory {e.local_dir} failed - {e.msg}")
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        logger.error(f"ProjectTransferError - {e.msg} {e.remote_dir!r} -> {e.local_dir!r}", exc_info=True)
         return 10
     return 0
 

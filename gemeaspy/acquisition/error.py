@@ -33,7 +33,13 @@ class MissingFileError(GeMeasPyError):
         GeMeasPyError.__init__(self, msg)
         self.file = file
         
-class InvalidLocalDirectory(GeMeasPyError):
+class InvalidLocalDirectoryError(GeMeasPyError):
     def __init__(self, msg: str, dir: str):
         GeMeasPyError.__init__(self, msg)
         self.dir = dir
+        
+class ProjectTransferError(GeMeasPyError):
+    def __init__(self, msg: str, local_dir: str, remote_dir: str):
+        GeMeasPyError.__init__(self, msg)
+        self.remote_dir = remote_dir
+        self.local_dir = local_dir

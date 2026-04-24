@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
@@ -7,9 +6,10 @@ from shutil import rmtree
 from typing import Any, TextIO
 from paramiko import SFTPClient
 
+from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.connections import SSHConnection
-from gemeaspy.acquisition.error import TransferError
+from gemeaspy.acquisition.error import ProjectTransferError, TransferError
 from gemeaspy.settings import config
 
 
@@ -210,16 +210,17 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
                     os.makedirs(path_full_local.parent, exist_ok=True)
                 except OSError as e:
                     raise TransferError("Failed to create directory", path_full_local.parent.as_posix())
-                logging.debug(f"Transferring: {path_full_remote.as_posix()} -> {path_full_local.as_posix()}")
+                logger.debug(f"Transferring: {path_full_remote.as_posix()} -> {path_full_local.as_posix()}")
                 sftp.get(path_full_remote.as_posix(), path_full_local.as_posix())
                 if not os.path.exists(path_full_local.as_posix()):
                     raise SystemError("Transfer Failed! Local file was not created.")
-                else: logging.debug(f"Successfully Transferred: {path_full_local.as_posix()}")
+                else: logger.debug(f"Successfully Transferred: {path_full_local.as_posix()}")
                 continue
             files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
             exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
         except FileNotFoundError as e:
-            logging.warning(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote.as_posix()}': {e.strerror}")
+            logger.error(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote.as_posix()}': {e.strerror}")
+            raise ProjectTransferError(e.strerror or e.filename, str(localpath), str(remotepath))
 
 def transfer_project(connection: SSHConnection) -> None:
     if not connection or not connection.ssh:
@@ -250,7 +251,7 @@ def transfer_project(connection: SSHConnection) -> None:
     
     localpath = f"{config.LOCAL_PATH_TO_DATA}/{project}"
     remotepath = f"{config.TERRAMETER_PROJECTS_FOLDER}/{project}"
-    logging.info(f"Transferring Recursively: {localpath} -> {remotepath}")
+    logger.info(f"Transferring Recursively: {remotepath} -> {localpath}")
     transfer_recursive(sftp, remotepath, localpath)
 
 def check_transfer(connection: SSHConnection) -> bool:
@@ -271,4 +272,4 @@ def delete_project(connection: SSHConnection, project: str) -> None:
     try:
         rmtree(local_path)
     except FileNotFoundError:
-        logging.debug(f"Failed to remove local project files at '{local_path}' because the directory couldn't be found")
+        logger.debug(f"Failed to remove local project files at '{local_path}' because the directory couldn't be found")

@@ -6,8 +6,6 @@ from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition.connections import SSHConnection
 from gemeaspy.acquisition import terrameter_commands as tc
 from gemeaspy.acquisition import utilities
-from gemeaspy.acquisition.error import InvalidLocalDirectory
-from gemeaspy.settings import config
 
 is_meas_delay = 60
 MAX_TRANSFER_TRIES = 5 # How many times to attempt project transfer

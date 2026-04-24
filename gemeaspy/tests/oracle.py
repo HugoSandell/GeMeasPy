@@ -1,5 +1,6 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
+from collections.abc import Sequence
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -74,19 +75,22 @@ def _find_stdout_error_message(stdout: str) -> str | None:
         return None
     return error_lines[0]
 
-def _expect_error_message(test_case: TestCase, expected_error: str, stdout: str, allow_without_error = False) -> OracleResult:
+def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[str], stdout: str, allow_without_error = False) -> OracleResult:
     """Evaluate stdout, expecting an error message and return an OracleResult accordingly."""
     param_name = test_case.invalid_parameter
     param_value = test_case[str(param_name)]
+    if isinstance(expected_error, str):
+        expected_error = (expected_error,)
     error_message = _find_stdout_error_message(stdout)
     if error_message is None:
         if allow_without_error:
             return OracleResult(True, context=1)
-    if error_message is not None and expected_error.lower() in error_message.lower():
+    if error_message is not None and any(e.lower() in error_message.lower() for e in expected_error):
         return OracleResult(True, context=1)
     else:
-        _logging.info(f"Expected '{expected_error}' in stdout, got:\n{stdout}")
-        return OracleResult(False, f"Did not find error message containing {expected_error!r} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
+        expected_error_formatted = ' or '.join([repr(e) for e in expected_error])
+        _logging.info(f"Expected {expected_error_formatted} in stdout, got:\n{stdout}")
+        return OracleResult(False, f"Did not find error message containing {expected_error_formatted} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
 def _was_project_transferred() -> bool:
     """Checks whether the project has been transferred correctly"""
@@ -282,6 +286,8 @@ def evaluate_test(
             return _evaluate_number_of_tasks_error(test_data, stdout, stderr)
         case "config_local_data_path":
             return _expect_error_message(test_data, "local data directory", stdout)
+        case "config_projects_folder":
+            return _expect_error_message(test_data, ("transfer failed", "projects folder", "project transfer"), stdout)
         case _:
             if (msg := _find_stdout_error_message(stdout)) is not None:
                 _logging.warning(
