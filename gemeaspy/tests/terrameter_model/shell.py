@@ -263,8 +263,10 @@ class TerrameterShell(Cmd):
                 try:
                     self.instrument.read_settings(path)
                 except FileNotFoundError:
-                    return
+                    self.print_error_sh(f"Read settings error:{path}: cannot open file")
                 except OSError as e:
+                    # TODO improve
+                    self.print_os_error("terrameter", e)
                     return
             case "Q":
                 # Quit terrameter
