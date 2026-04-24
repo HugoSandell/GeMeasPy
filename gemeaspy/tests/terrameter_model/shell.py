@@ -262,12 +262,10 @@ class TerrameterShell(Cmd):
                     )
                 try:
                     self.instrument.read_settings(path)
-                except FileNotFoundError:
-                    self.print_error_sh(f"Read settings error:{path}: cannot open file")
-                except OSError as e:
-                    # TODO improve
-                    self.print_os_error("terrameter", e)
-                    return
+                except OSError:
+                    self.print_error_sh(
+                        f"Read settings error:{path}: cannot open file", False
+                    )
             case "Q":
                 # Quit terrameter
                 self.quit_terrameter()
@@ -680,12 +678,13 @@ class TerrameterShell(Cmd):
         """Write string to stdout with an appended line terminator"""
         self.print_sh(chars + "\n")
 
-    def print_error_sh(self, chars: str):
-        """Write string to stderr with an appended line terminator"""
+    def print_error_sh(self, chars: str, newline: bool = True):
+        """Write string to stderr with an optional appended line terminator"""
         if not self.stderr or self.stderr.closed:
             return
         self.stderr.write(chars)
-        self.stderr.write("\n")
+        if newline:
+            self.stderr.write("\n")
         self.stderr.flush()
 
     def emptyline(self) -> bool:
