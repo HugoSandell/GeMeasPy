@@ -2,6 +2,7 @@ import datetime
 import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
+import sys
 
 from typing import Any, TextIO
 from paramiko import SFTPClient
@@ -197,12 +198,19 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
     remotepath = PurePosixPath(remotepath)
     localpath = Path(localpath)
     exploration_queue = [PurePosixPath(".")]
-
     while len(exploration_queue) > 0:
         path = exploration_queue.pop()
         path_full_remote = remotepath.joinpath(path)
         path_full_local = localpath.joinpath(path)
         try:
+            print(f"{path_full_remote!r} -> {path_full_local!r}", file=sys.stderr)
+            if not (os.path.exists(path_full_local.parent)):
+                print(f"{path_full_local.parent!r} doesn't exist locally")
+            try: 
+                sftp.stat(path_full_remote.as_posix())
+            except:
+                print(f"{path_full_remote.as_posix()!r} doesn't exist remotely")
+                
             path_attr = sftp.stat(path_full_remote.as_posix())
             path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
             if not path_is_dir:
@@ -220,7 +228,7 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
             exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
         except FileNotFoundError as e:
             logger.error(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote.as_posix()}': {e.strerror}")
-            raise ProjectTransferError(e.strerror or e.filename, str(localpath), str(remotepath))
+            raise ProjectTransferError(f"{e.strerror or "No error message"} ({e.filename or "''"}, {e.filename2 or "''"})", str(localpath), str(remotepath))
 
 def transfer_project(connection: SSHConnection) -> None:
     if not connection or not connection.ssh:

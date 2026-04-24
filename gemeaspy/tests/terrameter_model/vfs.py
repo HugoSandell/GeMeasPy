@@ -1,11 +1,13 @@
 """ Provides a virtual file system for the Terrameter emulator"""
-from typing import Self, TypeVar
-from pathlib import PurePath as _HostPlatformPath
-from pathlib import PurePosixPath as Path
 import errno
 import os
-from io import BytesIO
 from collections import deque
+from io import BytesIO
+from pathlib import PurePath as _HostPlatformPath
+from pathlib import PurePosixPath as Path
+from typing import Self, TypeVar
+
+from gemeaspy.tests.terrameter_model._logging import logger
 
 _INIT_PATH = os.path.join(os.path.dirname(__file__), "file_system_init")
 
@@ -17,12 +19,23 @@ class _Node:
         self.parent: _Node = self
         if parent:
             self.parent = parent
+    def __str__(self) -> str:
+        path = [self.name]
+        i: _Node = self.parent
+        while i != None and i.name not in path:
+            path.insert(0, i.name)
+            i = i.parent 
+        return Path(*path).as_posix()
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({str(self)!r})"
 
 class _File(_Node):
     def __init__(self, name: str, parent: _Node | None, content: bytes = b''):
         super(_File, self).__init__(name, parent)
         self.content: BytesIO = BytesIO(content)
         self.is_file = True
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({str(self)!r})"
 
 class _Dir(_Node):
     def __init__(self, name: str, parent: _Node | None):
@@ -33,6 +46,8 @@ class _Dir(_Node):
         return name in self.children
     def __getitem__(self, key: str):
         return self.children[key]
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({str(self)!r})"
 
 class VirtualFileSystem(object):
     def __init__(self):
@@ -155,6 +170,7 @@ class VirtualFileSystem(object):
         Raises IsADirectoryError if recursive is False and the target is a directory.   
         Raises FileNotFoundException if path doesn't point to a file or directory.
         """
+        logger.debug(f"Removing {path.as_posix()} {"recursively" if recursive else "nonrecursively"}.")
         node = self._traverse(path)
         if not recursive and isinstance(node, _Dir):
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
@@ -172,6 +188,7 @@ class VirtualFileSystem(object):
             raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix())
         else:
             parent.children[node_name] = node_type(node_name, parent)
+            logger.debug(f"Added node {node_name} with parent {parent}")
     
     def make_file(self, path: Path):
         """Create a new file at `path`  
@@ -212,5 +229,6 @@ class VirtualFileSystem(object):
             size = len(node.content.getvalue())
 
         stats = {"st_mode": mode, "st_ino": 0, "st_dev": 0, "st_nlink": 1, "st_uid": 0, "st_gid": 0, "st_size": size, "st_atime": 0, "st_mtime": 0, "st_ctime": 0} 
+        logger.debug(f"stat for {path.as_posix()} executed with result {stats}")
         return os.stat_result(stats.values())
         

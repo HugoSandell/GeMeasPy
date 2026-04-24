@@ -12,6 +12,7 @@ from . import constants
 from .project import Project
 from .task import Protocol, Spread, Task
 from .vfs import Path, VirtualFileSystem
+from ._logging import logger
 
 type Value = str | int | float | bool
 
@@ -33,6 +34,7 @@ class TerrameterLS():
     """An emulated Terrameter LS instrument"""
 
     def __init__(self):
+        logger.info("===== Initialising Terrameter LS2 Emulator =====")
         self.allow_login: bool = True
         self.is_shut_down: bool = False
         self.on_kill_program_instance: Callable | None = None
@@ -392,5 +394,8 @@ Column: 0"""
         return self._filesystem.exists(parsed_path)
 
     def stat(self, path, relative_to: str | None = None) -> os.stat_result:
+        logger.debug(f"Parsing path {path!r} relative to {relative_to!r}")
         parsed_path = self.canonical_absolute_path(path, relative_to)
-        return self._filesystem.stat(parsed_path)
+        logger.debug(f"Calling vfs stat on {parsed_path!r}")
+        result = self._filesystem.stat(parsed_path)
+        return result

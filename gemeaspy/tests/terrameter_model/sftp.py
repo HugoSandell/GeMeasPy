@@ -7,6 +7,7 @@ from paramiko import ServerInterface, SFTPAttributes, SFTPHandle, SFTPServerInte
 from paramiko.sftp import SFTP_FAILURE, SFTP_NO_SUCH_FILE, SFTP_PERMISSION_DENIED
 
 from . import host_key_store, terrameter
+from ._logging import logger
 
 SFTP_IS_DIRECTORY = 24
 S_IFREG =   0o0100000 # regular file
@@ -75,15 +76,21 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
     
     def stat(self, path: str) -> int | SFTPAttributes:
         try:
+            logger.debug(f"stat called for path {path!r}")
             filename = os.path.basename(path)
-            return SFTPAttributes.from_stat(self._instrument.stat(path), filename)
-        except FileNotFoundError:
+            stat_result = self._instrument.stat(path)
+            return SFTPAttributes.from_stat(stat_result, filename)
+        except FileNotFoundError as e:
+            logger.info(f"FileNotFoundError for self._instrument.stat({path!r}) - {e})")
             return SFTP_NO_SUCH_FILE
-        except NotADirectoryError:
+        except NotADirectoryError as e:
+            logger.info(f"NotADirectoryError for self._instrument.stat({path!r}) - {e})")
             return SFTP_PERMISSION_DENIED
-        except PermissionError:
+        except PermissionError as e:
+            logger.info(f"PermissionError for self._instrument.stat({path!r}) - {e})")
             return SFTP_PERMISSION_DENIED
         except Exception as e:
+            logger.info(f"Exception for self._instrument.stat({path!r}) - {e})")
             return SFTP_FAILURE
     
     def lstat(self, path: str) -> int | SFTPAttributes:
