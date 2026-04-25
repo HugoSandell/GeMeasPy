@@ -1,18 +1,17 @@
 """Specification for parameter names and values. Used as input for test generation."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-import json
 from enum import Enum
 from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
-from gemeaspy.tests.generator.util import obj2acts
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.generator.util import obj2acts
+from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -225,36 +224,50 @@ def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> ACTSPa
 
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
 
-def constraints_for_empty_task(N_param: str, element: str, element_index: int) -> list[Constraint]:
-    """Generate the constraints dictating when a task's valid parameter values should be \"\""""
-    constraints: list[Constraint] = []
-    suffixes = ("_name", "_spread", "_protocol", "_settings", "_spacing")
-    
-    antecedent = f"{N_param} < {element_index}"
-    for element_suffix in suffixes:
-        parameter_name = element + element_suffix
+
+def _base_case_constraints(
+    antecedent: str, param_prefix: str, param_suffixes: Iterable[str]
+) -> Generator[Constraint]:
+    """Generate constraints restricting each parameter in a group to its first valid value"""
+    for suffix in param_suffixes:
+        parameter_name = f"{param_prefix}_{suffix}"
         parameter = ACQUISITION_PARAM_SPEC[parameter_name]
         parameter_base_case = obj2acts(parameter[0][0])
         if acts_type(parameter) == ACTSParameterType.ENUM:
             parameter_base_case = f'"{parameter_base_case}"'
         consequent = f" => {parameter_name} = {parameter_base_case}"
-        constraints.append(
-            Constraint(antecedent + consequent)
-        )
-    return constraints
+        yield Constraint(antecedent + consequent)
+
+
+def _constraints_for_unused_taskfile(taskfile_no: int) -> Generator[Constraint]:
+    return _base_case_constraints(
+        f'num_args < {taskfile_no} || arg_taskfile{taskfile_no} = "{obj2acts(INVALID_FILE)}"',
+        f"taskfile{taskfile_no}",
+        ("number_of_tasks", "number_of_tasks_error", "relay_type"),
+    )
+
+
+def _constraints_for_unused_task(
+    n_param: str, task_param_prefix: str, task_no: int
+) -> Generator[Constraint]:
+    """Generate the constraints dictating when a task's parameter values should be the base cases"""
+    return _base_case_constraints(
+        f"{n_param} < {task_no}",
+        task_param_prefix,
+        ("name", "spread", "protocol", "settings", "spacing"),
+    )
+
 
 # TODO: Roll constraints into parameter spec?
 ACQUISITION_CONSTRAINTS: list[Constraint] = [
-    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task1", 1),
-    *constraints_for_empty_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
-    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
-    *constraints_for_empty_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
-    Constraint(f'num_args < 1 => arg_taskfile1 = "{obj2acts(INVALID_FILE)}"'), # Since it will not be included anyway
-    Constraint(f'num_args < 2 => arg_taskfile2 = "{obj2acts(INVALID_FILE)}"'), # Since it will not be included anyway
-    Constraint(f'arg_taskfile1 = "{obj2acts(INVALID_FILE)}" => taskfile1_number_of_tasks = 0'),
-    Constraint(f'arg_taskfile2 = "{obj2acts(INVALID_FILE)}" => taskfile2_number_of_tasks = 0'),
-    Constraint(f'num_args < 1 || arg_taskfile1 = "{obj2acts(INVALID_FILE)}" => taskfile1_number_of_tasks_error = "{obj2acts("CORRECT")}"'),
-    Constraint(f'num_args < 2 || arg_taskfile2 = "{obj2acts(INVALID_FILE)}"  => taskfile2_number_of_tasks_error = "{obj2acts("CORRECT")}"'),
+    Constraint(f'num_args < 1 => arg_taskfile1 = "{obj2acts(VALID_TASKFILE1)}"'),
+    Constraint(f'num_args < 2 => arg_taskfile2 = "{obj2acts(VALID_TASKFILE2)}"'),
+    *_constraints_for_unused_taskfile(1),
+    *_constraints_for_unused_taskfile(2),
+    *_constraints_for_unused_task("taskfile1_number_of_tasks", "taskfile1_task1", 1),
+    *_constraints_for_unused_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
+    *_constraints_for_unused_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
+    *_constraints_for_unused_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
 ]
 
 if __name__=="__main__":
@@ -264,5 +277,5 @@ if __name__=="__main__":
     for element_index in (1, 2, 4):
         element = "E" + str(element_index)
         print(f"Constraints for element #{element_index} ({element}) in a collection of {N_param} elements:")
-        for constraint in constraints_for_empty_task(N_param, element, element_index):
+        for constraint in _constraints_for_unused_task(N_param, element, element_index):
             print(constraint)
