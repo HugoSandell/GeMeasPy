@@ -5,7 +5,6 @@ from collections import deque
 from io import BytesIO
 from pathlib import PurePath as _HostPlatformPath
 from pathlib import PurePosixPath as Path
-from typing import Self, TypeVar
 
 from gemeaspy.tests.terrameter_model._logging import logger
 
@@ -20,11 +19,13 @@ class _Node:
         if parent:
             self.parent = parent
     def __str__(self) -> str:
-        path = [self.name]
-        i: _Node = self.parent
-        while i != None and i.name not in path:
+        path = []
+        i: _Node = self
+        while i.parent is not i:
             path.insert(0, i.name)
-            i = i.parent 
+            i = i.parent
+        if i.name: # root has name=""
+            path.insert(0, i.name)
         return Path(*path).as_posix()
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({str(self)!r})"
@@ -105,7 +106,7 @@ class VirtualFileSystem(object):
     def exists(self, path: Path):
         try:
             self._traverse(path)
-        except FileNotFoundError:
+        except (FileNotFoundError, NotADirectoryError):
             return False
         return True
     
@@ -174,6 +175,8 @@ class VirtualFileSystem(object):
         node = self._traverse(path)
         if not recursive and isinstance(node, _Dir):
             raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path.as_posix())
+        if node.parent is node:
+            raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path.as_posix())
         if isinstance(node.parent, _Dir):
             node.parent.children.pop(node.name)
 
@@ -184,7 +187,7 @@ class VirtualFileSystem(object):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path.as_posix())
         node_name = path.name
         parent = self._traverse(path.parent)
-        if type(parent) != _Dir:
+        if not isinstance(parent, _Dir):
             raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path.as_posix())
         else:
             parent.children[node_name] = node_type(node_name, parent)
@@ -198,9 +201,9 @@ class VirtualFileSystem(object):
         self._make_node(path, _File)
         
     def make_dir(self, path: Path):
-        """Create a new file at `path`
-        Raises NotADirectoryError if a part of the path is a file    
-        Raises FileNotFoundError if parent directory does not exist  
+        """Create a new directory at `path`
+        Raises NotADirectoryError if a part of the path is a file
+        Raises FileNotFoundError if parent directory does not exist
         Raises FileExistsError if directory already exists"""
         self._make_node(path, _Dir)
         
