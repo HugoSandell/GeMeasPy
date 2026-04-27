@@ -2,11 +2,12 @@
 
 from collections.abc import Sequence
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from types import FrameType
 from typing import NoReturn
 import inspect
+import pytest
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator import parameter_spec
@@ -291,9 +292,12 @@ def evaluate_test(
         case _:
             if (msg := _find_stdout_error_message(stdout)) is not None:
                 _logging.warning(
-                    f"No specific evaluator exists for invalid parameter {invalid_parameter}. Assuming this is the expected error: {msg}"
+                    f"No specific evaluator exists for invalid parameter {invalid_parameter}. Got the following error: {msg!r}"
                 )
-                return OracleResult(True)
+            else:
+                _logging.warning(
+                    f"No specific evaluator exists for invalid parameter {invalid_parameter}."
+                )
             _raise_unimplemented(test_data)
 
 if __name__ == "__main__":

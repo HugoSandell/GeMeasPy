@@ -71,7 +71,7 @@ class SSHConnection():
         self.channel.send(self.debug_log.send(command.encode(encoding="UTF-8")))
         utilities.sleep_unless_testing(time_to_sleep)
 
-    def read_channel_buffer(self, chars) -> str:
+    def read_channel_buffer(self, chars: int) -> str:
         if self.is_ready() and self.channel != None:
             if len(self._read_buf) > 0:
                 size = min(chars, len(self._read_buf))

@@ -12,6 +12,7 @@ from gemeaspy.acquisition.error import (
     SSHConnectionError,
     TaskFileIOError,
     TaskFileParseError,
+    TerrameterResponseError,
     TransferError,
 )
 from gemeaspy.acquisition.instruments import Terrameter
@@ -116,7 +117,13 @@ def run_acquisition(argv: list[str]) -> int:
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
         logger.error(f"ProjectTransferError - {e.msg} {e.remote_dir!r} -> {e.local_dir!r}", exc_info=True)
-        return 10
+        return 11
+    except TerrameterResponseError as e:
+        print(f"Error: Failure caused by response from Terrameter - {e.msg}")
+        if verbose:
+            traceback.print_exception(e, file=sys.stderr)
+        logger.error(f"ProjectTransferError - {e.msg}", exc_info=True)
+        return 12
     return 0
 
 def cli_main():

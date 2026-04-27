@@ -1,3 +1,6 @@
+import gemeaspy
+
+
 class GeMeasPyError(Exception):
     def __init__(self, msg: str):
         Exception.__init__(self, msg)
@@ -43,3 +46,7 @@ class ProjectTransferError(GeMeasPyError):
         GeMeasPyError.__init__(self, msg)
         self.remote_dir = remote_dir
         self.local_dir = local_dir
+        
+class TerrameterResponseError(GeMeasPyError):
+    def __init__(self, msg: str):
+        GeMeasPyError.__init__(self, msg)
