@@ -2,18 +2,9 @@ import os
 import sys
 import traceback
 
-from paramiko import ChannelException
-
+import gemeaspy.acquisition.error as error
 from gemeaspy.acquisition.error import (
-    ConfigFileError,
     InvalidLocalDirectoryError,
-    MissingFileError,
-    ProjectTransferError,
-    SSHConnectionError,
-    TaskFileIOError,
-    TaskFileParseError,
-    TerrameterResponseError,
-    TransferError,
 )
 from gemeaspy.acquisition.instruments import Terrameter
 from gemeaspy.acquisition.logger import logger
@@ -46,84 +37,19 @@ def run_task_file(task_file) -> None:
     ls.disconnect()
 
 def run_acquisition(argv: list[str]) -> int:
-    verbose = "DEBUG" in os.environ
-    
     nargs = len(argv)
     logger.info(f"\n\nRunning acquisition with argument{"s" if nargs>1 else ""}: {" ".join(argv[1:])}")
     if nargs == 1:
         task_file = None
         print(f"Error: No task file given")
         logger.error(f"Acquisition was run with no input")
-        return 2     
-    
+        return 2
     try: 
         task_files = argv[1:]
         for task_file in task_files:
             run_task_file(task_file)
-    # NOTE: All fatal exceptions shall start with 'Error:'
-    except ChannelException as e:
-        print("Error: Failed to create SSH channel connection to Terrameter!")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"ChannelException - [{e.code}] {e.text}", exc_info=True)
-        return 3
-    except ConfigFileError as e:
-        print(f"Error: {e.msg} ({e.file})")
-        logger.error(f"ConfigFileError - [{e.file}] {e.msg}", exc_info=True)
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        return 4
-    except TransferError as e:
-        print(f"Error: Project transfer failed - {e.msg} ({e.file})")
-        logger.error(f"TransferError - [{e.file}] {e.msg}", exc_info=True)
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        return 5
-    except SSHConnectionError as e:
-        print(f"Error: A connection error occured - {e.msg}")
-        logger.error(f"SSHConnectionError - [{e.params}] {e.msg}", exc_info=True)
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        return 6
-    except TaskFileIOError as e:
-        print(f"Error: Failed to read task file {e.file!r}!")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"TaskFileIOError - Failed to read {e.file!r}", exc_info=True)
-        return 7
-    except TaskFileParseError as e:
-        if e.file is None:
-            print(f"Error: Failed to parse task file: {e.msg}")
-        else:
-            print(f"Error: Failed to parse task file {e.file!r}: {e.msg}")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"TaskFileParseError - {e.msg}", exc_info=True)
-        return 8
-    except MissingFileError as e:
-        print(f"Error: Task file references a non-existent file - {e.msg} {e.file!r}")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"MissingFileError - {e.msg} {e.file!r}", exc_info=True)
-        return 9
-    except InvalidLocalDirectoryError as e:
-        print(f"Error: Local data directory {e.dir!r} could not be used - {e.msg}")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"InvalidLocalDirectory - {e.msg} {e.dir!r}", exc_info=True)
-        return 10
-    except ProjectTransferError as e:
-        print(f"Error: Project transfer from remote directory {e.remote_dir} to local directory {e.local_dir} failed - {e.msg}")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"ProjectTransferError - {e.msg} {e.remote_dir!r} -> {e.local_dir!r}", exc_info=True)
-        return 11
-    except TerrameterResponseError as e:
-        print(f"Error: Failure caused by response from Terrameter - {e.msg}")
-        if verbose:
-            traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"ProjectTransferError - {e.msg}", exc_info=True)
-        return 12
+    except Exception as e:
+        return error.handle_exception(e)
     return 0
 
 def cli_main():
