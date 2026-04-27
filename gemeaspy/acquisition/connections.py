@@ -29,8 +29,8 @@ class SSHConnection():
         self.params: dict[str, Any] = params
         self.ssh = None
         self.channel = None
-        self.connected = self._setup()
         self.debug_log = _DebugLogger()
+        self.connected = self._setup()
 
     def is_ready(self) -> bool:
         """Returns true iff this connection is ready to be used"""
@@ -72,9 +72,7 @@ class SSHConnection():
 
     def read_channel_buffer(self, chars) -> str:
         if self.is_ready() and self.channel != None:
-            return self.debug_log.recv(self.channel.recv(chars)).decode(
-                encoding="UTF-8"
-            )
+            return self.channel.recv(chars).decode(encoding="UTF-8")
         raise SSHConnectionError("Tried to read channel buffer with no active connection.", self.params)
 
     def _setup(self) -> bool:
@@ -88,6 +86,14 @@ class SSHConnection():
                 self.channel = transport.open_session()
             else:
                 raise SSHConnectionError("Failed to establish connection.", self.params)
+
+            orig_recv = self.channel.recv
+
+            def logging_recv(nbytes: int) -> bytes:
+                return self.debug_log.recv(orig_recv(nbytes))
+
+            self.channel.recv = logging_recv
+
             self.channel.get_pty()
             self.channel.invoke_shell()
             print("Connected!")
