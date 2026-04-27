@@ -21,7 +21,8 @@ _ACTS_JAR = os.path.join(_ROOT_PATH, "bin", "ACTS", "acts_3.3.jar")
 _ACTS_ALGORITHM = "ipog" # TODO: Use fixed algorithm or try multiple?
 _ACTS_CONSTRAINT_HANDLER = "forbiddentuples" # 'solver' or 'forbiddentuples' -- same result, but solver may be faster for complex constraints.
 _ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a problem
-_ACTS_HEAP = "4G" # How much heap space to allocate to java (Suffix G for gigabytes, M for Megabytes)
+_ACTS_HEAP_INIT = "1G" # How much heap space to initially allocate to java (Suffix G for gigabytes, M for Megabytes)
+_ACTS_HEAP_MAX = "8G" # How much total heap space to allow java to allocate (Suffix G for gigabytes, M for Megabytes)
 
 def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
@@ -75,7 +76,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
     acts_config_path = generate_acts_file(param_spec, constraints)
     
     acts_arguments = [
-        "java", f"-Xms{_ACTS_HEAP}", f"-Xmx{_ACTS_HEAP}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
+        "java", f"-Xms{_ACTS_HEAP_INIT}", f"-Xmx{_ACTS_HEAP_MAX}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
         "-Doutput=csv", "-Dchandler=" + _ACTS_CONSTRAINT_HANDLER, "-jar", _ACTS_JAR, 
         path_escape(acts_config_path), 
         path_escape(out_file_path)
