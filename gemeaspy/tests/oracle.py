@@ -36,8 +36,10 @@ class Port22Status(Enum):
 port22_status: Port22Status = Port22Status.CLOSED
 
 # Regular expressions for matching a "class" of parameters
-RE_TASK = re.compile(r"taskfile(?P<file>\d+)_task(?P<task>\d+)_(?P<property>spread|protocol|name|settings|spacing)")
-
+_RE_TASK_PROPERTY = re.compile(
+    r"taskfile(?P<file>\d+)_task(?P<task>\d+)_"
+    r"(?P<property>spread|protocol|name|settings|spacing)$"
+)
 
 
 @dataclass
@@ -276,7 +278,7 @@ def evaluate_test(
             return _evaluate_port(test_data, stdout, stderr)
         case "connection_password":
             return _evaluate_password(test_data, stdout)
-        case p if (match := re.match(RE_TASK, p)) is not None:
+        case p if (match := re.match(_RE_TASK_PROPERTY, p)) is not None:
             file = int(match.group("file"))
             task = int(match.group("task"))
             property = str(match.group("property"))
