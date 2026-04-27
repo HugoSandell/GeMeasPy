@@ -288,7 +288,13 @@ def evaluate_test(
         case "config_local_data_path":
             return _expect_error_message(test_data, "local data directory", stdout)
         case "config_projects_folder":
-            return _expect_error_message(test_data, ("transfer failed", "projects folder", "project transfer"), stdout)
+            num_tasks = test_data.parameters.taskfile1_number_of_tasks 
+            if test_data.parameters.num_args > 1:
+                num_tasks += test_data.parameters.taskfile2_number_of_tasks 
+            if num_tasks > 0:
+                return _expect_error_message(test_data, ("transfer failed", "projects folder", "project transfer"), stdout)
+            else:
+                return OracleResult(True) # TODO: This would be best implemented as a constraint
         case _:
             if (msg := _find_stdout_error_message(stdout)) is not None:
                 _logging.warning(
