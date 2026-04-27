@@ -3,6 +3,7 @@ import os
 from pathlib import Path, PurePosixPath
 from shutil import rmtree
 import sys
+import re
 
 from typing import Any, TextIO
 from paramiko import SFTPClient
@@ -10,7 +11,7 @@ from paramiko import SFTPClient
 from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.connections import SSHConnection
-from gemeaspy.acquisition.error import ProjectTransferError, TransferError
+from gemeaspy.acquisition.error import ProjectTransferError, TerrameterResponseError, TransferError
 from gemeaspy.settings import config
 
 
@@ -39,10 +40,19 @@ def create_project(connection: SSHConnection) -> None:
         project_time_stamp.year, project_time_stamp.month, project_time_stamp.day,
 		project_time_stamp.hour, project_time_stamp.minute, project_time_stamp.second)
     new_project_command = "P {:s}\n".format(project_name)
+    connection.send_command_terrameter_software(new_project_command)
+    result = connection.read_channel_buffer(256)
+    result_pattern = re.compile(r"Created project: ([^\n]*)\n")
+    while (match := result_pattern.search(result)) is None:
+        result = result[:min(128, len(result)-1)] + connection.read_channel_buffer(128)
+        if len(result) == 0:
+            raise TerrameterResponseError("Terrameter did not respond with "
+                                        "project name after the command to "
+                                        "create a project was issued.")
+    project_name = match.group(1).strip()
     command = "echo {:} > /monitoring/new_day".format(project_name)
     connection.send_command_shell(command)
     print("Create New Project!")
-    connection.send_command_terrameter_software(new_project_command)
 
 
 def create_task(connection: SSHConnection, task: dict[str, str]) -> None:
