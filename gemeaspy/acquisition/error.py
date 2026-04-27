@@ -56,9 +56,9 @@ class TerrameterResponseError(GeMeasPyError):
         
 
 def handle_exception(e: Exception) -> int:
-    verbose = "DEBUG" in os.environ
-    
     """Print error message, log exception, and return an exit code"""
+    
+    verbose = "DEBUG" in os.environ
     if isinstance(e, ChannelException):
         print("Error: Failed to create SSH channel connection to Terrameter!")
         if verbose:
