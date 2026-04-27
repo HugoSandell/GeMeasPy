@@ -1,13 +1,17 @@
 import datetime
-from io import StringIO, TextIOWrapper
 import json
 import os
 import sys
 import time
+from io import StringIO
 from typing import Any, TextIO
 
 from gemeaspy.acquisition import subvision_relay
-from gemeaspy.acquisition.error import TaskFileIOError, TaskFileParseError
+from gemeaspy.acquisition.error import (
+    ConfigFileError,
+    TaskFileIOError,
+    TaskFileParseError,
+)
 from gemeaspy.settings import config
 
 
@@ -206,15 +210,27 @@ def reset_relay(task: dict[str, Any], coms: list[int]|None = None) -> None:
 
 
 def read_terrameter_connection_parameters() -> dict[str, Any]:
-    with open(config.TERRAMETER_CONNECTION_FILE, "r") as file:
-        instrument_settings = json.load(file)
-        return instrument_settings
+    try:
+        with open(config.TERRAMETER_CONNECTION_FILE, "r") as file:
+            instrument_settings = json.load(file)
+            return instrument_settings
+    except OSError:
+        raise ConfigFileError(
+            "Failed to read Terrameter connection settings file",
+            file=config.TERRAMETER_CONNECTION_FILE,
+        )
 
 
 def read_server_connection_parameters() -> dict[str, Any]:
-    with open(config.SERVER_BACKUP_CONNECTION_FILE, "r") as file:
-        server_backup_settings = json.load(file)
-        return server_backup_settings
+    try:
+        with open(config.SERVER_BACKUP_CONNECTION_FILE, "r") as file:
+            server_backup_settings = json.load(file)
+            return server_backup_settings
+    except OSError:
+        raise ConfigFileError(
+            "Failed to read server backup connection settings file",
+            file=config.TERRAMETER_CONNECTION_FILE,
+        )
 
 
 def wait(start_time: str) -> None:

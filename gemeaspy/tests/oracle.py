@@ -313,6 +313,10 @@ def evaluate_test(
                 return _expect_error_message(test_data, ("transfer failed", "projects folder", "project transfer"), stdout)
             else:
                 return OracleResult(True) # TODO: This would be best implemented as a constraint
+        case "config_connection_file":
+            return _expect_error_message(
+                test_data, "Terrameter connection settings file", stdout
+            )
         case _:
             if (msg := _find_stdout_error_message(stdout)) is not None:
                 _logging.warning(
