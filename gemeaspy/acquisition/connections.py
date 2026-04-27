@@ -31,6 +31,7 @@ class SSHConnection():
         self.channel = None
         self.debug_log = _DebugLogger()
         self.connected = self._setup()
+        self._read_buf = bytes()
 
     def is_ready(self) -> bool:
         """Returns true iff this connection is ready to be used"""
@@ -72,8 +73,36 @@ class SSHConnection():
 
     def read_channel_buffer(self, chars) -> str:
         if self.is_ready() and self.channel != None:
-            return self.channel.recv(chars).decode(encoding="UTF-8")
+            if len(self._read_buf) > 0:
+                size = min(chars, len(self._read_buf))
+                data = self._read_buf[:size]
+                self._read_buf = self._read_buf[size:]
+            else:
+                data = self.channel.recv(chars)
+            return data.decode(encoding="UTF-8")
         raise SSHConnectionError("Tried to read channel buffer with no active connection.", self.params)
+
+    def read_channel_line(self) -> str:
+        if self.is_ready() and self.channel is not None:
+            line = self._read_buf
+
+            while b"\n" not in line:
+                data = self.channel.recv(1024)
+                if len(data) == 0:
+                    break
+                line += data
+
+            size = line.find(b"\n") + 1
+            if size == 0:
+                # EOF reached before newline, return everything
+                size = len(line)
+            self._read_buf = line[size:]
+            line = line[:size]
+            return line.decode(encoding="UTF-8")
+
+        raise SSHConnectionError(
+            "Tried to read channel line with no active connection.", self.params
+        )
 
     def _setup(self) -> bool:
         print("Establishing Secure Shell Connection...")
