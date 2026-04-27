@@ -36,6 +36,7 @@ class Port22Status(Enum):
 port22_status: Port22Status = Port22Status.CLOSED
 
 # Regular expressions for matching a "class" of parameters
+_RE_RELAY_TYPE = re.compile(r"taskfile(?P<file>\d+)_relay_type$")
 _RE_TASK_PROPERTY = re.compile(
     r"taskfile(?P<file>\d+)_task(?P<task>\d+)_"
     r"(?P<property>spread|protocol|name|settings|spacing)$"
@@ -154,6 +155,18 @@ def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str,
             return _expect_error_message(test_data, "number of tasks", stdout)
         case IntFieldError.PLUS_1.name:
             return _expect_error_message(test_data, "number of tasks", stdout)
+        case _:
+            _raise_unimplemented(test_data)
+
+
+def _evaluate_relay_type(
+    test_data: AcquisitionTestCase, file: int, stdout: str
+) -> OracleResult:
+    value = test_data[f"taskfile{file}_relay_type"]
+
+    match value:
+        case "":
+            return _expect_error_message(test_data, "task file header", stdout)
         case _:
             _raise_unimplemented(test_data)
 
@@ -287,6 +300,9 @@ def evaluate_test(
             return _evaluate_emulator_behavior(test_data, stdout, stderr)
         case "taskfile1_number_of_tasks_error" | "taskfile2_number_of_tasks_error":
             return _evaluate_number_of_tasks_error(test_data, stdout, stderr)
+        case p if m := _RE_RELAY_TYPE.match(p):
+            file = int(m.group("file"))
+            return _evaluate_relay_type(test_data, file, stdout)
         case "config_local_data_path":
             return _expect_error_message(test_data, "local data directory", stdout)
         case "config_projects_folder":
