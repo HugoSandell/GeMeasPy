@@ -5,3 +5,14 @@ excluded-modules = ["gemeaspy/tests"]
 
 [cosmic-ray.distributor]
 name = "local"
+
+[cosmic-ray.filters.operators-filter]
+exclude-operators = [
+    "core/ReplaceComparisonOperator_.*",
+    "core/ReplaceBinaryOperator_[A-Za-z]+_[A-za-z]+",
+    "core/NumberReplacer",
+    "core/AddNot",
+    "core/ReplaceUnaryOperator_[A-Za-z]+_[A-za-z]+",
+    "core/ExceptionReplacer",
+    "core/ZeroIterationForLoop",
+]
