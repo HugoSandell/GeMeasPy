@@ -1,10 +1,12 @@
 """CLI script to perform testing and mutation analysis."""
+import multiprocessing
+from multiprocessing.connection import PipeConnection
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Any
-from threading import Thread
+from typing import Any, TextIO
+from threading import Thread, Event
 
 from cosmic_ray import work_db
 import cosmic_ray.config
@@ -13,17 +15,17 @@ from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.work_db import WorkDB
 from cosmic_ray.tools.filters import operators_filter
+from cosmic_ray.distribution.http import run_worker
 
 import gemeaspy
 from gemeaspy.tests import _logging
 
-def _reporter(db: WorkDB):
+def _reporter(db: WorkDB, end_event: Event):
     """Repeatedly report status until all work is done"""
     num_items = len(db.pending_work_items)
-    while len(db.pending_work_items) > 0:
+    while len(db.pending_work_items) > 0 and not end_event.is_set():
         time.sleep(1.0)
-        print(" " * os.get_terminal_size().columns, end="\r")
-        print(f"Running work item {num_items - len(db.pending_work_items)}/{num_items}", end="\r")
+        print("\r" + (" " * os.get_terminal_size().columns) + f"\rRunning work item {num_items - len(db.pending_work_items)}/{num_items}", end="")
     print()
 
 def main():
@@ -53,8 +55,18 @@ def main():
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["module-path"] = ["gemeaspy/acquisition"]
     config["timeout"] = 120.0
-    config["excluded-modules"] = ["gemeaspy/tests"]
-    config["distributor"]["name"] = "local"
+    config["excluded-modules"] = ["gemeaspy/acquisition/subvision_relay.py"]
+    config["distributor"]["name"] = "http"
+    
+    worker_count = multiprocessing.cpu_count()
+    worker_ports = [9190 + i for i in range(worker_count)]
+    config["distributor"]["http"]["worker-urls"] = [f"http://localhost:{port}" for port in worker_ports]
+    workers: list[multiprocessing.Process] = []
+    for port in worker_ports:
+        worker = multiprocessing.Process(target=run_worker, args=(port,))
+        workers.append(worker)
+        worker.start()
+    
     os.makedirs(DATA_DIR, exist_ok=True)
 
     operator_cfgs: dict[str, Any] = {}
@@ -79,16 +91,26 @@ def main():
             print(f"Filtering...")
             operators_filter.main((cr_session_file, CR_CONFIG_FILE))
             print(f"Executing {len(db.pending_work_items)} work items...")
-            report_process = Thread(target=_reporter, args=(db,), daemon=True)
+            report_end_event = Event()
+            report_process = Thread(target=_reporter, args=(db, report_end_event), daemon=True)
             report_process.start()
             cr_execute(work_db=db, config=config)
-            print(f"Done with session: {cr_session_file}")
+            report_end_event.set()
             report_process.join(5)
             if report_process.is_alive():
                 _logging.warning("Progress reporter didn't exit after all work items were executed.")
+            print(f"Done with session: {cr_session_file}")
     
         execution_time = time.monotonic() - start_time
         print(f"'{generator}' done in {execution_time} seconds. Session is written to {cr_session_file}.")
+    
+    try:
+        for worker in workers:
+            worker.terminate()
+            worker.join(5)
+            worker.close()
+    except multiprocessing.TimeoutError:
+        print("Worker processes are not closing normally")
     print("Testing complete!")
 
 

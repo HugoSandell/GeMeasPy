@@ -4,15 +4,20 @@ timeout = 120
 excluded-modules = ["gemeaspy/tests"]
 
 [cosmic-ray.distributor]
-name = "local"
+name = "http"
+
+[cosmic-ray.distributor.http]
+worker-urls = [
+    "http://localhost:9190", 
+    "http://localhost:9191", 
+    "http://localhost:9192", 
+    "http://localhost:9193", 
+    "http://localhost:9194", 
+    "http://localhost:9195", 
+    "http://localhost:9196", 
+    "http://localhost:9197",
+]
 
 [cosmic-ray.filters.operators-filter]
 exclude-operators = [
-    "core/ReplaceComparisonOperator_.*",
-    "core/ReplaceBinaryOperator_[A-Za-z]+_[A-za-z]+",
-    "core/NumberReplacer",
-    "core/AddNot",
-    "core/ReplaceUnaryOperator_[A-Za-z]+_[A-za-z]+",
-    "core/ExceptionReplacer",
-    "core/ZeroIterationForLoop",
 ]
