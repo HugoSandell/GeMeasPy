@@ -13,7 +13,7 @@ import cosmic_ray.config
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
-from cosmic_ray.work_db import WorkDB
+from cosmic_ray.work_db import TestOutcome, WorkDB, WorkerOutcome
 from cosmic_ray.tools.filters import operators_filter
 from cosmic_ray.distribution.http import run_worker
 
@@ -28,6 +28,32 @@ def _reporter(db: WorkDB, end_event: Event):
         print("\r" + (" " * os.get_terminal_size().columns) + f"\rRunning work item {num_items - len(db.pending_work_items)}/{num_items}", end="")
     print()
 
+def print_summary(db: WorkDB):
+    """Summarise and print the results of a WorkDB"""
+    
+    results = list(db.completed_work_items)
+    num_killed      = sum(1 for _, r in results if r.test_outcome == TestOutcome.KILLED)
+    num_survived    = sum(1 for _, r in results if r.test_outcome == TestOutcome.SURVIVED)
+    num_incompetent = sum(1 for _, r in results if r.test_outcome == TestOutcome.INCOMPETENT)
+    # worker-level issues with no test_outcome
+    num_no_test  = sum(1 for _, r in results if r.worker_outcome == WorkerOutcome.NO_TEST)
+    num_abnormal = sum(1 for _, r in results if r.worker_outcome == WorkerOutcome.ABNORMAL)
+    num_skipped  = sum(1 for _, r in results if r.worker_outcome == WorkerOutcome.SKIPPED)
+    # Equivalent mutants
+    num_equivalent = 0 # TODO: Count equivalent mutants!
+
+    denominator = num_killed + num_survived - num_equivalent  # excludes incompetent, no_test, abnormal, skipped, and equivalent
+    mutation_score = num_killed / denominator if denominator > 0 else 0.0
+
+    print(f"Killed: {num_killed} ({num_killed/len(results):%})")
+    print(f"Survived: {num_survived} ({num_survived/len(results):%})")
+    print(f"Incompetent: {num_incompetent} ({num_incompetent/len(results):%})")
+    print(f"Equivalent: {num_equivalent} ({num_equivalent/len(results):%})")
+    print(f"Untested: {num_no_test} ({num_no_test/len(results):%})")
+    print(f"Abnormal: {num_abnormal} ({num_abnormal/len(results):%})")
+    print(f"Skipped: {num_skipped} ({num_skipped/len(results):%})")
+    print(f"Mutation score: {mutation_score:.1f}")
+
 def main():
     ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
@@ -37,7 +63,7 @@ def main():
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray 
     # executes the wrong python executable 
     PYTHON_PATH = sys.executable
-    DEFAULT_GENERATOR_ARGUMENTS = {"random": "--size=10", "acts": "--strength=1"}
+    DEFAULT_GENERATOR_ARGUMENTS = {"random": "--size=5", "acts": "--strength=1"}
     
     modules_to_mutate: list[Path] = []
     for dirpath, _, filenames in os.walk("./gemeaspy/acquisition"):
@@ -74,7 +100,11 @@ def main():
     for generator in requested_generators:
         print(f"Running mutation analysis on test case generator '{generator}'")
         
-        config["test-command"] = f"\"{PYTHON_PATH}\" -m coverage run --data-file={generator}.coverage --branch -m pytest {DEFAULT_GENERATOR_ARGUMENTS[generator]} --generator={generator} " \
+        #config["test-command"] = f"\"{PYTHON_PATH}\" -m coverage run --data-file={generator}.coverage --branch -m pytest {DEFAULT_GENERATOR_ARGUMENTS[generator]} --generator={generator} " \
+        #    f"--log-file=\"{PYTEST_LOG_FILE}\""
+        config["test-command"] = f"\"{PYTHON_PATH}\" " \
+            "-m pytest {DEFAULT_GENERATOR_ARGUMENTS[generator]} " \
+            "--generator={generator} " \
             f"--log-file=\"{PYTEST_LOG_FILE}\""
 
         cr_session_file = os.path.join(DATA_DIR, f"cosmicray_{generator}.sqlite")
@@ -99,7 +129,9 @@ def main():
             report_process.join(5)
             if report_process.is_alive():
                 _logging.warning("Progress reporter didn't exit after all work items were executed.")
+            
             print(f"Done with session: {cr_session_file}")
+            print_summary(db)
     
         execution_time = time.monotonic() - start_time
         print(f"'{generator}' done in {execution_time} seconds. Session is written to {cr_session_file}.")
