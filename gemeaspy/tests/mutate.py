@@ -1,4 +1,5 @@
 """CLI script to perform testing and mutation analysis."""
+
 import json
 import multiprocessing
 import os
@@ -9,14 +10,16 @@ import time
 from pathlib import Path
 from threading import Thread, Event
 
-from cosmic_ray import work_db
 import cosmic_ray.config
+from cosmic_ray import work_db
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 from cosmic_ray.tools.filters import operators_filter
 from cosmic_ray.distribution.http import run_worker
+from cosmic_ray.tools.filters import operators_filter
+from cosmic_ray.work_db import TestOutcome, WorkDB, WorkerOutcome
 
 import gemeaspy
 from gemeaspy.tests import _logging
