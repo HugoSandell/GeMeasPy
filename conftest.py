@@ -1,3 +1,4 @@
+"""Configuration and setup for pytest"""
 from functools import reduce
 import os
 import socket
