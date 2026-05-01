@@ -4,13 +4,12 @@ import json
 import multiprocessing
 import os
 import shutil
-import site
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
-from threading import Thread, Event
+from threading import Event, Thread
 
 import cosmic_ray.config
 from cosmic_ray import work_db
@@ -95,8 +94,8 @@ def run_baseline_coverage(
 ) -> dict[str, set[int]]:
     """Run the test suite once to collect baseline line coverage.
 
-    Installs a temporary .pth file in the user site-packages so that
-    acquisition subprocesses spawned by the tests also contribute coverage data.
+    Configures coverage.py so that acquisition subprocesses spawned by the tests
+    also contribute coverage data.
     Returns {absolute_filepath: {covered_line_numbers}}, or {} on failure.
     """
     data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}.coverage"))
@@ -109,26 +108,26 @@ def run_baseline_coverage(
             "source = gemeaspy/acquisition\n"
             "branch = True\n"
             "parallel = True\n"
+            "patch = subprocess\n"
             f"data_file = {data_file}\n"
         )
 
-    # Install a .pth file so that every subprocess which imports coverage will
-    # automatically start tracking. This is required for the acquisition
-    # subprocess (spawned by test_main.py) to contribute coverage data.
-    pth = Path(site.getusersitepackages(), "coverage_startup.pth")
-    pth.parent.mkdir(parents=True, exist_ok=True)
-    pth.write_text("import coverage; coverage.process_startup()\n", encoding="utf-8")
     env = {**os.environ, "COVERAGE_PROCESS_START": coveragerc}
-    try:
-        subprocess.run(
-            [python_path, "-m", "coverage", "run", f"--rcfile={coveragerc}",
-             "-m", "pytest", *pytest_args, f"--generator={generator}",
-             f"--log-file={log_file}"],
-            env=env,
-        )
-    finally:
-        if pth.exists():
-            pth.unlink()
+    subprocess.run(
+        [
+            python_path,
+            "-m",
+            "coverage",
+            "run",
+            f"--rcfile={coveragerc}",
+            "-m",
+            "pytest",
+            *pytest_args,
+            f"--generator={generator}",
+            f"--log-file={log_file}",
+        ],
+        env=env,
+    )
 
     # Merge parallel .coverage.* files created by the main process and subprocesses.
     subprocess.run(
