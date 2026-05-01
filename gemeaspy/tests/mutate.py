@@ -3,9 +3,11 @@
 import json
 import multiprocessing
 import os
+import shutil
 import site
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from threading import Thread, Event
@@ -15,14 +17,40 @@ from cosmic_ray import work_db
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
-from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
-from cosmic_ray.tools.filters import operators_filter
 from cosmic_ray.distribution.http import run_worker
 from cosmic_ray.tools.filters import operators_filter
-from cosmic_ray.work_db import TestOutcome, WorkDB, WorkerOutcome
+from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 
 import gemeaspy
 from gemeaspy.tests import _logging
+
+
+def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
+    """Copy the entire gemeaspy source directory into sandbox_dir.
+
+    Each worker runs with cwd=sandbox_dir, so relative module paths (e.g.
+    "gemeaspy/acquisition/session.py") resolve inside the sandbox.  Python's
+    sys.path starts with '' (= cwd), so pytest subprocesses import gemeaspy
+    from the sandbox, eliminating file-system race conditions between 
+    concurrent workers.
+    """
+    shutil.copytree(
+        str(root_dir / "gemeaspy"),
+        str(sandbox_dir / "gemeaspy"),
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+
+
+def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
+    """Start a cosmic-ray HTTP worker isolated in its own sandbox directory.
+
+    Changing cwd to sandbox_dir before starting the server means:
+    - Incoming relative module_path values resolve to sandbox copies.
+    - The pytest subprocess inherits cwd=sandbox_dir, so '' on sys.path
+      points there and Python imports gemeaspy from the sandbox.
+    """
+    os.chdir(sandbox_dir)
+    run_worker(port=port)
 
 
 def _progress_reporter(db: WorkDB, end_event: Event):
@@ -87,7 +115,7 @@ def run_baseline_coverage(
     # Install a .pth file so that every subprocess which imports coverage will
     # automatically start tracking. This is required for the acquisition
     # subprocess (spawned by test_main.py) to contribute coverage data.
-    pth = Path(site.getusersitepackages()) / "coverage_startup.pth"
+    pth = Path(site.getusersitepackages(), "coverage_startup.pth")
     pth.parent.mkdir(parents=True, exist_ok=True)
     pth.write_text("import coverage; coverage.process_startup()\n", encoding="utf-8")
     env = {**os.environ, "COVERAGE_PROCESS_START": coveragerc}
@@ -238,6 +266,8 @@ def _generate_and_run_test_suite(
     pytest_log_file: str,
     data_dir: str,
     cr_config_file: str,
+    pytest_test_dir: str,
+    root_dir: str,
 ):
     print(f"Running mutation analysis on test case generator '{generator}'")
 
@@ -246,9 +276,14 @@ def _generate_and_run_test_suite(
         python_path, generator, generator_args, pytest_log_file, data_dir,
     )
 
+    # Workers run with cwd=sandbox_dir, so we must give pytest an absolute path
+    # to the test directory and explicitly set --rootdir so that conftest.py at
+    # the project root is still discovered.
     config["test-command"] = (
         f"\"{python_path}\" "
-        f"-m pytest {' '.join(generator_args)} "
+        f"-m pytest \"{pytest_test_dir}\" "
+        f"--rootdir=\"{root_dir}\" "
+        f"{' '.join(generator_args)} "
         f"--generator={generator} "
         f"--log-file=\"{pytest_log_file}\""
     )
@@ -288,6 +323,7 @@ def main():
     DATA_DIR = os.path.join(ROOT_DIR, "test_data")
     CR_CONFIG_FILE = os.path.join(ROOT_DIR, "cosmic-ray.toml")
     PYTEST_LOG_FILE = os.path.join(DATA_DIR, "pytest.log")
+    PYTEST_TEST_DIR = os.path.join(ROOTPKG_DIR, "tests")
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray
     # executes the wrong python executable
     PYTHON_PATH = sys.executable
@@ -318,9 +354,14 @@ def main():
     worker_count = multiprocessing.cpu_count()
     worker_ports = [9190 + i for i in range(worker_count)]
     config["distributor"]["http"]["worker-urls"] = [f"http://localhost:{port}" for port in worker_ports]
+
+    sandbox_dirs: list[Path] = []
     workers: list[multiprocessing.Process] = []
-    for port in worker_ports:
-        worker = multiprocessing.Process(target=run_worker, args=(port,))
+    for i, port in enumerate(worker_ports):
+        sandbox = Path(tempfile.mkdtemp(prefix=f"cr_worker_{i}_"))
+        sandbox_dirs.append(sandbox)
+        _setup_worker_sandbox(sandbox, Path(ROOT_DIR))
+        worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox)))
         workers.append(worker)
         worker.start()
 
@@ -330,20 +371,24 @@ def main():
     if equivalent_fingerprints:
         print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
 
-    for generator in requested_generators:
-        _generate_and_run_test_suite(
-            generator, DEFAULT_GENERATOR_ARGUMENTS[generator], config,
-            modules_to_mutate, equivalent_fingerprints,
-            PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
-        )
-
     try:
+        for generator in requested_generators:
+            _generate_and_run_test_suite(
+                generator, DEFAULT_GENERATOR_ARGUMENTS[generator], config,
+                modules_to_mutate, equivalent_fingerprints,
+                PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
+                PYTEST_TEST_DIR, ROOT_DIR,
+            )
+    finally:
         for worker in workers:
-            worker.terminate()
-            worker.join(5)
-            worker.close()
-    except multiprocessing.TimeoutError:
-        print("Worker processes are not closing normally")
+            try:
+                worker.terminate()
+                worker.join(5)
+                worker.close()
+            except Exception:
+                pass
+        for sandbox in sandbox_dirs:
+            shutil.rmtree(str(sandbox), ignore_errors=True)
 
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
     print()
