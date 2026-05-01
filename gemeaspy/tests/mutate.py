@@ -8,10 +8,12 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Iterable
 from pathlib import Path
 from threading import Event, Thread
 
 import cosmic_ray.config
+import cosmic_ray.modules as cr_modules
 from cosmic_ray import work_db
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
@@ -259,7 +261,7 @@ def _generate_and_run_test_suite(
     generator: str,
     generator_args: list[str],
     config: ConfigDict,
-    modules_to_mutate: list[Path],
+    modules_to_mutate: Iterable[Path],
     equivalent_fingerprints: set[tuple[str, str, int]],
     python_path: str,
     pytest_log_file: str,
@@ -331,12 +333,6 @@ def main():
         "acts":   ["--strength=1"],
     }
 
-    modules_to_mutate: list[Path] = []
-    for dirpath, _, filenames in os.walk("./gemeaspy/acquisition"):
-        for filename in filenames:
-            if filename.endswith(".py") and filename not in ("__init__.py", "__main__.py"):
-                modules_to_mutate.append(Path(dirpath, filename))
-
     requested_generators = [g.strip().lower() for g in sys.argv[1:]]
 
     invalid_generators = [g for g in requested_generators if g not in DEFAULT_GENERATOR_ARGUMENTS]
@@ -344,10 +340,20 @@ def main():
         print(f"Invalid generator{"s" if len(invalid_generators) > 1 else ""}: {", ".join(invalid_generators)}", file=sys.stderr)
         sys.exit(1)
 
+    module_paths: list[Path] = [Path("gemeaspy/acquisition")]
+    excluded_modules: list[str] = [
+        "**/__init__.py",
+        "**/__main__.py",
+        "gemeaspy/acquisition/subvision_relay.py",
+    ]
+    modules_to_mutate = cr_modules.filter_paths(
+        cr_modules.find_modules(module_paths), excluded_modules
+    )
+
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
-    config["module-path"] = ["gemeaspy/acquisition"]
+    config["module-path"] = module_paths
     config["timeout"] = 120.0
-    config["excluded-modules"] = ["gemeaspy/acquisition/subvision_relay.py"]
+    config["excluded-modules"] = excluded_modules
     config["distributor"]["name"] = "http"
 
     worker_count = multiprocessing.cpu_count()
