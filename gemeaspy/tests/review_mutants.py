@@ -7,6 +7,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import gemeaspy
+from gemeaspy.tests._sgr import (
+    CLR_CYAN_FG,
+    CLR_GREEN_FG,
+    CLR_RED_FG,
+    CLR_YELLOW_FG,
+    STYLE_BOLD,
+    STYLE_DIM,
+    with_sgr,
+)
+
 
 @dataclass
 class MutantEntry:
@@ -24,7 +34,7 @@ class MutantEntry:
 _HEADER_RE = re.compile(
     r"^=== (?P<module>.+?):(?P<line>\d+)(?P<tags>[^|]*)\| (?P<operator>.+?) #(?P<occurrence>\d+) ===$"
 )
-""" 
+"""
 Matches lines like:
     === gemeaspy\\acquisition\\session.py:42 [UNCOVERED] | core/ReplaceComparisonOperator_Eq_Lt #3 ===
 """
@@ -86,38 +96,38 @@ def _display_entry(entry: MutantEntry, index: int, total: int) -> None:
     tag_str = f"  [{', '.join(entry.tags)}]" if entry.tags else ""
     sep = "─" * 72
     print()
-    print(sep)
+    print(with_sgr(sep, STYLE_DIM))
     print(
-        f"{f"Mutant {index}/{total}"}  "
-        f"{f"{entry.module_path}:{entry.line}"}"
-        f"{tag_str}  "
-        f"{entry.operator_name} #{str(entry.occurrence)}"
+        f"{with_sgr(f'Mutant {index}/{total}', STYLE_BOLD)}  "
+        f"{with_sgr(f'{entry.module_path}:{entry.line}', CLR_CYAN_FG)}"
+        f"{with_sgr(tag_str, CLR_YELLOW_FG)}  "
+        f"{with_sgr(entry.operator_name, STYLE_DIM)} #{with_sgr(str(entry.occurrence), STYLE_DIM)}"
     )
     print()
     if entry.diff:
         diff_lines = []
         for line in entry.diff.splitlines():
             if line.startswith("+") and not line.startswith("+++"):
-                diff_lines.append(line)
+                diff_lines.append(with_sgr(line, CLR_GREEN_FG))
             elif line.startswith("-") and not line.startswith("---"):
-                diff_lines.append(line)
+                diff_lines.append(with_sgr(line, CLR_RED_FG))
             elif line.startswith("@@"):
-                diff_lines.append(line)
+                diff_lines.append(with_sgr(line, CLR_CYAN_FG))
             else:
                 diff_lines.append(line)
         print("\n".join(diff_lines))
     else:
-        print("  (no diff available)")
+        print(with_sgr("  (no diff available)", STYLE_DIM))
 
 
 def _prompt_action() -> str:
     """Return one of 'equivalent', 'not_equivalent', 'skip', 'quit'."""
     print()
     print(
-        "[e] Equivalent   " +
-        "[n] Not equivalent (needs test)   " +
-        "[s] Skip   " +
-        "[q] Quit"
+        with_sgr("[e]", STYLE_BOLD) + " Equivalent   " +
+        with_sgr("[n]", STYLE_BOLD) + " Not equivalent (needs test)   " +
+        with_sgr("[s]", STYLE_BOLD) + " Skip   " +
+        with_sgr("[q]", STYLE_BOLD) + " Quit"
     )
     while True:
         try:
@@ -133,7 +143,7 @@ def _prompt_action() -> str:
             return "skip"
         elif choice in ("q", "quit", "exit"):
             return "quit"
-        print("  Enter e, n, s, or q.")
+        print(with_sgr("  Enter e, n, s, or q.", STYLE_DIM))
 
 
 def review_file(review_path: Path, equiv_file: Path, not_equiv_file: Path) -> bool:
@@ -149,9 +159,9 @@ def review_file(review_path: Path, equiv_file: Path, not_equiv_file: Path) -> bo
     known = _fingerprints(equiv_entries) | _fingerprints(not_equiv_entries)
     pending = [e for e in entries if e.fingerprint() not in known]
 
-    header_line = f"\n{review_path.name}"
+    header_line = with_sgr(f"\n{review_path.name}", STYLE_BOLD)
     counts = f"{len(entries)} total, {len(entries) - len(pending)} already resolved, {len(pending)} to review"
-    print(f"{header_line}  {counts}")
+    print(f"{header_line}  {with_sgr(counts, STYLE_DIM)}")
 
     if not pending:
         print("  All mutants already resolved.")
@@ -170,7 +180,7 @@ def review_file(review_path: Path, equiv_file: Path, not_equiv_file: Path) -> bo
         action = _prompt_action()
 
         if action == "quit":
-            print("\nSession ended early. Decisions so far have been saved.")
+            print(with_sgr("\nSession ended early. Decisions so far have been saved.", CLR_YELLOW_FG))
             return False
 
         if action == "equivalent":
@@ -189,7 +199,7 @@ def review_file(review_path: Path, equiv_file: Path, not_equiv_file: Path) -> bo
             })
             _save_json_list(equiv_file, equiv_entries)
             marked_equivalent += 1
-            print("  Saved as equivalent.")
+            print(with_sgr("  Saved as equivalent.", CLR_GREEN_FG))
 
         elif action == "not_equivalent":
             not_equiv_entries.append({
@@ -203,7 +213,7 @@ def review_file(review_path: Path, equiv_file: Path, not_equiv_file: Path) -> bo
         elif action == "skip":
             skipped.add(entry.fingerprint())
             skipped_count += 1
-            print("  Skipped.")
+            print(with_sgr("  Skipped.", STYLE_DIM))
 
     print()
     print(
