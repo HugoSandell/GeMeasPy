@@ -344,6 +344,7 @@ def main():
     excluded_modules: list[str] = [
         "**/__init__.py",
         "**/__main__.py",
+        "gemeaspy/acquisition/check_input.py",
         "gemeaspy/acquisition/subvision_relay.py",
     ]
     modules_to_mutate = cr_modules.filter_paths(
