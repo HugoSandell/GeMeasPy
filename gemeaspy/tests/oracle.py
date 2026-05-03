@@ -18,7 +18,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 )
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterBehavior
 
 
 class Port22Status(Enum):
@@ -145,15 +145,15 @@ def _evaluate_number_of_tasks_error(test_data: AcquisitionTestCase, stdout: str,
     error_type = test_data[test_data.invalid_parameter]
 
     match error_type:
-        case IntFieldError.CORRECT.name:
+        case IntFieldError.CORRECT:
             raise ValueError("Parameter is marked as invalid, but has a valid value.")
-        case IntFieldError.EMPTY.name:
+        case IntFieldError.EMPTY:
             return _expect_error_message(test_data, "task file header", stdout)
-        case IntFieldError.STRING.name:
+        case IntFieldError.STRING:
             return _expect_error_message(test_data, "task file header", stdout)
-        case IntFieldError.MINUS_1.name:
+        case IntFieldError.MINUS_1:
             return _expect_error_message(test_data, "number of tasks", stdout)
-        case IntFieldError.PLUS_1.name:
+        case IntFieldError.PLUS_1:
             return _expect_error_message(test_data, "number of tasks", stdout)
         case _:
             _raise_unimplemented(test_data)

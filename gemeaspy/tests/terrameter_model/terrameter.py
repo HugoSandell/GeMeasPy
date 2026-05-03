@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from io import BytesIO
 
-from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterBehavior
 
 from . import constants
 from .project import Project
