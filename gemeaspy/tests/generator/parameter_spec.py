@@ -2,16 +2,16 @@
 
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from types import NoneType
 from typing import Any, TypeAlias, TypeVar
 
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
+from gemeaspy.tests.generator.test_case import AcquisitionTestCase, AcquisitionTestCaseParameters, TestCase
 from gemeaspy.tests.generator.util import obj2acts
-from gemeaspy.tests.terrameter_model.behaviors import TerrameterBehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterBehavior, TerrameterProjectState
 
 INVALID_FILE = "__INVALID_FILE__"  # A path to a file that doesn't exist neither locally nor remotely
 VALID_TASKFILE1 = "__VALID_TASKFILE1__"
@@ -39,14 +39,13 @@ def param_values[T](valid: Sequence[T], invalid: Sequence[T] | None = None) -> P
     return field(default_factory=lambda: (valid, invalid if invalid else []))
 
 
-def enum_param_values[T: Enum](enum: type[T], valid: Sequence[T]) -> ParamSpecEntry:
+def enum_param_values[T: StrEnum](enum: type[T], valid: Sequence[T]) -> ParamSpecEntry:
     return field(
         default_factory=lambda: (
-            [v.name for v in valid],
-            [v.name for v in enum if v not in valid],
+            [enum(v.value) for v in valid],
+            [enum(v.value) for v in enum if v not in valid],
         )
     )
-
 
 @dataclass
 class ParameterSpec:
@@ -96,7 +95,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         1,
         2,
     ])
-    taskfile1_number_of_tasks_error: ParamSpecEntry[str] = enum_param_values(
+    taskfile1_number_of_tasks_error: ParamSpecEntry[IntFieldError] = enum_param_values(
         IntFieldError, [IntFieldError.CORRECT]
     )
     """The error of the number of tasks count. 0 - No error"""
@@ -106,7 +105,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         1,
         2,
     ])
-    taskfile2_number_of_tasks_error: ParamSpecEntry[str] = enum_param_values(
+    taskfile2_number_of_tasks_error: ParamSpecEntry[IntFieldError] = enum_param_values(
         IntFieldError, [IntFieldError.CORRECT]
     )
     """The error of the number of tasks count. 0 - No error"""
@@ -131,6 +130,22 @@ class AcquisitionParameterSpec(ParameterSpec):
     # emulator
     emulator_behavior: ParamSpecEntry[str] = enum_param_values(
         TerrameterBehavior, [TerrameterBehavior.IDEAL]
+    )
+    emulator_project1_init_state: ParamSpecEntry[str] = enum_param_values(
+        TerrameterProjectState, [TerrameterProjectState.UNINITIALISED, 
+                                 TerrameterProjectState.INITIALISED, 
+                                 TerrameterProjectState.OLD, 
+                                 TerrameterProjectState.MEASURING,
+                                 TerrameterProjectState.ONE_DONE, 
+                                 TerrameterProjectState.ALL_DONE]
+    )
+    emulator_project2_init_state: ParamSpecEntry[str] = enum_param_values(
+        TerrameterProjectState, [TerrameterProjectState.UNINITIALISED, 
+                                 TerrameterProjectState.INITIALISED, 
+                                 TerrameterProjectState.OLD, 
+                                 TerrameterProjectState.MEASURING,
+                                 TerrameterProjectState.ONE_DONE, 
+                                 TerrameterProjectState.ALL_DONE]
     )
 
     # Tasks 
@@ -268,7 +283,28 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     *_constraints_for_unused_task("taskfile1_number_of_tasks", "taskfile1_task2", 2),
     *_constraints_for_unused_task("taskfile2_number_of_tasks", "taskfile2_task1", 1),
     *_constraints_for_unused_task("taskfile2_number_of_tasks", "taskfile2_task2", 2),
+    Constraint(f'arg_taskfile1 != "{obj2acts(VALID_TASKFILE1)}" => emulator_project1_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    Constraint(f'arg_taskfile2 != "{obj2acts(VALID_TASKFILE2)}" => emulator_project2_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    Constraint(f'taskfile1_number_of_tasks < 1 => emulator_project1_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    Constraint(f'taskfile2_number_of_tasks < 1 => emulator_project2_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    Constraint(f'taskfile1_number_of_tasks = 1  => emulator_project1_init_state != "{obj2acts(TerrameterProjectState.ONE_DONE)}"'), # Because it is equivalent to all done
+    Constraint(f'taskfile2_number_of_tasks = 1  => emulator_project2_init_state != "{obj2acts(TerrameterProjectState.ONE_DONE)}"'), # Because it is equivalent to all done
 ]
+
+def _validate_spec():
+    ignored_vars = ("TestCaseType", )
+    acquisition_spec_vars = vars(AcquisitionParameterSpec())
+    acquisition_case_vars = vars(AcquisitionTestCaseParameters())
+    for p in acquisition_case_vars:
+        if p in acquisition_spec_vars or p.startswith("__") or p in ignored_vars:
+            continue
+        raise AttributeError(f"Acquisition test case parameter {p!r} not found in parameter spec.")
+    for p in acquisition_spec_vars:
+        if p in acquisition_case_vars or p.startswith("__") or p in ignored_vars:
+            continue
+        raise AttributeError(f"Acquisition parameter spec entry {p!r} not found in test case spec.")
+
+_validate_spec()
 
 if __name__=="__main__":
     N_param = "N"

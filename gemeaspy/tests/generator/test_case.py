@@ -1,12 +1,12 @@
 """Definition of an individual test case."""
+import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-import typing
-from typing import Any
 from collections.abc import Iterator, Mapping
 
 from gemeaspy.tests.generator.int_field_error import IntFieldError
 from gemeaspy.tests.generator.parameters import ParameterValue
+from gemeaspy.tests.terrameter_model.parameters import TerrameterProjectState
 
 class TestCaseParameters(dict[str, ParameterValue]):
     def __iter__(self) -> Iterator[str]:
@@ -73,8 +73,11 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     connection_hostname: str | None = None
     connection_port: int | str | None = None
     connection_password: str | None = None
+    
     # emulator
     emulator_behavior: str = ""
+    emulator_project1_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
+    emulator_project2_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
     
     taskfile1_task1_name: str = ""
     taskfile1_task1_spread: str = ""
