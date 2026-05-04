@@ -13,7 +13,7 @@ CLR_RED_FG = 31
 CLR_GREEN_FG = 32
 CLR_YELLOW_FG = 33
 CLR_BLUE_FG = 34
-CLR_PURPLE_FG = 35
+CLR_MAGENTA_FG = 35
 CLR_CYAN_FG = 36
 CLR_WHITE_FG = 37
 
@@ -43,15 +43,17 @@ if __name__ == "__main__":
     # Demo / test
     def print_ansi(text: str, style: Iterable[int] | int | None = None):
         print("This is " + with_sgr(text, style) + ", right?")
-    
-    colors = {"Black": CLR_BLACK_FG, 
-              "Red": CLR_RED_FG, 
-              "Green": CLR_GREEN_FG, 
-              "Yellow": CLR_YELLOW_FG, 
-              "Blue": CLR_BLUE_FG, 
-              "Purple": CLR_PURPLE_FG, 
-              "Cyan": CLR_CYAN_FG, 
-              "White": CLR_WHITE_FG}
+
+    colors = {
+        "Black": CLR_BLACK_FG,
+        "Red": CLR_RED_FG,
+        "Green": CLR_GREEN_FG,
+        "Yellow": CLR_YELLOW_FG,
+        "Blue": CLR_BLUE_FG,
+        "Magenta": CLR_MAGENTA_FG,
+        "Cyan": CLR_CYAN_FG,
+        "White": CLR_WHITE_FG,
+    }
 
     styles = {"Bold": STYLE_BOLD, 
               "Dim": STYLE_DIM, 
