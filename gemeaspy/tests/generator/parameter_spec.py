@@ -297,6 +297,8 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     Constraint(f'taskfile2_number_of_tasks < 1 => emulator_project2_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
     Constraint(f'taskfile1_number_of_tasks = 1  => emulator_project1_init_state != "{obj2acts(TerrameterProjectState.ONE_DONE)}"'), # Because it is equivalent to all done
     Constraint(f'taskfile2_number_of_tasks = 1  => emulator_project2_init_state != "{obj2acts(TerrameterProjectState.ONE_DONE)}"'), # Because it is equivalent to all done
+    Constraint(f'emulator_project2_init_state != "{obj2acts(TerrameterProjectState.UNINITIALISED)}" => emulator_project1_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    Constraint(f'emulator_project1_init_state != "{obj2acts(TerrameterProjectState.UNINITIALISED)}" => emulator_project2_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
 ]
 
 def _validate_spec():

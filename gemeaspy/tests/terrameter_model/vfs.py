@@ -180,10 +180,12 @@ class VirtualFileSystem(object):
         if isinstance(node.parent, _Dir):
             node.parent.children.pop(node.name)
 
-    def _make_node(self, path: Path, node_type: type[_File | _Dir]):
+    def _make_node(self, path: Path, node_type: type[_File | _Dir], ignore_existing: bool = False):
         if node_type not in {_File, _Dir}:
             return
         if self.exists(path):
+            if ignore_existing:
+                return
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), path.as_posix())
         node_name = path.name
         parent = self._traverse(path.parent)
@@ -193,19 +195,19 @@ class VirtualFileSystem(object):
             parent.children[node_name] = node_type(node_name, parent)
             logger.debug(f"Added node {node_name} with parent {parent}")
     
-    def make_file(self, path: Path):
+    def make_file(self, path: Path, ignore_existing: bool = False):
         """Create a new file at `path`  
         Raises NotADirectoryError if a part of the path is a file.  
         Raises FileExistsError if path already exists.
         Raises FileNotFoundError if directory does not exist"""
-        self._make_node(path, _File)
+        self._make_node(path, _File, ignore_existing)
         
-    def make_dir(self, path: Path):
+    def make_dir(self, path: Path, ignore_existing: bool = False):
         """Create a new directory at `path`
         Raises NotADirectoryError if a part of the path is a file
         Raises FileNotFoundError if parent directory does not exist
         Raises FileExistsError if directory already exists"""
-        self._make_node(path, _Dir)
+        self._make_node(path, _Dir, ignore_existing)
         
     def stat(self, path: Path) -> os.stat_result:
         node = self._traverse(path)

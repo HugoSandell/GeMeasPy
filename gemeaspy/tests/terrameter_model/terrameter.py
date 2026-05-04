@@ -1,3 +1,4 @@
+import datetime
 import errno
 import os
 import threading
@@ -6,7 +7,7 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from io import BytesIO
 
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
 
 from . import constants
 from ._logging import logger
@@ -407,3 +408,78 @@ Column: 0"""
         logger.debug(f"Calling vfs stat on {parsed_path!r}")
         result = self._filesystem.stat(parsed_path)
         return result
+
+    def setup_project_state(self, state: TerrameterProjectState, task_ids: list[int]) -> None:
+        """Pre-configure the VFS to simulate a given TerrameterProjectState.
+
+        Intended for test setup. task_ids is the list of task IDs for the project/taskfile
+        (e.g. [1, 2] for a two-task project). The MEASURING state additionally sets the
+        measure variable to 1 and starts a timer that resets it to 0. 
+            TODO: Use a different trigger that doesn't rely on timing.
+        Only one project at a time should have a non-UNINITIALISED state.
+        """
+        if state == TerrameterProjectState.UNINITIALISED:
+            return
+
+        now = datetime.datetime.now()
+        if state == TerrameterProjectState.OLD:
+            t = now - datetime.timedelta(weeks=1)
+        else:
+            t = now
+
+        def project_name_fmt(t: datetime.datetime) -> str:
+            return f"{t.year:04d}{t.month:02d}{t.day:02d}_{t.hour:02d}{t.minute:02d}{t.second:02d}"
+        project_name = project_name_fmt(t)
+        if project_name in self._projects:
+            t += datetime.timedelta(seconds=2)
+            project_name = project_name_fmt(t)        
+
+        # Create project directory in the VFS
+        project_path = Path(f"/media/mmcblk0p1/projects/{project_name}")
+        self._filesystem.make_dir(project_path)
+        project_name_path = project_path.joinpath("project_name.txt")
+        self._filesystem.make_file(project_name_path)
+        self._filesystem.write(project_name_path, project_name.encode())
+
+        new_project = Project(project_name)
+        self._projects[project_name] = new_project
+        self._current_project_name = project_name
+
+        # /monitoring/new_day signals "resume previous measurement" to the acquisition program.
+        # For OLD state the file exists but the date in the project name is >1 day old,
+        # which is what the acquisition program uses to detect an expired project.
+        new_day_path = Path("/monitoring/new_day")
+        if not self._filesystem.exists(new_day_path):
+            self._filesystem.make_file(new_day_path)
+        self._filesystem.write(new_day_path, project_name.encode())
+
+        if state in (TerrameterProjectState.OLD, TerrameterProjectState.INITIALISED):
+            return
+
+        if state == TerrameterProjectState.MEASURING:
+            if task_ids:
+                self._filesystem.make_file(
+                    Path(f"/monitoring/task_{task_ids[0]:02d}_started"),
+                    ignore_existing=True
+                )
+            self.set_variable("measure", 1, permission_override=True)
+            threading.Timer(
+                0.5, self.set_variable,
+                args=("measure", 0), kwargs={"permission_override": True},
+            ).start()
+            return
+
+        if state == TerrameterProjectState.ONE_DONE:
+            if task_ids:
+                self._filesystem.make_file(
+                    Path(f"/monitoring/task_{task_ids[0]:02d}_completed"),
+                    ignore_existing=True
+                )
+            return
+
+        # ALL_DONE
+        for task_id in task_ids:
+            self._filesystem.make_file(
+                Path(f"/monitoring/task_{task_id:02d}_completed"),
+                    ignore_existing=True
+            )

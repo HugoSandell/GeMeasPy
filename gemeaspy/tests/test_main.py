@@ -13,7 +13,7 @@ from gemeaspy.tests import _logging, oracle, setup_config, setup_task_files
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
 
 # The greatest amount of time to wait for acquisition to finish
 ACQUISITION_TIMEOUT = 10
@@ -27,6 +27,14 @@ def emulator(test_case: AcquisitionTestCase):
         suffix_project_name=test_case.parameters.emulator_suffix_project_name,
     )
     instrument.start()
+    instrument.instrument.setup_project_state(
+        TerrameterProjectState(test_case.parameters.emulator_project1_init_state),
+        list(range(1, test_case.parameters.taskfile1_number_of_tasks + 1)),
+    )
+    instrument.instrument.setup_project_state(
+        TerrameterProjectState(test_case.parameters.emulator_project2_init_state),
+        list(range(1, test_case.parameters.taskfile2_number_of_tasks + 1)),
+    )
     yield instrument
     instrument.stop()
 
