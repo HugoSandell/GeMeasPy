@@ -10,6 +10,7 @@ import paramiko
 import paramiko.common
 
 from .host_key_store import get_test_host_key
+from .parameters import TerrameterMisbehavior
 from .sftp import EmulatorSFTPServerInterface
 from .shell import PtyRequest, TerrameterShell
 from .terrameter import TerrameterLS
@@ -24,9 +25,16 @@ Consists of a paramiko Channel to communicate through and a command str to execu
 
 class InstrumentServerEmulator:
     """SSH server for testing. Emulates a server connected to a Terrameter"""
-    def __init__(self, host_key=get_test_host_key(), username: str = 'root', password: str = ''):
+
+    def __init__(
+        self,
+        host_key=get_test_host_key(),
+        username: str = "root",
+        password: str = "",
+        misbehavior: TerrameterMisbehavior | None = None,
+    ):
         super(InstrumentServerEmulator, self).__init__()
-        self.instrument: TerrameterLS = TerrameterLS()
+        self.instrument: TerrameterLS = TerrameterLS(misbehavior=misbehavior)
         self.is_running: threading.Event = threading.Event()
         self.address: tuple[str, int] = ("", 0)
         self._socket: socket.socket | None = None

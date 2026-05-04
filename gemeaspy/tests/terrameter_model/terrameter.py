@@ -33,7 +33,7 @@ class NoProjectError(Exception):
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
 
-    def __init__(self):
+    def __init__(self, misbehavior: TerrameterMisbehavior | None = None):
         logger.info("===== Initialising Terrameter LS2 Emulator =====")
         self.allow_login: bool = True
         self.is_shut_down: bool = False
@@ -46,11 +46,14 @@ class TerrameterLS():
         self._projects: dict[str, Project] = {} # "name": object
         self._current_project_name: str = "" # Name of current project, if any
         self._misbehavior: TerrameterMisbehavior = TerrameterMisbehavior.NONE
-        try:
-            misbehavior_str = os.environ["TERRAMETER_EMULATOR_MISBEHAVIOR"]
-            self._misbehavior = TerrameterMisbehavior(misbehavior_str.lower())
-        except (KeyError, ValueError):
-            pass
+        if misbehavior:
+            self._misbehavior = misbehavior
+        else:
+            try:
+                misbehavior_str = os.environ["TERRAMETER_EMULATOR_MISBEHAVIOR"]
+                self._misbehavior = TerrameterMisbehavior(misbehavior_str.lower())
+            except (KeyError, ValueError):
+                pass
 
     def _shutdown(self):
         # "Reboot"
