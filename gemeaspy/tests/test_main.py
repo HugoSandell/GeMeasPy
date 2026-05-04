@@ -23,7 +23,8 @@ ACQUISITION_TIMEOUT = 10
 def emulator(test_case: AcquisitionTestCase):
     os.environ["USETERRAMETEREMULATOR"] = "1"
     instrument = InstrumentServerEmulator(
-        misbehavior=TerrameterMisbehavior(test_case.parameters.emulator_misbehavior)
+        misbehavior=TerrameterMisbehavior(test_case.parameters.emulator_misbehavior),
+        suffix_project_name=test_case.parameters.emulator_suffix_project_name,
     )
     instrument.start()
     yield instrument

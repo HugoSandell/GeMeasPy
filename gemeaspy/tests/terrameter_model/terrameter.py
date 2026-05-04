@@ -33,7 +33,11 @@ class NoProjectError(Exception):
 class TerrameterLS():
     """An emulated Terrameter LS instrument"""
 
-    def __init__(self, misbehavior: TerrameterMisbehavior | None = None):
+    def __init__(
+        self,
+        misbehavior: TerrameterMisbehavior | None = None,
+        suffix_project_name: bool = False,
+    ):
         logger.info("===== Initialising Terrameter LS2 Emulator =====")
         self.allow_login: bool = True
         self.is_shut_down: bool = False
@@ -54,6 +58,7 @@ class TerrameterLS():
                 self._misbehavior = TerrameterMisbehavior(misbehavior_str.lower())
             except (KeyError, ValueError):
                 pass
+        self._suffix_project_name = suffix_project_name
 
     def _shutdown(self):
         # "Reboot"
@@ -171,8 +176,8 @@ class TerrameterLS():
             number_separator = ""
             
         resolved_name = name # Name to make unique if necessary
-        
-        if name in self._projects: 
+
+        if name in self._projects or self._suffix_project_name:
             # Resolve name conflict by appending number
             project_number = 1
             done = False

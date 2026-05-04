@@ -76,6 +76,7 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     
     # emulator
     emulator_misbehavior: str = ""
+    emulator_suffix_project_name: bool = False
     emulator_project1_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
     emulator_project2_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
     

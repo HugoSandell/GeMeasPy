@@ -138,6 +138,7 @@ class AcquisitionParameterSpec(ParameterSpec):
     emulator_misbehavior: ParamSpecEntry[str] = enum_param_values(
         TerrameterMisbehavior, [TerrameterMisbehavior.NONE]
     )
+    emulator_suffix_project_name: ParamSpecEntry[bool] = param_values([False, True])
     emulator_project1_init_state: ParamSpecEntry[str] = enum_param_values(
         TerrameterProjectState, [TerrameterProjectState.UNINITIALISED, 
                                  TerrameterProjectState.INITIALISED, 

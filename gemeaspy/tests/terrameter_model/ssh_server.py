@@ -32,9 +32,12 @@ class InstrumentServerEmulator:
         username: str = "root",
         password: str = "",
         misbehavior: TerrameterMisbehavior | None = None,
+        suffix_project_name: bool = False,
     ):
         super(InstrumentServerEmulator, self).__init__()
-        self.instrument: TerrameterLS = TerrameterLS(misbehavior=misbehavior)
+        self.instrument: TerrameterLS = TerrameterLS(
+            misbehavior=misbehavior, suffix_project_name=suffix_project_name
+        )
         self.is_running: threading.Event = threading.Event()
         self.address: tuple[str, int] = ("", 0)
         self._socket: socket.socket | None = None
