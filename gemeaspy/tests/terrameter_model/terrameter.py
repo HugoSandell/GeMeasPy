@@ -6,13 +6,13 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from io import BytesIO
 
-from gemeaspy.tests.terrameter_model.parameters import TerrameterBehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
 
 from . import constants
+from ._logging import logger
 from .project import Project
 from .task import Protocol, Spread, Task
 from .vfs import Path, VirtualFileSystem
-from ._logging import logger
 
 type Value = str | int | float | bool
 
@@ -45,10 +45,10 @@ class TerrameterLS():
         self._settings: dict[str, int | float | bool | list[float]] = constants.TERRAMETER_DEFAULT_SETTINGS
         self._projects: dict[str, Project] = {} # "name": object
         self._current_project_name: str = "" # Name of current project, if any
-        self._behavior: TerrameterBehavior = TerrameterBehavior.IDEAL
-        try:        
-            behavior_str = os.environ["TERRAMETER_EMULATOR_BEHAVIOR"]
-            self._behavior = TerrameterBehavior(behavior_str.lower())
+        self._misbehavior: TerrameterMisbehavior = TerrameterMisbehavior.NONE
+        try:
+            misbehavior_str = os.environ["TERRAMETER_EMULATOR_MISBEHAVIOR"]
+            self._misbehavior = TerrameterMisbehavior(misbehavior_str.lower())
         except (KeyError, ValueError):
             pass
 

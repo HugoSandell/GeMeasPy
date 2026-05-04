@@ -2,8 +2,9 @@
 
 from enum import StrEnum, auto
 
-class TerrameterBehavior(StrEnum):
-    IDEAL = auto()
+
+class TerrameterMisbehavior(StrEnum):
+    NONE = auto()
     #RESTART_DURING_MEASUREMENT = auto()
     #RESTART_AFTER_FIRST_TASK = auto()
     #CREATE_EMPTY_FILE = auto()

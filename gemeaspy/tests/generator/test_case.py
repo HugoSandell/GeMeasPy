@@ -75,7 +75,7 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     connection_password: str | None = None
     
     # emulator
-    emulator_behavior: str = ""
+    emulator_misbehavior: str = ""
     emulator_project1_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
     emulator_project2_init_state: TerrameterProjectState = TerrameterProjectState.UNINITIALISED
     

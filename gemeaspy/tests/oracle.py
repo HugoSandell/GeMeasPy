@@ -1,13 +1,12 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
-from collections.abc import Sequence
+import inspect
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from types import FrameType
 from typing import NoReturn
-import inspect
-import pytest
 
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator import parameter_spec
@@ -18,7 +17,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 )
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.terrameter_model.parameters import TerrameterBehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
 
 
 class Port22Status(Enum):
@@ -224,22 +223,28 @@ def _evaluate_password(test_data: AcquisitionTestCase, stdout: str) -> OracleRes
             _raise_unimplemented(test_data)
 
 
-def _evaluate_emulator_behavior(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> OracleResult:
+def _evaluate_emulator_misbehavior(
+    test_data: AcquisitionTestCase, stdout: str, stderr: str
+) -> OracleResult:
     try:
-        behavior: TerrameterBehavior = TerrameterBehavior[str(test_data["emulator_behavior"])]
+        misbehavior: TerrameterMisbehavior = TerrameterMisbehavior[
+            str(test_data["emulator_misbehavior"])
+        ]
     except KeyError:
-        raise NotImplementedError(f"Terrameter behavior {test_data["emulator_behavior"]!r} not ")
+        raise NotImplementedError(
+            f"Terrameter misbehavior {test_data['emulator_misbehavior']!r} not "
+        )
     error_message = _find_stdout_error_message(stdout)
-    
-    match behavior:
-        #case TerrameterBehavior.DROPPED_MESSAGES: 
-        #    return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        #case TerrameterBehavior.RESTART_DURING_MEASUREMENT:
-        #    return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
-        #case TerrameterBehavior.DELETE_PROJECT_BEFORE_TRANSFER:
-        #    return _expect_error_message(test_data, "Failed to transfer project", stdout)
-        #case TerrameterBehavior.TIMEOUT:
-        #    return _expect_error_message(test_data, "A connection error occured", stdout)
+
+    match misbehavior:
+        # case TerrameterMisbehavior.DROPPED_MESSAGES:
+        #     return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
+        # case TerrameterMisbehavior.RESTART_DURING_MEASUREMENT:
+        #     return _expect_error_message(test_data, "A connection error occured", stdout, allow_without_error=True)
+        # case TerrameterMisbehavior.DELETE_PROJECT_BEFORE_TRANSFER:
+        #     return _expect_error_message(test_data, "Failed to transfer project", stdout)
+        # case TerrameterMisbehavior.TIMEOUT:
+        #     return _expect_error_message(test_data, "A connection error occured", stdout)
         case _:
             _raise_unimplemented(test_data)
 
@@ -296,8 +301,8 @@ def evaluate_test(
             task = int(match.group("task"))
             property = str(match.group("property"))
             return _evaluate_task_property(test_data, file, task, property, stdout)
-        case "emulator_behavior":
-            return _evaluate_emulator_behavior(test_data, stdout, stderr)
+        case "emulator_misbehavior":
+            return _evaluate_emulator_misbehavior(test_data, stdout, stderr)
         case "taskfile1_number_of_tasks_error" | "taskfile2_number_of_tasks_error":
             return _evaluate_number_of_tasks_error(test_data, stdout, stderr)
         case p if m := _RE_RELAY_TYPE.match(p):
