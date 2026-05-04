@@ -17,6 +17,15 @@ CLR_MAGENTA_FG = 35
 CLR_CYAN_FG = 36
 CLR_WHITE_FG = 37
 
+CLR_GRAY_FG = 90
+CLR_BRIGHT_RED_FG = 91
+CLR_BRIGHT_GREEN_FG = 92
+CLR_BRIGHT_YELLOW_FG = 93
+CLR_BRIGHT_BLUE_FG = 94
+CLR_BRIGHT_MAGENTA_FG = 95
+CLR_BRIGHT_CYAN_FG = 96
+CLR_BRIGHT_WHITE_FG = 97
+
 STYLE_REGULAR = 0
 STYLE_BOLD = 1
 STYLE_DIM = 2
@@ -53,6 +62,14 @@ if __name__ == "__main__":
         "Magenta": CLR_MAGENTA_FG,
         "Cyan": CLR_CYAN_FG,
         "White": CLR_WHITE_FG,
+        "Gray": CLR_GRAY_FG,
+        "Bright red": CLR_BRIGHT_RED_FG,
+        "Bright green": CLR_BRIGHT_GREEN_FG,
+        "Bright yellow": CLR_BRIGHT_YELLOW_FG,
+        "Bright blue": CLR_BRIGHT_BLUE_FG,
+        "Bright magenta": CLR_BRIGHT_MAGENTA_FG,
+        "Bright cyan": CLR_BRIGHT_CYAN_FG,
+        "Bright white": CLR_BRIGHT_WHITE_FG,
     }
 
     styles = {"Bold": STYLE_BOLD, 
