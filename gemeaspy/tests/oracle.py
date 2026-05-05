@@ -17,7 +17,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 )
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
 
 
 class Port22Status(Enum):
@@ -106,16 +106,22 @@ def _evaluate_any(config_state: ConfigState) -> OracleResult:
         return OracleResult(False, "SUT modified file configured as LOCAL_PATH_TO_DATA")
     return OracleResult(True)
 
-def _evaluate_valid(test_data: TestCase, stdout: str, stderr:str) -> OracleResult:
+def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> OracleResult:
     """Checks that results are consistent with valid inputs"""
     # Find any faulty states
     err_pos = stdout.find("Error: ")
     if err_pos >= 0:
         _logging.info(f"SUT failed with stdout:\n{stdout}\nstderr:\n{stderr}")
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
+    
+    # Check transferred files - do the transferred project files match those on the emulator? 
+    raise NotImplementedError("Transferred file check for valid test cases not implemented")
+    
+    # Check terrameter state - is it still measuring? do the created task match the test case parameters?
+    raise NotImplementedError("Terrameter state check for valid test cases not implemented")
+    
     # Looks clean
     return OracleResult(True)
-
 
 def _evaluate_arg_task_files(
     test_data: AcquisitionTestCase, stdout: str
