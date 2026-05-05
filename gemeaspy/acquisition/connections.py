@@ -112,6 +112,8 @@ class SSHConnection():
         try:
             self.ssh.connect(**self.params)
             if (transport:=self.ssh.get_transport()) is not None and transport.is_authenticated():
+                if isinstance(transport.sock, socket.socket):
+                    transport.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 self.channel = transport.open_session()
             else:
                 raise SSHConnectionError("Failed to establish connection.", self.params)

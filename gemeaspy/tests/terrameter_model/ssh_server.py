@@ -57,6 +57,7 @@ class InstrumentServerEmulator:
         os.environ['USETERRAMETEREMULATOR'] = '1' # Let the SUT know we're running the emulator
         
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # SO_REUSEPORT is not available on all systems
         try:
