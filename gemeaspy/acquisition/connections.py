@@ -10,7 +10,6 @@ from gemeaspy.acquisition import utilities
 from gemeaspy.acquisition.error import ConfigFileError, SSHConnectionError
 from gemeaspy.acquisition.logger import logger
 from gemeaspy.settings import config
-import pdb
 
 class SSHConnection():
     def __init__(self, params: dict[str, str | int | bool | float | None]) -> None:
