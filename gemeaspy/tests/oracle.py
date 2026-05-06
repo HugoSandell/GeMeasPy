@@ -2,12 +2,14 @@
 
 import inspect
 import re
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from types import FrameType
 from typing import NoReturn
 
+from gemeaspy.settings import config
 from gemeaspy.tests import _logging
 from gemeaspy.tests.generator import parameter_spec
 from gemeaspy.tests.generator.int_field_error import IntFieldError
@@ -96,10 +98,42 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
         _logging.info(f"Expected {expected_error_formatted} in stdout, got:\n{stdout}")
         return OracleResult(False, f"Did not find error message containing {expected_error_formatted} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
-def _evaluate_transfer_valid(test_data: AcquisitionTestCase, emulator: TerrameterLS) -> OracleResult:
+def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
-    local_project_path = test_data.parameters.config_local_data_path
-    #TODO: Implement
+    local_project_path = config.LOCAL_PATH_TO_DATA
+    _logging.info(config.LOCAL_PATH_TO_DATA)
+    terrameter_project_path = test_data.parameters.config_projects_folder
+
+    def collect_files(remote_dir: str) -> dict[str, bytes]:
+        """Recursively collect {relative_path: content} for all files under remote_dir"""
+        result: dict[str, bytes] = {}
+        try:
+            entries = emulator.list_folder(remote_dir)
+        except (FileNotFoundError, NotADirectoryError):
+            return result
+        for entry in entries:
+            entry_path = f"{remote_dir}/{entry}"
+            try:
+                data = emulator.read_file(entry_path)
+                rel = entry_path[len(terrameter_project_path):].lstrip("/")
+                result[rel] = data
+            except IsADirectoryError:
+                result.update(collect_files(entry_path))
+        return result
+
+    terrameter_files = collect_files(terrameter_project_path)
+    if len(terrameter_files) <= 0:
+        return OracleResult(True)
+
+    for rel_path, expected_data in terrameter_files.items():
+        local_file = os.path.join(local_project_path, *rel_path.split("/"))
+        if not os.path.isfile(local_file):
+            return OracleResult(False, f"Project file to be transferred not found locally: {rel_path!r}")
+        with open(local_file, "rb") as f:
+            actual_data = f.read()
+        if actual_data != expected_data:
+            return OracleResult(False, f"Content mismatch for transferred file: {rel_path!r}")
+
     return OracleResult(True)
 
 def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
@@ -150,7 +184,7 @@ def _evaluate_any(config_state: ConfigState) -> OracleResult:
         return OracleResult(False, "SUT modified file configured as LOCAL_PATH_TO_DATA")
     return OracleResult(True)
 
-def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str, emulator: TerrameterLS) -> OracleResult:
+def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks that results are consistent with valid inputs"""
     # Find any faulty states
     err_pos = stdout.find("Error: ")
@@ -159,7 +193,7 @@ def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str, emu
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
     
     # Check transferred files - do the transferred project files match those on the emulator? 
-    if not (transfer_check_result := _evaluate_transfer_valid(test_data, emulator)):
+    if not (transfer_check_result := _evaluate_transfer_valid(test_data, config_state, emulator)):
         return transfer_check_result
     # Check transferred files - do the transferred project files match those on the emulator? 
     if not (transfer_check_result := _evaluate_emulator_valid(test_data, emulator)):
@@ -337,7 +371,7 @@ def evaluate_test(
 
     match invalid_parameter:
         case None:
-            return _evaluate_valid(test_data, stdout, stderr, emulator)
+            return _evaluate_valid(test_data, stdout, stderr, config_state, emulator)
         case "num_args":
             return _expect_error_message(test_data, "No task file given", stdout)
         case "arg_taskfile1" | "arg_taskfile2":

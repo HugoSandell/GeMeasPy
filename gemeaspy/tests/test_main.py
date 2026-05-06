@@ -52,7 +52,7 @@ def task_files(test_case: AcquisitionTestCase):
 
 @pytest.mark.asyncio
 async def test_main(test_case: AcquisitionTestCase, 
-                    config, 
+                    config: setup_config.ConfigState, 
                     task_files, 
                     configure_default_port_handling, 
                     emulator: InstrumentServerEmulator):
@@ -83,7 +83,7 @@ async def test_main(test_case: AcquisitionTestCase,
         test_case, config, task_files,
         stdout_bytes.decode(encoding="utf-8", errors="backslashreplace"), 
         stderr_bytes.decode(encoding="utf-8", errors="backslashreplace"),
-        emulator.instrument
+        emulator.instrument,
     )
 
     frame_str = ""
