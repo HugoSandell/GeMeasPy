@@ -180,7 +180,38 @@ class VirtualFileSystem(object):
         if node.parent is node:
             raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path.as_posix())
         if isinstance(node.parent, _Dir):
-            node.parent.children.pop(node.name)
+            removed_dir = Path("/removed")
+            if not self.exists(removed_dir):
+                self.make_dir(path)
+            new_path = removed_dir.joinpath(Path(*path.parts[1:])) # Keep removed files for later inspection
+            self.move(path, new_path)
+
+    def move(self, src: Path, dst: Path, recursive: bool = False):
+        """Move a file from src to dst.
+        If recursive is True, recursively move all subdirectories and files under the given src.
+        Raises IsADirectoryError if recursive is False and the src is a directory.
+        Raises FileNotFoundException if src doesn't point to an existing file or directory.
+        """
+        src_node = self._traverse(src)
+        if not recursive and isinstance(src_node, _Dir):
+            raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), src.as_posix())
+
+        if self.exists(dst) and isinstance(self._traverse(dst), _Dir):
+            dst_parent = self._traverse(dst)
+            dst_name = src_node.name
+        else:
+            dst_parent = self._traverse(dst.parent)
+            dst_name = dst.name
+        if not isinstance(dst_parent, _Dir):
+            raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), dst.as_posix())
+
+        if isinstance(src_node.parent, _Dir):
+            src_node.parent.children.pop(src_node.name)
+        src_node.name = dst_name
+        src_node.parent = dst_parent
+        dst_parent.children[dst_name] = src_node
+
+
 
     def _make_node(self, path: Path, node_type: type[_File | _Dir], ignore_existing: bool = False):
         if node_type not in {_File, _Dir}:
