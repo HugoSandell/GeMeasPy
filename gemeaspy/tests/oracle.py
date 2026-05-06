@@ -19,7 +19,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 )
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
+from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
 from gemeaspy.tests.terrameter_model.terrameter import TerrameterLS
 
 
@@ -103,7 +103,7 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
     local_project_path = config.LOCAL_PATH_TO_DATA
     terrameter_project_path = test_data.parameters.config_projects_folder
 
-    def collect_files(remote_dir: str) -> dict[str, bytes]:
+    def collect_files(remote_dir: str, strip_prefix: str) -> dict[str, bytes]:
         """Recursively collect {relative_path: content} for all files under remote_dir"""
         result: dict[str, bytes] = {}
         try:
@@ -114,14 +114,26 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
             entry_path = f"{remote_dir}/{entry}"
             try:
                 data = emulator.read_file(entry_path)
-                rel = entry_path[len(terrameter_project_path):].lstrip("/")
+                rel = entry_path[len(strip_prefix):].lstrip("/")
                 result[rel] = data
             except IsADirectoryError:
-                result.update(collect_files(entry_path))
+                result.update(collect_files(entry_path, strip_prefix))
         return result
 
-    terrameter_files = collect_files(terrameter_project_path)
+    removed_project_path = "/removed" + terrameter_project_path
+    terrameter_files = {
+        **collect_files(terrameter_project_path, terrameter_project_path),
+        **collect_files(removed_project_path, removed_project_path),
+    }
+    
     if len(terrameter_files) <= 0:
+        total_tasks = 0
+        if test_data.parameters.num_args > 0:
+            total_tasks += test_data.parameters.taskfile1_number_of_tasks
+        if test_data.parameters.num_args > 1:
+            total_tasks += test_data.parameters.taskfile2_number_of_tasks
+        if total_tasks > 0:
+            return OracleResult(False, "Could not find any project files on Terrameter emulator")
         return OracleResult(True)
 
     for rel_path, expected_data in terrameter_files.items():
@@ -132,7 +144,7 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
             actual_data = f.read()
         if actual_data != expected_data:
             return OracleResult(False, f"Content mismatch for transferred file: {rel_path!r}")
-
+        
     return OracleResult(True)
 
 def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
