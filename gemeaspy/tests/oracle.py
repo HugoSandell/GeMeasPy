@@ -96,8 +96,9 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
         _logging.info(f"Expected {expected_error_formatted} in stdout, got:\n{stdout}")
         return OracleResult(False, f"Did not find error message containing {expected_error_formatted} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
-def _evaluate_transfer_valid(test_data: AcquisitionTestCase) -> OracleResult:
+def _evaluate_transfer_valid(test_data: AcquisitionTestCase, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
+    local_project_path = test_data.parameters.config_local_data_path
     raise NotImplementedError()
 
 def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
@@ -113,6 +114,32 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
                 f"to all projects, but {project_name!r} does " + 
                 "not have a suffix _1 or_2."
             )
+    
+    # Verify number of projects
+    num_args = test_data.parameters.num_args
+    num_projects = len(emulator._projects)
+    if len(emulator._projects) != num_projects:
+        return OracleResult(False, f"Expected {num_args} to be created on emulator, but found {num_projects}")
+    if num_projects == 0:
+        return OracleResult(True)
+    
+    # Verify number of tasks
+    project_names = sorted(emulator._projects)
+    project1 = emulator._projects[project_names[0]]
+    expected_tasks1 = test_data.parameters.taskfile1_number_of_tasks
+    if len(project1.tasks) != expected_tasks1:
+        return OracleResult(
+            False, 
+            f"Expected {len(project1.tasks)} tasks to be created for taskfile 1, but found {len(project1.tasks)}"
+        )
+    if num_projects > 1:
+        project2 = emulator._projects[project_names[1]]
+        if len(project2.tasks) != test_data.parameters.taskfile2_number_of_tasks:
+            return OracleResult(
+                False, 
+                f"Expected {len(project2.tasks)} tasks to be created for taskfile 2, but found {len(project2.tasks)}"
+            )
+    
     return OracleResult(True)
 
 # Evaluators
@@ -131,7 +158,7 @@ def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str, emu
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
     
     # Check transferred files - do the transferred project files match those on the emulator? 
-    if not (transfer_check_result := _evaluate_transfer_valid(test_data)):
+    if not (transfer_check_result := _evaluate_transfer_valid(test_data, emulator)):
         return transfer_check_result
     # Check transferred files - do the transferred project files match those on the emulator? 
     if not (transfer_check_result := _evaluate_emulator_valid(test_data, emulator)):
