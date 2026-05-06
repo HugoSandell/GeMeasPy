@@ -14,7 +14,6 @@ from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
 from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
-from gemeaspy.tests.terrameter_model.terrameter import TerrameterLS
 
 # The greatest amount of time to wait for acquisition to finish
 ACQUISITION_TIMEOUT = 10
@@ -56,7 +55,7 @@ async def test_main(test_case: AcquisitionTestCase,
                     config, 
                     task_files, 
                     configure_default_port_handling, 
-                    emulator: TerrameterLS):
+                    emulator: InstrumentServerEmulator):
     logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     env = {
@@ -84,7 +83,7 @@ async def test_main(test_case: AcquisitionTestCase,
         test_case, config, task_files,
         stdout_bytes.decode(encoding="utf-8", errors="backslashreplace"), 
         stderr_bytes.decode(encoding="utf-8", errors="backslashreplace"),
-        emulator
+        emulator.instrument
     )
 
     frame_str = ""

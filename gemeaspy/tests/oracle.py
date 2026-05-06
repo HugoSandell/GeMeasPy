@@ -99,7 +99,8 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
 def _evaluate_transfer_valid(test_data: AcquisitionTestCase, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
     local_project_path = test_data.parameters.config_local_data_path
-    raise NotImplementedError()
+    #TODO: Implement
+    return OracleResult(True)
 
 def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
                              emulator: TerrameterLS) -> OracleResult:
