@@ -1,6 +1,4 @@
-
 import csv
-import json
 import os
 import subprocess
 import tempfile
@@ -12,8 +10,8 @@ from gemeaspy.tests.generator import _cache
 from gemeaspy.tests.generator.constraint import Constraint
 from gemeaspy.tests.generator.parameter_spec import ParameterSpec, acts_type
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.test_case import TestCase, TestCaseParameters
-from gemeaspy.tests.generator.util import acts_enum_to_string, obj2acts, string_to_acts_enum
+from gemeaspy.tests.generator.test_case import TestCase
+from gemeaspy.tests.generator.util import acts2obj, obj2acts
 
 _ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(gemeaspy.__file__), ".."))
 
@@ -122,9 +120,8 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         os.remove(out_file_path)
     if os.path.exists(out_file_dir):
         os.rmdir(out_file_dir)
-    
-    def json_to_parameter_value(name, value_json) -> ParameterValue:
-        value = json.loads(value_json)
+
+    def validate_parameter_value(name, value) -> ParameterValue:
         if validate:
             validation_result = param_spec.validate_parameter(name, value)
             if validation_result != None:
@@ -136,8 +133,10 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
     for raw_case in list(csv.DictReader(csv_rows)):
         case = param_spec.TestCaseType()
         for parameter_name in raw_case:
-            value_json = acts_enum_to_string(raw_case[parameter_name])
-            case.parameters[parameter_name] = json_to_parameter_value(parameter_name, value_json)
+            value = acts2obj(raw_case[parameter_name])
+            case.parameters[parameter_name] = validate_parameter_value(
+                parameter_name, value
+            )
             is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
             if is_invalid:
                 if case.expect_failure or case.invalid_parameter is not None:

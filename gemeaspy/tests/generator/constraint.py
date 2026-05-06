@@ -1,6 +1,5 @@
 """Implements constraints according to the ACTS constraint spec"""
 
-import json
 import random
 import re
 from collections.abc import Mapping
@@ -8,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.util import acts_enum_to_string
+from gemeaspy.tests.generator.util import acts2obj
 
 
 class _BooleanOp(Enum):
@@ -307,7 +306,7 @@ class _ConstraintParser:
             return val == "true"
         if kind == _TokenKind.STRING:
             self._consume()
-            return json.loads(acts_enum_to_string(val))
+            return acts2obj(val)
         raise ValueError(f"Expected a term (parameter, int, bool, or string), got {kind!r} ({val!r}).")
 
 
