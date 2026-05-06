@@ -434,16 +434,7 @@ Column: 0"""
             t += datetime.timedelta(seconds=2)
             project_name = project_name_fmt(t)        
 
-        # Create project directory in the VFS
-        project_path = Path(f"/media/mmcblk0p1/projects/{project_name}")
-        self._filesystem.make_dir(project_path)
-        project_name_path = project_path.joinpath("project_name.txt")
-        self._filesystem.make_file(project_name_path)
-        self._filesystem.write(project_name_path, project_name.encode())
-
-        new_project = Project(project_name)
-        self._projects[project_name] = new_project
-        self._current_project_name = project_name
+        project_name = self.create_project(project_name)
 
         # /monitoring/new_day signals "resume previous measurement" to the acquisition program.
         # For OLD state the file exists but the date in the project name is >1 day old,

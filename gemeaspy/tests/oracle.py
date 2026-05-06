@@ -164,15 +164,16 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
     expected_tasks1 = test_data.parameters.taskfile1_number_of_tasks
     if len(project1.tasks) != expected_tasks1:
         return OracleResult(
-            False, 
-            f"Expected {len(project1.tasks)} tasks to be created for taskfile 1, but found {len(project1.tasks)}"
+            False,
+            f"Expected {expected_tasks1} tasks to be created for taskfile 1, but found {len(project1.tasks)}",
         )
     if num_projects > 1:
         project2 = emulator._projects[project_names[1]]
-        if len(project2.tasks) != test_data.parameters.taskfile2_number_of_tasks:
+        expected_tasks2 = test_data.parameters.taskfile2_number_of_tasks
+        if len(project2.tasks) != expected_tasks2:
             return OracleResult(
-                False, 
-                f"Expected {len(project2.tasks)} tasks to be created for taskfile 2, but found {len(project2.tasks)}"
+                False,
+                f"Expected {expected_tasks2} tasks to be created for taskfile 2, but found {len(project2.tasks)}",
             )
     
     return OracleResult(True)
