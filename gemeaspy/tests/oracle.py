@@ -18,6 +18,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
 from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
+from gemeaspy.tests.terrameter_model.terrameter import TerrameterLS
 
 
 class Port22Status(Enum):
@@ -95,10 +96,25 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
         _logging.info(f"Expected {expected_error_formatted} in stdout, got:\n{stdout}")
         return OracleResult(False, f"Did not find error message containing {expected_error_formatted} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
-def _was_project_transferred() -> bool:
+def _evaluate_transfer_valid(test_data: AcquisitionTestCase) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
     raise NotImplementedError()
-    
+
+def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
+                             emulator: TerrameterLS) -> OracleResult:
+    """Checks whether emulator state is ok"""
+    for project_name in emulator._projects:
+        is_project_name_suffixed = not project_name.endswith(("_1", "_2"))
+        if test_data.parameters.emulator_suffix_project_name and is_project_name_suffixed:
+            emulator._projects[project_name].name
+            return OracleResult(
+                False, 
+                "Test case was configured to add '_#' suffix " + 
+                f"to all projects, but {project_name!r} does " + 
+                "not have a suffix _1 or_2."
+            )
+    return OracleResult(True)
+
 # Evaluators
 def _evaluate_any(config_state: ConfigState) -> OracleResult:
     """Checks properties that should hold for all cases"""
@@ -106,7 +122,7 @@ def _evaluate_any(config_state: ConfigState) -> OracleResult:
         return OracleResult(False, "SUT modified file configured as LOCAL_PATH_TO_DATA")
     return OracleResult(True)
 
-def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> OracleResult:
+def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str, emulator: TerrameterLS) -> OracleResult:
     """Checks that results are consistent with valid inputs"""
     # Find any faulty states
     err_pos = stdout.find("Error: ")
@@ -115,10 +131,11 @@ def _evaluate_valid(test_data: AcquisitionTestCase, stdout: str, stderr:str) -> 
         return OracleResult(False, stdout[err_pos:].splitlines()[0])
     
     # Check transferred files - do the transferred project files match those on the emulator? 
-    raise NotImplementedError("Transferred file check for valid test cases not implemented")
-    
-    # Check terrameter state - is it still measuring? do the created task match the test case parameters?
-    raise NotImplementedError("Terrameter state check for valid test cases not implemented")
+    if not (transfer_check_result := _evaluate_transfer_valid(test_data)):
+        return transfer_check_result
+    # Check transferred files - do the transferred project files match those on the emulator? 
+    if not (transfer_check_result := _evaluate_emulator_valid(test_data, emulator)):
+        return transfer_check_result
     
     # Looks clean
     return OracleResult(True)
@@ -281,6 +298,7 @@ def evaluate_test(
     task_files: list[str],
     stdout: str,
     stderr: str,
+    emulator: TerrameterLS,
 ) -> OracleResult:
     result = _evaluate_any(config_state)
     if not result:
@@ -291,7 +309,7 @@ def evaluate_test(
 
     match invalid_parameter:
         case None:
-            return _evaluate_valid(test_data, stdout, stderr)
+            return _evaluate_valid(test_data, stdout, stderr, emulator)
         case "num_args":
             return _expect_error_message(test_data, "No task file given", stdout)
         case "arg_taskfile1" | "arg_taskfile2":
