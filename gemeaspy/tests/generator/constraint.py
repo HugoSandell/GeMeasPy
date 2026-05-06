@@ -3,12 +3,12 @@
 import json
 import random
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from collections.abc import Mapping, MutableMapping
 
 from gemeaspy.tests.generator.parameters import ParameterValue
-from gemeaspy.tests.generator.util import acts_enum_to_string, string_to_acts_enum
+from gemeaspy.tests.generator.util import acts_enum_to_string
 
 
 class _BooleanOp(Enum):
@@ -328,7 +328,7 @@ class Constraint:
     def __repr__(self) -> str:
         return f"Constraint('{str(self)}')"
 
-    def test(self, params: MutableMapping[str, _Value]) -> bool:
+    def test(self, params: Mapping[str, _Value]) -> bool:
         """Return True if the constraint holds for the given parameter bindings.
         Raises:
             KeyError:   A parameter referenced by the constraint is absent from params.
@@ -338,11 +338,6 @@ class Constraint:
         missing = [p for p in self.parameters if p not in params]
         if missing:
             raise KeyError(f"Missing parameters: {missing}")
-        # Safety check
-        for param in params:
-            val = params[param]
-            if isinstance(val, str):
-                params[param] = string_to_acts_enum(val)
         return _eval_constraint(self.value, params)
 
 # For manual testing
