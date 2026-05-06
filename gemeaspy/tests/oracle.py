@@ -101,7 +101,6 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
 def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
     local_project_path = config.LOCAL_PATH_TO_DATA
-    _logging.info(config.LOCAL_PATH_TO_DATA)
     terrameter_project_path = test_data.parameters.config_projects_folder
 
     def collect_files(remote_dir: str) -> dict[str, bytes]:
