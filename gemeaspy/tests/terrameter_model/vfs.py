@@ -64,6 +64,8 @@ class VirtualFileSystem(object):
                 self.make_dir(parent_vfs.joinpath(child))
 
             for child in child_files:
+                if child == ".gitkeep":
+                    continue
                 child_vfs = parent_vfs.joinpath(child)
                 self.make_file(child_vfs)
                 with open(os.path.join(parent, child), "rb") as f:
