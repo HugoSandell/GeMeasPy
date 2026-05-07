@@ -433,7 +433,7 @@ Column: 0"""
         if state == TerrameterProjectState.OLD:
             t = now - datetime.timedelta(weeks=1)
         else:
-            t = now
+            t = now - datetime.timedelta(minutes=1)
 
         def project_name_fmt(t: datetime.datetime) -> str:
             return f"{t.year:04d}{t.month:02d}{t.day:02d}_{t.hour:02d}{t.minute:02d}{t.second:02d}"
