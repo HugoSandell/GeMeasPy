@@ -1,20 +1,23 @@
 """Configuration and setup for pytest"""
-from functools import reduce
+
 import os
 import socket
+from functools import reduce
 
 import paramiko
 import pytest
 
 from gemeaspy.tests import oracle
-from gemeaspy.tests.oracle import Port22Status
 from gemeaspy.tests.generator import test_generation
 from gemeaspy.tests.generator.parameter_spec import (
     ACQUISITION_CONSTRAINTS,
     ACQUISITION_PARAM_SPEC,
     VALID_HOSTNAME,
 )
-from gemeaspy.tests.generator.util import random_string
+from gemeaspy.tests.generator.test_case import TestCase
+from gemeaspy.tests.oracle import Port22Status
+from gemeaspy.tests.terrameter_model.parameters import TerrameterProjectState
+
 
 def _detect_port22_status() -> Port22Status:
     """Probe port 22 on the test host once and classify what is running there."""
@@ -104,6 +107,32 @@ def pytest_addoption(parser: pytest.Parser):
     parser.addoption("--seed", "-S", dest="seed", default=None, type=int, 
                      help="Specify the random seed. (random only)")
 
+
+def _mark_test_case(test_case: TestCase):
+    if (
+        not test_case.expect_failure
+        and test_case["emulator_project1_init_state"]
+        == TerrameterProjectState.UNINITIALISED
+        and test_case["emulator_project2_init_state"]
+        in (
+            (
+                TerrameterProjectState.MEASURING,
+                TerrameterProjectState.ONE_DONE,
+                TerrameterProjectState.ALL_DONE,
+            )
+        )
+    ):
+        return pytest.param(
+            test_case,
+            marks=pytest.mark.xfail(
+                reason="Program is unable to detect whether an interrupted "
+                "project corresponds to the active task file."
+            ),
+        )
+
+    return test_case
+
+
 def pytest_generate_tests(metafunc: pytest.Metafunc):
     if "test_case" not in metafunc.fixturenames:
         return
@@ -118,7 +147,6 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
         elif t > len(ACQUISITION_PARAM_SPEC):
             raise ValueError(f"Interaction strength must not be greater than {len(ACQUISITION_PARAM_SPEC)}")
         test_data = test_generation.generate_covering_array(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS, strength=t)
-        metafunc.parametrize("test_case", test_data)
     elif generator_name == "random":
         max_N: int = reduce(lambda x, p: x * len(ACQUISITION_PARAM_SPEC[p]), ACQUISITION_PARAM_SPEC, 1)
         if N <= 0:
@@ -126,6 +154,6 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
         if N > max_N:
             raise ValueError(f"Test suite size must not be greater than {max_N}")    
         test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS ,case_count=N, seed=random_seed)
-        metafunc.parametrize("test_case", test_data)
     else:
         raise ValueError(f"'{generator_name}' is not a valid test case generator.")
+    metafunc.parametrize("test_case", map(_mark_test_case, test_data))
