@@ -81,11 +81,14 @@ class ProjectDatabase:
         for table in tables:
             # See if table has a matching defined row type and attribute in ProjectDatabase
             row_class = globals().get(table + "Row")
-            if not row_class or not hasattr(self, "_" + table):
+            table_attr = "_" + table
+            if not row_class or not hasattr(self, table_attr):
                 continue
-            
-            attribute = getattr(self, "_" + table)
-            
+
+            # Reset the attribute for this table
+            setattr(self, table_attr, type(getattr(self, table_attr))())
+            attribute = getattr(self, table_attr)
+
             # Get column names
             column_names = ()
             cursor = connection.execute(f"PRAGMA table_info(`{table}`)")
@@ -102,7 +105,7 @@ class ProjectDatabase:
                 if isinstance(attribute, list):
                     attribute.append(new_row)
                 else: # Support for single row attributes
-                    attribute = new_row
+                    setattr(self, table_attr, new_row)
                     break
         cursor.close()
         connection.close()
