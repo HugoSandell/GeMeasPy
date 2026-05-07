@@ -63,6 +63,16 @@ class Task:
         )
 
 
+@dataclass
+class TaskSpec:
+    name: str
+    spread: str
+    protocol: str
+    spacing: tuple[float, float, float]
+    base_reference: tuple[float, float, float]
+    settings: str | None = None
+
+
 def _parse_child[T](parent: ET.Element, tag: str, t: Callable[[Any], T]) -> T:
     if (child := parent.find(tag)) is not None:
         try:

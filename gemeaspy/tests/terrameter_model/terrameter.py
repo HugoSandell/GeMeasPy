@@ -16,7 +16,7 @@ from gemeaspy.tests.terrameter_model.parameters import (
 from . import constants
 from ._logging import logger
 from .project import Project
-from .task import Protocol, Spread, Task
+from .task import Protocol, Spread, Task, TaskSpec
 from .vfs import Path, VirtualFileSystem
 
 type Value = str | int | float | bool
@@ -417,11 +417,15 @@ Column: 0"""
         result = self._filesystem.stat(parsed_path)
         return result
 
-    def setup_project_state(self, state: TerrameterProjectState, task_ids: list[int]) -> None:
+    def setup_project_state(
+        self, state: TerrameterProjectState, task_specs: list[Callable[[], TaskSpec]]
+    ) -> None:
         """Pre-configure the VFS to simulate a given TerrameterProjectState.
 
-        Intended for test setup. task_ids is the list of task IDs for the project/taskfile
-        (e.g. [1, 2] for a two-task project). The MEASURING state additionally sets the
+        Intended for test setup. `task_specs` is the list
+        of `TaskSpec` getters for the project/taskfile (e.g.
+        `[lambda: TaskSpec(name="Task1", ...), lambda: TaskSpec(name="Task2", ...)]`
+        for a two-task project). The MEASURING state additionally sets the
         measure variable to 1 and starts a timer that resets it to 0. 
             TODO: Use a different trigger that doesn't rely on timing.
         Only one project at a time should have a non-UNINITIALISED state.
@@ -456,10 +460,9 @@ Column: 0"""
             return
 
         if state == TerrameterProjectState.MEASURING:
-            if task_ids:
+            if task_specs:
                 self._filesystem.make_file(
-                    Path(f"/monitoring/task_{task_ids[0]:02d}_started"),
-                    ignore_existing=True
+                    Path("/monitoring/task_01_started"), ignore_existing=True
                 )
             self.set_variable("measure", 1, permission_override=True)
             threading.Timer(
@@ -469,15 +472,14 @@ Column: 0"""
             return
 
         if state == TerrameterProjectState.ONE_DONE:
-            if task_ids:
+            if task_specs:
                 self._filesystem.make_file(
-                    Path(f"/monitoring/task_{task_ids[0]:02d}_completed"),
-                    ignore_existing=True
+                    Path("/monitoring/task_01_completed"), ignore_existing=True
                 )
             return
 
         # ALL_DONE
-        for task_id in task_ids:
+        for task_id, _ in enumerate(task_specs, start=1):
             self._filesystem.make_file(
                 Path(f"/monitoring/task_{task_id:02d}_completed"),
                     ignore_existing=True

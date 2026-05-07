@@ -1,6 +1,7 @@
 """PyTest entry point for end-to-end testing of acquisition."""
 
 import asyncio
+import functools
 import logging
 import os
 import sys
@@ -13,7 +14,11 @@ from gemeaspy.tests import _logging, oracle, setup_config, setup_task_files
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase
 from gemeaspy.tests.oracle import OracleResult
 from gemeaspy.tests.terrameter_model import InstrumentServerEmulator
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
+from gemeaspy.tests.terrameter_model.parameters import (
+    TerrameterMisbehavior,
+    TerrameterProjectState,
+)
+from gemeaspy.tests.terrameter_model.task import TaskSpec
 
 # The greatest amount of time to wait for acquisition to finish
 ACQUISITION_TIMEOUT = 10
@@ -27,14 +32,38 @@ def emulator(test_case: AcquisitionTestCase):
         suffix_project_name=test_case.parameters.emulator_suffix_project_name,
     )
     instrument.start()
-    instrument.instrument.setup_project_state(
-        TerrameterProjectState(test_case.parameters.emulator_project1_init_state),
-        list(range(1, test_case.parameters.taskfile1_number_of_tasks + 1)),
-    )
-    instrument.instrument.setup_project_state(
-        TerrameterProjectState(test_case.parameters.emulator_project2_init_state),
-        list(range(1, test_case.parameters.taskfile2_number_of_tasks + 1)),
-    )
+
+    def _setup_project_state(project_no: int):
+        prefix = f"taskfile{project_no}_"
+        number_of_tasks = test_case.parameters[f"{prefix}number_of_tasks"]
+        assert type(number_of_tasks) is int
+
+        def _task_spec(task_no: int) -> TaskSpec:
+            task_prefix = f"{prefix}task{task_no}_"
+            spacing = tuple(
+                float(s)
+                for s in str(test_case.parameters[f"{task_prefix}spacing"]).split()
+            )
+            assert len(spacing) == 3
+            return TaskSpec(
+                name=str(test_case.parameters[f"{task_prefix}name"]),
+                spread=f"/home/root/protocols/{test_case.parameters[f'{task_prefix}spread']}",
+                protocol=f"/home/root/protocols/{test_case.parameters[f'{task_prefix}protocol']}",
+                spacing=spacing,
+                base_reference=(0, 0, 0),
+                settings=f"/home/root/settings/{test_case.parameters[f'{task_prefix}settings']}",
+            )
+
+        instrument.instrument.setup_project_state(
+            TerrameterProjectState(
+                test_case.parameters[f"emulator_project{project_no}_init_state"]
+            ),
+            [functools.partial(_task_spec, t) for t in range(1, number_of_tasks + 1)],
+        )
+
+    _setup_project_state(1)
+    _setup_project_state(2)
+
     yield instrument
     instrument.stop()
 
