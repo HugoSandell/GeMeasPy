@@ -52,8 +52,8 @@ class ProjectDatabase:
 
         # Create a temporary file as a middle ground between the file and sqlite3.
         # sqlite3 doesn't accept `io.BufferedIOBase` objects.
-        if isinstance(file, (str, bytes, os.PathLike)):
-            with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
+        if isinstance(file, Path):
+            with open(file, "rb") as dbf:
                 raw_data = dbf.read()
         else:
             if file.seekable():
@@ -169,8 +169,8 @@ class ProjectDatabase:
 
         del tmp_f
 
-        if isinstance(file, (str, bytes, os.PathLike)):
-            with open(file, "wb", closefd=isinstance(file, Path)) as dbf:
+        if isinstance(file, Path):
+            with open(file, "wb") as dbf:
                 dbf.truncate(0)
                 dbf.seek(0)
                 dbf.write(new_data)
