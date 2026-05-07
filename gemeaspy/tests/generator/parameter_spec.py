@@ -158,9 +158,8 @@ class AcquisitionParameterSpec(ParameterSpec):
 
     # Tasks 
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"], 
-        ["#TaskX", ""]
-        )
+        ["Project1Task1"], ["#TaskX", ""]
+    )
     taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE, ""]
     )
@@ -176,9 +175,8 @@ class AcquisitionParameterSpec(ParameterSpec):
         )
     
     taskfile1_task2_name: ParamSpecEntry[str] = param_values(
-        ["Task2"], 
-        ["#TaskX"]
-        )
+        ["Project1Task2"], ["#TaskX"]
+    )
     taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
     )
@@ -194,9 +192,8 @@ class AcquisitionParameterSpec(ParameterSpec):
         )  
 
     taskfile2_task1_name: ParamSpecEntry[str] = param_values(
-        ["Task1"], 
-        ["#TaskX"]
-        )
+        ["Project2Task1"], ["#TaskX"]
+    )
     taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
     )
@@ -210,11 +207,8 @@ class AcquisitionParameterSpec(ParameterSpec):
             ["1 1 1"],
             ["1 1 1 1", "I I I"]
         )  
-    
-    taskfile2_task2_name: ParamSpecEntry[str] = param_values(
-        ["Task2"], 
-        []
-        )
+
+    taskfile2_task2_name: ParamSpecEntry[str] = param_values(["Project2Task2"], [])
     taskfile2_task2_spread: ParamSpecEntry[str] = param_values([VALID_SPREADFILE], [])
     taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(
         [VALID_PROTOCOLFILE], []
