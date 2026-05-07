@@ -3,6 +3,7 @@
 import io
 import os
 import sqlite3
+from functools import cache
 from sqlite3 import Connection
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Any, Optional, TypeAlias
@@ -216,6 +217,17 @@ class ProjectDatabase:
         new_row.key2 = key2
         new_row.Auto = auto
         self._AcqSettings.append(new_row)
+
+
+@cache
+def default_project_database() -> bytes:
+    con = sqlite3.connect(":memory:")
+
+    with open(os.path.join(os.path.dirname(__file__), "project_schema.sql")) as f:
+        con.executescript(f.read())
+
+    return con.serialize()
+
 
 if __name__ == "__main__":
     # Testing script
