@@ -459,11 +459,27 @@ Column: 0"""
         if state in (TerrameterProjectState.OLD, TerrameterProjectState.INITIALISED):
             return
 
+        def start_task(task_id: int, spec: TaskSpec, t: datetime.datetime):
+            self.create_task(
+                spec.name, spec.spread, spec.protocol, spec.spacing, spec.base_reference
+            )
+            if spec.settings:
+                self.read_settings(spec.settings)
+            self.create_station("1")
+            self.write_file_utf8(
+                f"/monitoring/datetime.{task_id:02d}",
+                f"{t.year},{t.month},{t.day},{t.hour},{t.minute},{t.second},{t.microsecond}\n",
+            )
+
+        def touch_task_control(task_id: int, name: str):
+            self._filesystem.make_file(
+                Path(f"/monitoring/task_{task_id:02d}_{name}"), ignore_existing=True
+            )
+
         if state == TerrameterProjectState.MEASURING:
             if task_specs:
-                self._filesystem.make_file(
-                    Path("/monitoring/task_01_started"), ignore_existing=True
-                )
+                start_task(1, task_specs[0](), t)
+                touch_task_control(1, "started")
             self.set_variable("measure", 1, permission_override=True)
             threading.Timer(
                 0.5, self.set_variable,
@@ -471,16 +487,9 @@ Column: 0"""
             ).start()
             return
 
-        if state == TerrameterProjectState.ONE_DONE:
-            if task_specs:
-                self._filesystem.make_file(
-                    Path("/monitoring/task_01_completed"), ignore_existing=True
-                )
-            return
-
-        # ALL_DONE
-        for task_id, _ in enumerate(task_specs, start=1):
-            self._filesystem.make_file(
-                Path(f"/monitoring/task_{task_id:02d}_completed"),
-                    ignore_existing=True
-            )
+        for task_id, get_task_spec in enumerate(task_specs, start=1):
+            start_task(task_id, get_task_spec(), t)
+            touch_task_control(task_id, "completed")
+            if state == TerrameterProjectState.ONE_DONE:
+                return
+            # else ALL_DONE
