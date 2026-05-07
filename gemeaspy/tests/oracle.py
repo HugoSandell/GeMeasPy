@@ -137,14 +137,19 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
         return OracleResult(True)
 
     for rel_path, expected_data in terrameter_files.items():
-        local_file = os.path.join(local_project_path, *rel_path.split("/"))
+        parts = rel_path.split("/")
+        for i in range(1, len(parts)):
+            ancestor = os.path.join(local_project_path, *parts[:i])
+            if not os.path.isdir(ancestor):
+                return OracleResult(False, f"Directory that should have been transferred not found locally: {os.path.join(*parts[:i])!r}")
+        local_file = os.path.join(local_project_path, *parts)
         if not os.path.isfile(local_file):
-            return OracleResult(False, f"Project file to be transferred not found locally: {rel_path!r}")
+            return OracleResult(False, f"Project file that should have been transferred was not found locally: {rel_path!r}")
         with open(local_file, "rb") as f:
             actual_data = f.read()
         if actual_data != expected_data:
             return OracleResult(False, f"Content mismatch for transferred file: {rel_path!r}")
-        
+
     return OracleResult(True)
 
 def _evaluate_emulator_valid(test_data: AcquisitionTestCase, 
