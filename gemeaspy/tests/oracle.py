@@ -173,25 +173,27 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
         return OracleResult(False, f"Expected {num_args} to be created on emulator, but found {num_projects}")
     if num_projects == 0:
         return OracleResult(True)
-    
-    # Verify number of tasks
+
+    # Verify project states
     project_names = sorted(emulator._projects)
-    project1 = emulator._projects[project_names[0]]
-    expected_tasks1 = test_data.parameters.taskfile1_number_of_tasks
-    if len(project1.tasks) != expected_tasks1:
-        return OracleResult(
-            False,
-            f"Expected {expected_tasks1} tasks to be created for taskfile 1, but found {len(project1.tasks)}",
-        )
-    if num_projects > 1:
-        project2 = emulator._projects[project_names[1]]
-        expected_tasks2 = test_data.parameters.taskfile2_number_of_tasks
-        if len(project2.tasks) != expected_tasks2:
+
+    def _evaluate_project(project_no: int) -> OracleResult:
+        project = emulator._projects[project_names[project_no - 1]]
+
+        # Verify number of tasks
+        expected_tasks = test_data.parameters[f"taskfile{project_no}_number_of_tasks"]
+        if len(project.tasks) != expected_tasks:
             return OracleResult(
                 False,
-                f"Expected {expected_tasks2} tasks to be created for taskfile 2, but found {len(project2.tasks)}",
+                f"Expected {expected_tasks} tasks to be created for taskfile {project_no}, but found {len(project.tasks)}",
             )
-    
+
+        return OracleResult(True)
+
+    for project_no in range(1, num_projects + 1):
+        if not (result := _evaluate_project(project_no)):
+            return result
+
     return OracleResult(True)
 
 # Evaluators
