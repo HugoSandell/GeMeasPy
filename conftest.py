@@ -115,11 +115,9 @@ def _mark_test_case(test_case: TestCase):
         == TerrameterProjectState.UNINITIALISED
         and test_case["emulator_project2_init_state"]
         in (
-            (
-                TerrameterProjectState.MEASURING,
-                TerrameterProjectState.ONE_DONE,
-                TerrameterProjectState.ALL_DONE,
-            )
+            TerrameterProjectState.MEASURING,
+            TerrameterProjectState.ONE_DONE,
+            TerrameterProjectState.ALL_DONE,
         )
     ):
         return pytest.param(
