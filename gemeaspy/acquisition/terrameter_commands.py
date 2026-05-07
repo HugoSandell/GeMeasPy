@@ -182,14 +182,22 @@ def task_completed(connection: SSHConnection, task_id: int, logfile: TextIO) -> 
     print('Task Completed!')
 
 
-def is_task_completed(connection: SSHConnection, task_id: int) -> None | bool:
-    command = "[ -e /monitoring/task_{0:02d}_completed ] && echo 'FileFound' || echo 'NotFound'".format(task_id)
+def _is_file_found(connection: SSHConnection, path: str) -> None | bool:
+    command = f"[ -e {path} ] && echo 'FileFound' || echo 'NotFound'"
     stdin, stdout, stderr = connection.send_command_shell(command)
     buffer = stdout.readline().strip()
     if buffer.find("FileFound") != -1:
         return True
     elif buffer.find("NotFound") != -1:
         return False
+
+
+def is_task_started(connection: SSHConnection, task_id: int) -> None | bool:
+    return _is_file_found(connection, f"/monitoring/task_{task_id:02d}_started")
+
+
+def is_task_completed(connection: SSHConnection, task_id: int) -> None | bool:
+    return _is_file_found(connection, f"/monitoring/task_{task_id:02d}_completed")
 
 
 def remove_control_files(connection: SSHConnection, task_list: list[dict[str, Any]]) -> str:

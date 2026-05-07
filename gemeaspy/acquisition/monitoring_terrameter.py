@@ -50,7 +50,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 print("<COMPLETED!!>")
                 logfile.write("<COMPLETED!!>\n")
                 continue
-            else:
+            elif tc.is_task_started(connection, task["id"]):
                 task_interupted = task["id"]
                 print("<Task in Progress...>")
                 logfile.write("<Task in Progress...>\n")
@@ -60,6 +60,11 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 while tc.is_measuring(connection):
                     utilities.sleep_unless_testing(10)
                 tc.task_completed(connection, task["id"], logfile)
+                break
+            else:
+                task_interupted = task["id"] - 1
+                print("<Task not started>")
+                logfile.write("<Task not started>\n")
                 break
         else:
             # All task are completted!!
