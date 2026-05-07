@@ -71,7 +71,6 @@ class ProjectDatabase:
         try:
             def date_adapter(object_date: datetime) -> str:
                 """sqlite3 gives warnings if default adapter is used"""
-                print('Adapter called')
                 adapter_format_str = object_date.isoformat()
                 return adapter_format_str
             sqlite3.register_adapter(datetime, date_adapter)
