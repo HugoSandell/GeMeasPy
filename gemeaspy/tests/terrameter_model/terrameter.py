@@ -410,7 +410,7 @@ Column: 0"""
         parsed_path = self.canonical_absolute_path(path, relative_to)
         return self._filesystem.exists(parsed_path)
 
-    def stat(self, path, relative_to: str | None = None) -> os.stat_result:
+    def stat(self, path: str, relative_to: str | None = None) -> os.stat_result:
         logger.debug(f"Parsing path {path!r} relative to {relative_to!r}")
         parsed_path = self.canonical_absolute_path(path, relative_to)
         logger.debug(f"Calling vfs stat on {parsed_path!r}")

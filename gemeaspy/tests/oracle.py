@@ -3,10 +3,11 @@
 import inspect
 import os
 import re
+import stat
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from types import FrameType
 from typing import NoReturn
 
@@ -102,44 +103,60 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
 
 def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
-    local_project_path = config.LOCAL_PATH_TO_DATA
+    EXPECTED_PROJECT_FILES = [Path("project.db"), Path("project_name.txt")] # Check for these, relative to project directory
+    local_project_path = Path(config.LOCAL_PATH_TO_DATA)
     terrameter_project_path = test_data.parameters.config_projects_folder
 
-    def collect_files(remote_dir: str, strip_prefix: str) -> dict[str, bytes]:
+    def collect_files(remote_dir: str) -> dict[PurePosixPath, bytes]:
         """Recursively collect {relative_path: content} for all files under remote_dir"""
-        result: dict[str, bytes] = {}
+        result: dict[PurePosixPath, bytes] = {}
+
+        def is_dir(f: str) -> bool:
+            state_mode = emulator.stat(f, remote_dir).st_mode
+            return stat.S_ISDIR(state_mode)
+
         try:
-            entries = emulator.list_folder(remote_dir)
-        except (FileNotFoundError, NotADirectoryError):
-            return result
-        for entry in entries:
-            entry_path = f"{remote_dir}/{entry}"
-            try:
-                data = emulator.read_file(entry_path)
-                rel = entry_path[len(strip_prefix):].lstrip("/")
-                result[rel] = data
-            except IsADirectoryError:
-                result.update(collect_files(entry_path, strip_prefix))
+            project_dirs = filter(is_dir, emulator.list_folder(remote_dir))
+        except FileNotFoundError:
+            return {}
+                
+        for project_dir in project_dirs:
+            for project_file in EXPECTED_PROJECT_FILES:    
+                relative_path = PurePosixPath(project_dir, project_file)
+                data = emulator.read_file(str(relative_path), remote_dir)
+                result[relative_path] = data
+                
         return result
 
-    removed_project_path = "/removed" + terrameter_project_path
+    # Allow projects to be removed or kept. The /removed path is used to keep backups of removed files
+    removed_project_path = PurePosixPath("/", "removed", terrameter_project_path.lstrip("/")).as_posix()
     terrameter_files = {
-        **collect_files(terrameter_project_path, terrameter_project_path),
-        **collect_files(removed_project_path, removed_project_path),
+        **collect_files(terrameter_project_path),
+        **collect_files(removed_project_path),
     }
     
-    if len(terrameter_files) <= 0:
-        total_tasks = 0
-        if test_data.parameters.num_args > 0:
-            total_tasks += test_data.parameters.taskfile1_number_of_tasks
-        if test_data.parameters.num_args > 1:
-            total_tasks += test_data.parameters.taskfile2_number_of_tasks
-        if total_tasks > 0:
-            return OracleResult(False, "Could not find any project files on Terrameter emulator")
-        return OracleResult(True)
+    expected_num_tasks = 0
+    expected_num_projects = 0
+    use_taskfile1 = test_data.parameters.num_args > 0
+    use_taskfile2 = test_data.parameters.num_args > 1
+    if use_taskfile1:
+        num_tasks = test_data.parameters.taskfile1_number_of_tasks
+        expected_num_tasks += num_tasks
+        if num_tasks > 0:
+            expected_num_projects += 1
+    if use_taskfile2:
+        num_tasks = test_data.parameters.taskfile2_number_of_tasks
+        expected_num_tasks += num_tasks
+        if num_tasks > 0:
+            expected_num_projects += 1
+    expected_num_project_files = expected_num_projects * len(EXPECTED_PROJECT_FILES)
+    if len(terrameter_files) != expected_num_project_files:
+        return OracleResult(False, f"Expected {expected_num_project_files} project files to be transferred, but found {len(terrameter_files)}")
+    if len(terrameter_files) <= 0 and expected_num_tasks > 0:
+        return OracleResult(False, "Could not find any project files on Terrameter emulator")
 
     for rel_path, expected_data in terrameter_files.items():
-        parts = rel_path.split("/")
+        parts = rel_path.parts
         for i in range(1, len(parts)):
             ancestor = os.path.join(local_project_path, *parts[:i])
             if not os.path.isdir(ancestor):
