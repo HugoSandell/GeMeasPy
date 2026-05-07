@@ -218,8 +218,6 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
         path_full_remote = remotepath.joinpath(path)
         path_full_local = localpath.joinpath(path)
         try:
-            if not (os.path.exists(path_full_local.parent)):
-                print(f"{path_full_local.parent!r} doesn't exist locally")
             try: 
                 sftp.stat(path_full_remote.as_posix())
             except:
