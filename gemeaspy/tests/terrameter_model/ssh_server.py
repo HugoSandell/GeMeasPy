@@ -270,7 +270,10 @@ class SSHTestServerChannel():
                     stop = shell.onecmd(exec_command)
                     shell.postcmd(stop, exec_command)
                     self._paramiko_channel.send_exit_status(0)
-                    stdin.close()
+                    try:
+                        stdin.close()
+                    except EOFError:
+                        pass
                     stdout.close()
                 except socket.error as e:
                     if "Socket is closed" not in e.args:
