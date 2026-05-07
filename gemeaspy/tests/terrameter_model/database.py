@@ -6,7 +6,7 @@ import sqlite3
 from functools import cache
 from sqlite3 import Connection
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Any, Optional, TypeAlias
+from typing import Any, TypeAlias
 
 from .project_types import *
 
@@ -15,7 +15,7 @@ File: TypeAlias = Path | io.BufferedIOBase
 
 class ProjectDatabase:
     """Terrameter LS2 project database."""
-    def __init__(self, db_file: Optional[File] = None):
+    def __init__(self, db_file: File | None = None):
         self._AcqSettings: list[AcqSettingsRow] = []
         self._CommonSchemaVersion: CommonSchemaVersionRow = CommonSchemaVersionRow()
         self._ProjectSchemaVersion: ProjectSchemaVersionRow = ProjectSchemaVersionRow()
@@ -37,7 +37,7 @@ class ProjectDatabase:
         self._EventSources: list[EventSourcesRow] = []
         self._ExternalData: list[ExternalDataRow] = []
         self._Datatype: list[DatatypeRow] = []
-        self._file: Optional[File] = None
+        self._file: File | None = None
         if db_file is not None:
             self.open(db_file)
     
@@ -184,7 +184,7 @@ class ProjectDatabase:
     def close(self):
         self._file = None
     
-    def get_AcqSetting(self, key1: int, key2: int, name: str) -> Optional[int | float | list[float]]:
+    def get_AcqSetting(self, key1: int, key2: int, name: str) -> int | float | list[float] | None:
         """Get a value from the AcqSettings table.
         May return None if no match was found"""
         for row in self._AcqSettings:

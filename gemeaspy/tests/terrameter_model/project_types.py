@@ -1,6 +1,6 @@
 """Class definitions for database tables"""
 from datetime import datetime, timezone
-from typing import Optional
+import typing
 
 class AcqSettingsRow:
     def __init__(self):
@@ -54,9 +54,9 @@ class DP_ABMNRow:
         self.FocusY: float = 0.0
         self.FocusZ: float = 0.0
         self.Ready: int = 0
-        self.Note: Optional[str] = ""
+        self.Note: str | None = ""
         self.Mode: int = 0
-        self.ModeValue: Optional[float] = None
+        self.ModeValue: float | None = None
     
 class DP_MEASURERow:
     def __init__(self):
@@ -193,7 +193,7 @@ class MeasuresRow:
         self.Temp: float = 0.0
         self.Light: float = 0.0
         self.SessionID: float = -1
-        self.PositionId: Optional[int] = None
+        self.PositionId: int | None = None
     
 class PositionsRow:
     def __init__(self):
