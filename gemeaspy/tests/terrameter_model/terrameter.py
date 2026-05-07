@@ -7,7 +7,11 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from io import BytesIO
 
-from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior, TerrameterProjectState
+from gemeaspy.tests.terrameter_model import database
+from gemeaspy.tests.terrameter_model.parameters import (
+    TerrameterMisbehavior,
+    TerrameterProjectState,
+)
 
 from . import constants
 from ._logging import logger
@@ -191,15 +195,19 @@ class TerrameterLS():
                     if existing_project_name.lower() == resolved_name.lower(): 
                         project_number += 1
                         done = False # Counter-example found
-        new_project = Project(resolved_name)
-        self._projects[resolved_name] = new_project
-        self._current_project_name = resolved_name
 
         project_path = Path(f"/media/mmcblk0p1/projects/{resolved_name}")
         project_name_path = project_path.joinpath("project_name.txt")
         self._filesystem.make_dir(project_path)
         self._filesystem.make_file(project_name_path)
         self._filesystem.write(project_name_path, resolved_name.encode())
+        project_db_path = project_path.joinpath("project.db")
+        self._filesystem.make_file(project_db_path)
+        self._filesystem.write(project_db_path, database.default_project_database())
+
+        new_project = Project(resolved_name, self._filesystem.get_file(project_db_path))
+        self._projects[resolved_name] = new_project
+        self._current_project_name = resolved_name
 
         return resolved_name
 

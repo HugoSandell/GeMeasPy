@@ -218,6 +218,9 @@ class ProjectDatabase:
         new_row.Auto = auto
         self._AcqSettings.append(new_row)
 
+    def tasks(self) -> list[TasksRow]:
+        return self._Tasks
+
 
 @cache
 def default_project_database() -> bytes:
