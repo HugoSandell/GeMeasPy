@@ -226,8 +226,10 @@ class ProjectDatabase:
 def default_project_database() -> bytes:
     con = sqlite3.connect(":memory:")
 
-    with open(os.path.join(os.path.dirname(__file__), "project_schema.sql")) as f:
-        con.executescript(f.read())
+    file_path = os.path.join(os.path.dirname(__file__), "project_schema.sql")
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        con.executescript(content)
 
     return con.serialize()
 
