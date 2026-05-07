@@ -36,6 +36,11 @@ INVALID_HOSTNAME = "__INVALID_HOSTNAME__"
 VALID_PORT = "__VALID_PORT__"
 INVALID_PASSWORD = "__INVALID_PASSWORD__"
 
+
+def valid_task_name(project_no: int, task_no: int) -> str:
+    return f"Project{project_no}Task{task_no}"
+
+
 T = TypeVar('T', bound = ParameterValue)
 ParamSpecEntry: TypeAlias = tuple[list[T], list[T]]
 """A pair of lists, the first of valid values and the second of invalid values."""
@@ -158,7 +163,7 @@ class AcquisitionParameterSpec(ParameterSpec):
 
     # Tasks 
     taskfile1_task1_name: ParamSpecEntry[str] = param_values(
-        ["Project1Task1"], ["#TaskX", ""]
+        [valid_task_name(1, 1)], ["#TaskX", ""]
     )
     taskfile1_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE, ""]
@@ -175,7 +180,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         )
     
     taskfile1_task2_name: ParamSpecEntry[str] = param_values(
-        ["Project1Task2"], ["#TaskX"]
+        [valid_task_name(1, 2)], ["#TaskX"]
     )
     taskfile1_task2_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
@@ -192,7 +197,7 @@ class AcquisitionParameterSpec(ParameterSpec):
         )  
 
     taskfile2_task1_name: ParamSpecEntry[str] = param_values(
-        ["Project2Task1"], ["#TaskX"]
+        [valid_task_name(2, 1)], ["#TaskX"]
     )
     taskfile2_task1_spread: ParamSpecEntry[str] = param_values(
         [VALID_SPREADFILE], [INVALID_FILE]
@@ -208,7 +213,9 @@ class AcquisitionParameterSpec(ParameterSpec):
             ["1 1 1 1", "I I I"]
         )  
 
-    taskfile2_task2_name: ParamSpecEntry[str] = param_values(["Project2Task2"], [])
+    taskfile2_task2_name: ParamSpecEntry[str] = param_values(
+        [valid_task_name(2, 2)], []
+    )
     taskfile2_task2_spread: ParamSpecEntry[str] = param_values([VALID_SPREADFILE], [])
     taskfile2_task2_protocol: ParamSpecEntry[str] = param_values(
         [VALID_PROTOCOLFILE], []

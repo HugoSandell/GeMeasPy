@@ -1,11 +1,12 @@
 """This module is responsible for reviewing test execution data and determining whether or not a failure has occurred"""
 
 import inspect
-import re
 import os
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import PurePosixPath
 from types import FrameType
 from typing import NoReturn
 
@@ -19,6 +20,7 @@ from gemeaspy.tests.generator.parameter_spec import (
 )
 from gemeaspy.tests.generator.test_case import AcquisitionTestCase, TestCase
 from gemeaspy.tests.setup_config import ConfigState
+from gemeaspy.tests.terrameter_model.database import ProjectDatabase
 from gemeaspy.tests.terrameter_model.parameters import TerrameterMisbehavior
 from gemeaspy.tests.terrameter_model.terrameter import TerrameterLS
 
@@ -178,15 +180,44 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
     project_names = sorted(emulator._projects)
 
     def _evaluate_project(project_no: int) -> OracleResult:
-        project = emulator._projects[project_names[project_no - 1]]
+        project_name = project_names[project_no - 1]
+        project = emulator._projects[project_name]
 
         # Verify number of tasks
         expected_tasks = test_data.parameters[f"taskfile{project_no}_number_of_tasks"]
+        assert type(expected_tasks) is int
         if len(project.tasks) != expected_tasks:
             return OracleResult(
                 False,
                 f"Expected {expected_tasks} tasks to be created for taskfile {project_no}, but found {len(project.tasks)}",
             )
+
+        # Verify tasks in database
+        db_path = PurePosixPath(
+            test_data.parameters.config_projects_folder, project_name, "project.db"
+        )
+        try:
+            db_file = emulator.open_file(str(db_path))
+        except FileNotFoundError:
+            db_path = PurePosixPath("/removed", db_path.relative_to("/"))
+            db_file = emulator.open_file(str(db_path))
+        db = ProjectDatabase(db_file)
+        task_rows = db.tasks()
+        if len(task_rows) != expected_tasks:
+            return OracleResult(
+                False,
+                f"Expected {expected_tasks} task rows in project {project_no} database, but found {len(task_rows)}",
+            )
+        for task_i in range(expected_tasks):
+            actual_name = task_rows[task_i].Name
+            expected_prefix = (
+                parameter_spec.valid_task_name(project_no, task_i + 1) + "_"
+            )
+            if not actual_name.startswith(expected_prefix):
+                return OracleResult(
+                    False,
+                    f"Expected task name starting with {expected_prefix} in database, but found {actual_name}",
+                )
 
         return OracleResult(True)
 
