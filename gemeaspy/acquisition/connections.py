@@ -160,7 +160,7 @@ class SSHConnection():
 class _DebugLogger:
     def __init__(self):
         if "DEBUG" in os.environ:
-            log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log")
+            log_dir = os.path.normpath(f"{os.path.dirname(gemeaspy.__file__)}/../log/ssh")
             os.makedirs(log_dir, exist_ok=True)
             self.logfile = open(
                 os.path.join(
