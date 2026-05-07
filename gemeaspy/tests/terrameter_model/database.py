@@ -69,6 +69,12 @@ class ProjectDatabase:
 
         # Create SQLite connection to temporary database file
         try:
+            def date_adapter(object_date: datetime) -> str:
+                """sqlite3 gives warnings if default adapter is used"""
+                print('Adapter called')
+                adapter_format_str = object_date.isoformat()
+                return adapter_format_str
+            sqlite3.register_adapter(datetime, date_adapter)
             connection = sqlite3.connect(tmp_f.name)
         except sqlite3.OperationalError as e:
             raise RuntimeError(
