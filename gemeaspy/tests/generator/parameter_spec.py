@@ -249,6 +249,14 @@ def acts_type(parameter_values: ParamSpecEntry | list[ParameterValue]) -> ACTSPa
 ACQUISITION_PARAM_SPEC = AcquisitionParameterSpec()
 
 
+def _param_value_to_constraint_literal(param: ParamSpecEntry, value: object) -> str:
+    encoded_value = obj2acts(value)
+    if acts_type(param) == ACTSParameterType.ENUM:
+        return f'"{encoded_value}"'
+    else:
+        return encoded_value
+
+
 def _base_case_constraints(
     antecedent: str, param_prefix: str, param_suffixes: Iterable[str]
 ) -> Generator[Constraint]:
@@ -256,9 +264,9 @@ def _base_case_constraints(
     for suffix in param_suffixes:
         parameter_name = f"{param_prefix}_{suffix}"
         parameter = ACQUISITION_PARAM_SPEC[parameter_name]
-        parameter_base_case = obj2acts(parameter[0][0])
-        if acts_type(parameter) == ACTSParameterType.ENUM:
-            parameter_base_case = f'"{parameter_base_case}"'
+        parameter_base_case = _param_value_to_constraint_literal(
+            parameter, parameter[0][0]
+        )
         consequent = f" => {parameter_name} = {parameter_base_case}"
         yield Constraint(antecedent + consequent)
 
@@ -282,6 +290,35 @@ def _constraints_for_unused_task(
     )
 
 
+def _none_of_term(param_name: str, param: ParamSpecEntry, values: Iterable) -> str:
+    return " && ".join(
+        f"{param_name} != {_param_value_to_constraint_literal(param, value)}"
+        for value in values
+    )
+
+
+def _constraints_for_invalid_task_parameters(
+    taskfile_no: int, task_no: int
+) -> Generator[Constraint]:
+    prefix = f"taskfile{taskfile_no}_task{task_no}_"
+    state_param_name = f"emulator_project{taskfile_no}_init_state"
+    state_param = ACQUISITION_PARAM_SPEC[state_param_name]
+
+    for suffix in ("name", "spread", "protocol", "settings", "spacing"):
+        param_name = prefix + suffix
+        param = ACQUISITION_PARAM_SPEC[param_name]
+
+        # this task can't be created, so ban states implying it exists
+        antecedent = _none_of_term(param_name, param, param[0])
+        impossible_states = [TerrameterProjectState.ALL_DONE]
+        if task_no == 1:
+            impossible_states.extend(
+                [TerrameterProjectState.MEASURING, TerrameterProjectState.ONE_DONE]
+            )
+        consequent = _none_of_term(state_param_name, state_param, impossible_states)
+        yield Constraint(f"{antecedent} => {consequent}")
+
+
 # TODO: Roll constraints into parameter spec?
 ACQUISITION_CONSTRAINTS: list[Constraint] = [
     Constraint(f'num_args < 1 => arg_taskfile1 = "{obj2acts(VALID_TASKFILE1)}"'),
@@ -300,6 +337,10 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     Constraint(f'taskfile2_number_of_tasks = 1  => emulator_project2_init_state != "{obj2acts(TerrameterProjectState.ONE_DONE)}"'), # Because it is equivalent to all done
     Constraint(f'emulator_project2_init_state != "{obj2acts(TerrameterProjectState.UNINITIALISED)}" => emulator_project1_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
     Constraint(f'emulator_project1_init_state != "{obj2acts(TerrameterProjectState.UNINITIALISED)}" => emulator_project2_init_state = "{obj2acts(TerrameterProjectState.UNINITIALISED)}"'),
+    *_constraints_for_invalid_task_parameters(1, 1),
+    *_constraints_for_invalid_task_parameters(1, 2),
+    *_constraints_for_invalid_task_parameters(2, 1),
+    *_constraints_for_invalid_task_parameters(2, 2),
 ]
 
 def _validate_spec():
