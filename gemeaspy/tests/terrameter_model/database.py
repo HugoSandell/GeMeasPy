@@ -3,8 +3,9 @@
 import io
 import os
 import sqlite3
-import tempfile
-from typing import Any, TypeAlias
+from sqlite3 import Connection
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
+from typing import Any, Optional, TypeAlias
 
 from .project_types import *
 
@@ -45,34 +46,48 @@ class ProjectDatabase:
     def is_open(self):
         return self._file != None
 
-    def open(self, file: File):
-        """Open the provided stream as the active database.  
-        Closes previously opened database if any.  
-        Raises TypeError if db_file is not a binary I/O stream or path.
-        Raises OSError or RuntimeError if file or SQLite operations fail."""
-        if not isinstance(file, (io.BufferedIOBase, str, bytes, os.PathLike)):
-            raise TypeError(f"file should be binary stream or file path, not {type(file)}")
-        self._file = file
+    @staticmethod
+    def _connect_copy(file: File) -> tuple[_TemporaryFileWrapper, Connection]:
+        """Copy the SQLite database `file` to a temporary file and open a connection to it"""
 
         # Create a temporary file as a middle ground between the file and sqlite3.
-        # sqlite3 doesn't accept         
+        # sqlite3 doesn't accept `io.BufferedIOBase` objects.
         if isinstance(file, (str, bytes, os.PathLike)):
             with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
                 raw_data = dbf.read()
         else:
             if file.seekable():
                 file.seek(0)
-            raw_data = file.read()    
-            
-        tmp_fd, tmp_path = tempfile.mkstemp(prefix="gemeaspy",)    
-        with open(file=tmp_fd, mode="r+b") as f:
-            f.write(raw_data)
-        
+            raw_data = file.read()
+
+        tmp_f = NamedTemporaryFile(
+            mode="wb", prefix="gemeaspytest_", suffix=".db", delete_on_close=False
+        )
+        tmp_f.write(raw_data)
+        tmp_f.close()
+
+        # Create SQLite connection to temporary database file
         try:
-            connection = sqlite3.connect(tmp_path)
+            connection = sqlite3.connect(tmp_f.name)
         except sqlite3.OperationalError as e:
-            os.remove(tmp_path)
-            raise RuntimeError("Something went wrong when opening temporary database file.") from e
+            raise RuntimeError(
+                "Something went wrong when opening temporary database file."
+            ) from e
+
+        return (tmp_f, connection)
+
+    def open(self, file: File):
+        """Open the provided stream as the active database.
+        Closes previously opened database if any.
+        Raises TypeError if db_file is not a binary I/O stream or path.
+        Raises OSError or RuntimeError if file or SQLite operations fail."""
+        if not isinstance(file, (io.BufferedIOBase, str, bytes, os.PathLike)):
+            raise TypeError(
+                f"file should be binary stream or file path, not {type(file)}"
+            )
+        self._file = file
+
+        (tmp_f, connection) = self._connect_copy(file)
 
         # Get tables
         cursor = connection.execute(r"SELECT `name` FROM `sqlite_master` WHERE type='table';")
@@ -109,38 +124,20 @@ class ProjectDatabase:
                     break
         cursor.close()
         connection.close()
-        os.remove(tmp_path)
+        del tmp_f
 
     def write(self, file: File | None = None):
         """Write to file. Default (file=None) is the currently opened file. file must be an existing database file"""
         if file == None:
             if not self.is_open():
                 raise FileNotFoundError("Tried to write to currently open file, but no file is open")
+            assert self._file is not None
             file = self._file
 
         # Read existing data from file. This lets us initialise the database
-        if isinstance(file, (str, bytes, os.PathLike)):
-            with open(file, "rb", closefd=isinstance(file, Path)) as dbf:
-                existing_data = dbf.read()
-        elif isinstance(file, io.BufferedIOBase):
-            if file.seekable():
-                file.seek(0)
-            existing_data = file.read()
-        else:  
-            existing_data = b""
-        # Create a temporary file as a middle ground between the file and sqlite3.
-        # sqlite3 won't accept streams  
-        tmp_fd, tmp_path = tempfile.mkstemp(prefix="gemeaspy")
-        with open(file=tmp_fd, mode="wb", closefd=False) as tmpfs:
-            tmpfs.write(existing_data)
-        
-        # Create SQLite connection to temporary database file and write rows
-        try:
-            connection = sqlite3.connect(tmp_path)
-        except sqlite3.OperationalError as e:
-            os.remove(tmp_path)
-            raise RuntimeError("Something went wrong when opening temporary database file.") from e
-        
+        (tmp_f, connection) = self._connect_copy(file)
+
+        # Write rows
         with connection:
             for table_name in TERRAMETER_DATABASE_TABLE_NAMES:
                 attribute_name = "_" + table_name
@@ -166,10 +163,12 @@ class ProjectDatabase:
         connection.close()
         
         # Copy contents of temporary file to the provided file
-        with open(file=tmp_fd, mode="rb") as tmpfs:
+        with open(file=tmp_f.name, mode="rb") as tmpfs:
             tmpfs.seek(0)
             new_data = tmpfs.read()
-        
+
+        del tmp_f
+
         if isinstance(file, (str, bytes, os.PathLike)):
             with open(file, "wb", closefd=isinstance(file, Path)) as dbf:
                 dbf.truncate(0)
