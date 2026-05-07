@@ -181,10 +181,12 @@ class VirtualFileSystem(object):
             raise PermissionError(errno.EPERM, os.strerror(errno.EPERM), path.as_posix())
         if isinstance(node.parent, _Dir):
             removed_dir = Path("/removed")
-            if not self.exists(removed_dir):
-                self.make_dir(path)
             new_path = removed_dir.joinpath(Path(*path.parts[1:])) # Keep removed files for later inspection
-            self.move(path, new_path)
+            for prefix_len in range(2, len(new_path.parent.parts) + 1):
+                self.make_dir(
+                    Path(*new_path.parent.parts[0:prefix_len]), ignore_existing=True
+                )
+            self.move(path, new_path, recursive)
 
     def move(self, src: Path, dst: Path, recursive: bool = False):
         """Move a file from src to dst.
