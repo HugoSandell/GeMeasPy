@@ -51,7 +51,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 logfile.write("<COMPLETED!!>\n")
                 continue
             elif tc.is_task_started(connection, task["id"]):
-                task_interupted = task["id"]
+                task_interrupted = task["id"]
                 print("<Task in Progress...>")
                 logfile.write("<Task in Progress...>\n")
                 print("Resuming Task #{0:02d}".format(task["id"]))
@@ -62,19 +62,19 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 tc.task_completed(connection, task["id"], logfile)
                 break
             else:
-                task_interupted = task["id"] - 1
+                task_interrupted = task["id"] - 1
                 print("<Task not started>")
                 logfile.write("<Task not started>\n")
                 break
         else:
             # All task are completted!!
-            task_interupted = None
-        if task_interupted is not None:
+            task_interrupted = None
+        if task_interrupted is not None:
             # there ARE remaining tasks to measure
             # measure the remaining tasks in the task list
             print("Measuring the remaining tasks")
             logfile.write("Measuring the remaining tasks\n")
-            for task in task_list[task_interupted::]:
+            for task in task_list[task_interrupted::]:
                 tc.create_task(connection, task)
                 # tc.create_station(connection)
                 tc.measure(connection, task, logfile)
