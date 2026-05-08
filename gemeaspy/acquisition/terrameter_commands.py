@@ -227,7 +227,7 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
         path_full_local = localpath.joinpath(path)
         try:
             try: 
-                path_attr: SFTPAttributes = sftp.stat(path_full_remote.as_posix())
+                path_attr: SFTPAttributes = sftp.stat(str(path_full_remote))
             except FileNotFoundError:
                 print(f"{path_full_remote.as_posix()!r} doesn't exist remotely")
                 continue
@@ -238,12 +238,12 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
                 except OSError as e:
                     raise TransferError("Failed to create directory", path_full_local.parent.as_posix())
                 logger.debug(f"Transferring: {path_full_remote.as_posix()} -> {path_full_local.as_posix()}")
-                sftp.get(path_full_remote.as_posix(), path_full_local.as_posix())
-                if not os.path.exists(path_full_local.as_posix()):
-                    raise SystemError("Transfer Failed! Local file was not created.")
-                else: logger.debug(f"Successfully Transferred: {path_full_local.as_posix()}")
+                sftp.get(str(path_full_remote), str(path_full_local))
+                if not os.path.exists(str(path_full_local)):
+                    raise TransferError("Transfer Failed! Local file was not created.", str(path_full_local))
+                else: logger.debug(f"Successfully Transferred: {str(path_full_local)}")
                 continue
-            files_in_dir = sftp.listdir_attr(path_full_remote.as_posix())
+            files_in_dir = sftp.listdir_attr(str(path_full_remote))
             exploration_queue.extend(path.joinpath(f.filename) for f in files_in_dir)
         except FileNotFoundError as e:
             logger.error(f"Recursive file transfer failed with {type(e).__name__} for '{path_full_remote.as_posix()}': {e.strerror}")
