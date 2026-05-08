@@ -366,7 +366,7 @@ def main():
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
     DATA_DIR = os.path.join(ROOT_DIR, "test_data")
     CR_CONFIG_FILE = os.path.join(ROOT_DIR, "cosmic-ray.toml")
-    PYTEST_LOG_FILE = os.path.join(DATA_DIR, "pytest.log")
+    PYTEST_LOG_FILE = os.path.join(DATA_DIR, "mutation_pytest.log")
     PYTEST_TEST_DIR = os.path.join(ROOTPKG_DIR, "tests")
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray
     # executes the wrong python executable
