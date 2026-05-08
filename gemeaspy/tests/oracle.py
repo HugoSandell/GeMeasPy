@@ -101,6 +101,18 @@ def _expect_error_message(test_case: TestCase, expected_error: str | Sequence[st
         _logging.info(f"Expected {expected_error_formatted} in stdout, got:\n{stdout}")
         return OracleResult(False, f"Did not find error message containing {expected_error_formatted} in output for invalid parameter {param_name} = {param_value!r}.", context=1)
 
+
+def _expected_projects(test_data: AcquisitionTestCase) -> list[int]:
+    projects = []
+    if test_data.parameters.num_args > 0:
+        if test_data.parameters.taskfile1_number_of_tasks > 0:
+            projects.append(1)
+    if test_data.parameters.num_args > 1:
+        if test_data.parameters.taskfile2_number_of_tasks > 0:
+            projects.append(2)
+    return projects
+
+
 def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
     EXPECTED_PROJECT_FILES = [Path("project.db"), Path("project_name.txt")] # Check for these, relative to project directory
@@ -134,25 +146,12 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
         **collect_files(terrameter_project_path),
         **collect_files(removed_project_path),
     }
-    
-    expected_num_tasks = 0
-    expected_num_projects = 0
-    use_taskfile1 = test_data.parameters.num_args > 0
-    use_taskfile2 = test_data.parameters.num_args > 1
-    if use_taskfile1:
-        num_tasks = test_data.parameters.taskfile1_number_of_tasks
-        expected_num_tasks += num_tasks
-        if num_tasks > 0:
-            expected_num_projects += 1
-    if use_taskfile2:
-        num_tasks = test_data.parameters.taskfile2_number_of_tasks
-        expected_num_tasks += num_tasks
-        if num_tasks > 0:
-            expected_num_projects += 1
+
+    expected_num_projects = len(_expected_projects(test_data))
     expected_num_project_files = expected_num_projects * len(EXPECTED_PROJECT_FILES)
     if len(terrameter_files) != expected_num_project_files:
         return OracleResult(False, f"Expected {expected_num_project_files} project files to be transferred, but found {len(terrameter_files)}")
-    if len(terrameter_files) <= 0 and expected_num_tasks > 0:
+    if len(terrameter_files) <= 0 and expected_num_projects > 0:
         return OracleResult(False, "Could not find any project files on Terrameter emulator")
 
     for rel_path, expected_data in terrameter_files.items():
@@ -184,20 +183,24 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
                 f"to all projects, but {project_name!r} does " + 
                 "not have a suffix _1 or_2."
             )
-    
+
+    expected_projects = _expected_projects(test_data)
+
     # Verify number of projects
-    num_args = test_data.parameters.num_args
     num_projects = len(emulator._projects)
-    if len(emulator._projects) != num_projects:
-        return OracleResult(False, f"Expected {num_args} to be created on emulator, but found {num_projects}")
+    if num_projects != len(expected_projects):
+        return OracleResult(
+            False,
+            f"Expected {len(expected_projects)} projects to be created on emulator, but found {num_projects}",
+        )
     if num_projects == 0:
         return OracleResult(True)
 
     # Verify project states
     project_names = sorted(emulator._projects)
 
-    def _evaluate_project(project_no: int) -> OracleResult:
-        project_name = project_names[project_no - 1]
+    def _evaluate_project(project_idx: int, project_no: int) -> OracleResult:
+        project_name = project_names[project_idx]
         project = emulator._projects[project_name]
 
         # Verify number of tasks
@@ -238,8 +241,8 @@ def _evaluate_emulator_valid(test_data: AcquisitionTestCase,
 
         return OracleResult(True)
 
-    for project_no in range(1, num_projects + 1):
-        if not (result := _evaluate_project(project_no)):
+    for project_idx, project_no in enumerate(expected_projects):
+        if not (result := _evaluate_project(project_idx, project_no)):
             return result
 
     return OracleResult(True)

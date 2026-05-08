@@ -430,7 +430,7 @@ Column: 0"""
             TODO: Use a different trigger that doesn't rely on timing.
         Only one project at a time should have a non-UNINITIALISED state.
         """
-        if state == TerrameterProjectState.UNINITIALISED:
+        if state == TerrameterProjectState.UNINITIALISED or len(task_specs) == 0:
             return
 
         now = datetime.datetime.now()
