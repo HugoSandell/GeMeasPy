@@ -1,7 +1,7 @@
 [pytest]
 minversion = "9.0.2"
 log_level = "WARNING"
-log_file_level = "DEBUG"
+log_file_level = "WARNING"
 log_file_mode = "a"
 log_file = "log/pytest_log.txt"
 log_file_format = "%(asctime)s %(levelname)s %(message)s"
@@ -11,6 +11,5 @@ testpaths = [
 ]
 addopts = [
     "--capture=fd",
-    "--cache-clear",
-    "--maxfail=10",
+    "--maxfail=1",
 ]
