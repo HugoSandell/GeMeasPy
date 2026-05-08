@@ -67,7 +67,7 @@ def main(connection: SSHConnection, logfile: TextIO, task_file: str) -> None:
                 logfile.write("<Task not started>\n")
                 break
         else:
-            # All task are completted!!
+            # All task are completed!!
             task_interrupted = None
         if task_interrupted is not None:
             # there ARE remaining tasks to measure
