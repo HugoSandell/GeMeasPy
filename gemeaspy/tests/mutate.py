@@ -57,9 +57,19 @@ def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
 def _progress_reporter(db: WorkDB, end_event: Event):
     """Repeatedly report status until all work is done"""
     num_items = len(db.pending_work_items)
+    start = time.monotonic()
     while len(db.pending_work_items) > 0 and not end_event.is_set():
         time.sleep(1.0)
-        print("\r" + (" " * os.get_terminal_size().columns) + f"\rRunning work item {num_items - len(db.pending_work_items)}/{num_items}", end="")
+        done = num_items - len(db.pending_work_items)
+        elapsed = time.monotonic() - start
+        if done > 0:
+            eta_s = elapsed / done * len(db.pending_work_items)
+            eta_str = f"  ETA {int(eta_s // 60)}m{int(eta_s % 60):02d}s"
+        else:
+            eta_str = ""
+        width = os.get_terminal_size().columns
+        msg = f"\rRunning work item {done}/{num_items}{eta_str}"
+        print("\r" + (" " * width) + msg, end="")
     print()
 
 
@@ -289,6 +299,7 @@ def _generate_and_run_test_suite(
         f"--log-file=\"{pytest_log_file}\""
     )
 
+
     cr_session_file = os.path.join(data_dir, f"cosmicray_{generator}.sqlite")
     if os.path.isfile(cr_session_file):
         os.remove(cr_session_file)
@@ -329,7 +340,7 @@ def main():
     # executes the wrong python executable
     PYTHON_PATH = sys.executable
     DEFAULT_GENERATOR_ARGUMENTS: dict[str, list[str]] = {
-        "random": ["--size=5"],
+        "random": ["--size=59"],
         "acts":   ["--strength=1"],
     }
 
