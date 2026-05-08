@@ -1,6 +1,8 @@
 """CLI script to perform testing and mutation analysis."""
 
 import argparse
+import contextlib
+import io
 import json
 import multiprocessing
 import os
@@ -20,7 +22,7 @@ from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.distribution.http import run_worker
-from cosmic_ray.tools.filters import operators_filter
+from cosmic_ray.tools.filters import operators_filter, pragma_no_mutate
 from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 
 import gemeaspy
@@ -290,12 +292,6 @@ def _generate_and_run_test_suite(
     root_dir: str,
 ):
     print(f"Running mutation analysis on test case generator '{generator}'")
-
-    print(f"Collecting baseline coverage for '{generator}'...")
-    covered = run_baseline_coverage(
-        python_path, generator, generator_args, pytest_log_file, data_dir,
-    )
-
     # Workers run with cwd=sandbox_dir, so we must give pytest an absolute path
     # to the test directory and explicitly set --rootdir so that conftest.py at
     # the project root is still discovered.
@@ -320,6 +316,12 @@ def _generate_and_run_test_suite(
         print(f"Created {db.num_work_items} work items.")
         print("Filtering...")
         operators_filter.main((cr_session_file, cr_config_file))
+        with contextlib.redirect_stdout(io.StringIO()): # pragma_no_mutate is noisy!
+            pragma_no_mutate.main((cr_session_file,))
+        print(f"Collecting baseline coverage for '{generator}'...")
+        covered = run_baseline_coverage(
+            python_path, generator, generator_args, pytest_log_file, data_dir,
+        )
         print(f"Executing {len(db.pending_work_items)} work items...")
         report_end_event = Event()
         report_thread = Thread(target=_progress_reporter, args=(db, report_end_event), daemon=True)

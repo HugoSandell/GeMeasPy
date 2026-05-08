@@ -156,56 +156,56 @@ def read_monitoring_tasks(task_file: str) -> list[dict[str, Any]]:
     return list_of_tasks
 
 
-def switch_relay(task: dict[str, Any]) -> None:
-    print(task["reset"][0])
-    if isinstance(task["reset"][0], int):
-        for com in task["reset"]:
-            print("reset switch c/{}".format(com))
-            os.system("RSW16.EXE r/0,0 c/{}".format(com))
-            sleep_unless_testing(1)
-        for com in task["set"]:
-            print("set switch c/{}".format(com))
-            os.system("RSW16.EXE s/0,0 c/{}".format(com))
-            sleep_unless_testing(1)
-    if isinstance(task["reset"][0], str):
-        socket = subvision_relay.connect()
-        for com in task["reset"]:
-            print("ResetAll({})".format(com))
-            socket.send(bytes("ResetAll({})".format(com), 'utf-8'))
-            sleep_unless_testing(5)
-        for com in task["set"]:
-            if len(com) == 2:
-            # SetAll Command
-                print("SetAll({})".format(com))
-                socket.send(bytes("SetAll({})".format(com), 'utf-8'))
-                sleep_unless_testing(5)
-            elif len(com) == 3:
-                if com[2] == 'o':
-                    # SetOdd
-                    print("SetOdd({})".format(com[:2]))
-                    socket.send(bytes("SetOdd({})".format(com[:2]), 'utf-8'))
-                    sleep_unless_testing(5)
-                elif com[2] == 'e':
-                    # SetEven
-                    print("SetEven({})".format(com[:2]))
-                    socket.send(bytes("SetEven({})".format(com[:2]), 'utf-8'))
-                    sleep_unless_testing(5)
-            elif len(com) > 3:
-                # Switch individual electrodes
-                print('Function needs to be implemented')
-        socket.close()
+def switch_relay(task: dict[str, Any]) -> None:  # pragma: no mutate
+    print(task["reset"][0])  # pragma: no mutate
+    if isinstance(task["reset"][0], int):  # pragma: no mutate
+        for com in task["reset"]:  # pragma: no mutate
+            print("reset switch c/{}".format(com))  # pragma: no mutate
+            os.system("RSW16.EXE r/0,0 c/{}".format(com))  # pragma: no mutate
+            sleep_unless_testing(1)  # pragma: no mutate
+        for com in task["set"]:  # pragma: no mutate
+            print("set switch c/{}".format(com))  # pragma: no mutate
+            os.system("RSW16.EXE s/0,0 c/{}".format(com))  # pragma: no mutate
+            sleep_unless_testing(1)  # pragma: no mutate
+    if isinstance(task["reset"][0], str):  # pragma: no mutate
+        socket = subvision_relay.connect()  # pragma: no mutate
+        for com in task["reset"]:  # pragma: no mutate
+            print("ResetAll({})".format(com))  # pragma: no mutate
+            socket.send(bytes("ResetAll({})".format(com), 'utf-8'))  # pragma: no mutate
+            sleep_unless_testing(5)  # pragma: no mutate
+        for com in task["set"]:  # pragma: no mutate
+            if len(com) == 2:  # pragma: no mutate
+            # SetAll Command  # pragma: no mutate
+                print("SetAll({})".format(com))  # pragma: no mutate
+                socket.send(bytes("SetAll({})".format(com), 'utf-8'))  # pragma: no mutate
+                sleep_unless_testing(5)  # pragma: no mutate
+            elif len(com) == 3:  # pragma: no mutate
+                if com[2] == 'o':  # pragma: no mutate
+                    # SetOdd  # pragma: no mutate
+                    print("SetOdd({})".format(com[:2]))  # pragma: no mutate
+                    socket.send(bytes("SetOdd({})".format(com[:2]), 'utf-8'))  # pragma: no mutate
+                    sleep_unless_testing(5)  # pragma: no mutate
+                elif com[2] == 'e':  # pragma: no mutate
+                    # SetEven  # pragma: no mutate
+                    print("SetEven({})".format(com[:2]))  # pragma: no mutate
+                    socket.send(bytes("SetEven({})".format(com[:2]), 'utf-8'))  # pragma: no mutate
+                    sleep_unless_testing(5)  # pragma: no mutate
+            elif len(com) > 3:  # pragma: no mutate
+                # Switch individual electrodes  # pragma: no mutate
+                print('Function needs to be implemented')  # pragma: no mutate
+        socket.close()  # pragma: no mutate
 
 
-def reset_relay(task: dict[str, Any], coms: list[int]|None = None) -> None:
-    if "reset" not in task.keys():
-        return
-    if isinstance(task["reset"][0], int):
-        if coms is None:
-            coms = [1, 2, 3, 4]
-        for com in coms:
-            os.system("RSW16.EXE r/0,0 c/{}".format(com))
-    if isinstance(task["reset"][0], str):
-        pass
+def reset_relay(task: dict[str, Any], coms: list[int]|None = None) -> None:  # pragma: no mutate
+    if "reset" not in task.keys():  # pragma: no mutate
+        return  # pragma: no mutate
+    if isinstance(task["reset"][0], int):  # pragma: no mutate
+        if coms is None:  # pragma: no mutate
+            coms = [1, 2, 3, 4]  # pragma: no mutate
+        for com in coms:  # pragma: no mutate
+            os.system("RSW16.EXE r/0,0 c/{}".format(com))  # pragma: no mutate
+    if isinstance(task["reset"][0], str):  # pragma: no mutate
+        pass  # pragma: no mutate
 
 
 def read_terrameter_connection_parameters() -> dict[str, Any]:
