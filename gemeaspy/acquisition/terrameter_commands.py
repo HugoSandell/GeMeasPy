@@ -6,7 +6,7 @@ import sys
 import re
 
 from typing import Any, TextIO
-from paramiko import SFTPClient
+from paramiko import SFTPAttributes, SFTPClient
 
 from gemeaspy.acquisition.logger import logger
 from gemeaspy.acquisition import utilities
@@ -227,11 +227,10 @@ def transfer_recursive(sftp: SFTPClient, remotepath: str | PurePosixPath, localp
         path_full_local = localpath.joinpath(path)
         try:
             try: 
-                sftp.stat(path_full_remote.as_posix())
-            except:
+                path_attr: SFTPAttributes = sftp.stat(path_full_remote.as_posix())
+            except FileNotFoundError:
                 print(f"{path_full_remote.as_posix()!r} doesn't exist remotely")
-                
-            path_attr = sftp.stat(path_full_remote.as_posix())
+                continue
             path_is_dir = path_attr.st_mode != None and path_attr.st_mode & S_IFDIR != 0
             if not path_is_dir:
                 try:
