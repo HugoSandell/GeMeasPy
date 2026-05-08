@@ -120,6 +120,6 @@ def handle_exception(e: Exception) -> int:
         print(f"Error: Failure caused by response from Terrameter - {e.msg}")
         if verbose:
             traceback.print_exception(e, file=sys.stderr)
-        logger.error(f"ProjectTransferError - {e.msg}", exc_info=True)
+        logger.error(f"TerrameterResponseError - {e.msg}", exc_info=True)
         return 12
     return -1
