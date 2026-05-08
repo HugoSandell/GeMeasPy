@@ -115,7 +115,7 @@ def _expected_projects(test_data: AcquisitionTestCase) -> list[int]:
 
 def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: ConfigState, emulator: TerrameterLS) -> OracleResult:
     """Checks whether the project has been transferred correctly"""
-    EXPECTED_PROJECT_FILES = [Path("project.db"), Path("project_name.txt")] # Check for these, relative to project directory
+    EXPECTED_PROJECT_FILES = ["project.db", "project_name.txt"] # Check for these, relative to project directory
     local_project_path = Path(config.LOCAL_PATH_TO_DATA)
     terrameter_project_path = test_data.parameters.config_projects_folder
 
@@ -137,7 +137,6 @@ def _evaluate_transfer_valid(test_data: AcquisitionTestCase, config_state: Confi
                 relative_path = PurePosixPath(project_dir, project_file)
                 data = emulator.read_file(str(relative_path), remote_dir)
                 result[relative_path] = data
-                
         return result
 
     # Allow projects to be removed or kept. The /removed path is used to keep backups of removed files
