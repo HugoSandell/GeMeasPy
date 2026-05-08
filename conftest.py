@@ -111,6 +111,7 @@ def pytest_addoption(parser: pytest.Parser):
 def _mark_test_case(test_case: TestCase):
     if (
         not test_case.expect_failure
+        and test_case["taskfile1_number_of_tasks"] != 0
         and test_case["emulator_project1_init_state"]
         == TerrameterProjectState.UNINITIALISED
         and test_case["emulator_project2_init_state"]
