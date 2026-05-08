@@ -1,5 +1,6 @@
 """CLI script to perform testing and mutation analysis."""
 
+import argparse
 import json
 import multiprocessing
 import os
@@ -55,18 +56,26 @@ def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
 
 
 def _progress_reporter(db: WorkDB, end_event: Event):
-    """Repeatedly report status until all work is done"""
+    """Repeatedly report status until all work is done. 
+    Terminates early when end_event is set.
+    """
     num_items = len(db.pending_work_items)
     start = time.monotonic()
+    last_tick = start
+    last_done = 0
+    eta_s: float | None = None
     while len(db.pending_work_items) > 0 and not end_event.is_set():
         time.sleep(1.0)
+        now = time.monotonic()
+        tick_elapsed = now - last_tick
+        last_tick = now
         done = num_items - len(db.pending_work_items)
-        elapsed = time.monotonic() - start
-        if done > 0:
-            eta_s = elapsed / done * len(db.pending_work_items)
-            eta_str = f"  ETA {int(eta_s // 60)}m{int(eta_s % 60):02d}s"
-        else:
-            eta_str = ""
+        if done > last_done:
+            eta_s = (now - start) / done * len(db.pending_work_items)
+            last_done = done
+        elif eta_s is not None:
+            eta_s = max(0.0, eta_s - tick_elapsed)
+        eta_str = f"  ETA {int(eta_s // 60)}m{int(eta_s % 60):02d}s" if eta_s is not None else ""
         width = os.get_terminal_size().columns
         msg = f"\rRunning work item {done}/{num_items}{eta_str}"
         print("\r" + (" " * width) + msg, end="")
@@ -329,6 +338,27 @@ def _generate_and_run_test_suite(
     print(f"'{generator}' done in {execution_time:.1f} seconds.")
 
 
+def _acts_suite_size(python_path: str, pytest_test_dir: str, root_dir: str, strength: int) -> int:
+    result = subprocess.run(
+        [python_path, "-m", "pytest", pytest_test_dir,
+         f"--rootdir={root_dir}", "--generator=acts", f"--strength={strength}",
+         "--collect-only", "-q", "--no-header"],
+        capture_output=True, text=True,
+    )
+    return sum(1 for line in result.stdout.splitlines() if "::" in line)
+
+
+def _find_min_acts_strength_above(
+    python_path: str, pytest_test_dir: str, root_dir: str, min_size: int
+) -> tuple[int, int] | None:
+    """Return (strength, suite_size) for the smallest acts suite with size > min_size, or None."""
+    for strength in range(1, 7):
+        size = _acts_suite_size(python_path, pytest_test_dir, root_dir, strength)
+        if size > min_size:
+            return strength, size
+    return None
+
+
 def main():
     ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
@@ -339,17 +369,29 @@ def main():
     # Getting the absolute path fixes an issue where subprocess.run in cosmic-ray
     # executes the wrong python executable
     PYTHON_PATH = sys.executable
-    DEFAULT_GENERATOR_ARGUMENTS: dict[str, list[str]] = {
-        "random": ["--size=59"],
-        "acts":   ["--strength=1"],
-    }
+    parser = argparse.ArgumentParser(description="Run mutation analysis")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--size", type=int, metavar="N", help="Run random(--size=N) and the smallest acts suite above that size")
+    group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
+    args = parser.parse_args()
 
-    requested_generators = [g.strip().lower() for g in sys.argv[1:]]
-
-    invalid_generators = [g for g in requested_generators if g not in DEFAULT_GENERATOR_ARGUMENTS]
-    if len(invalid_generators) > 0:
-        print(f"Invalid generator{"s" if len(invalid_generators) > 1 else ""}: {", ".join(invalid_generators)}", file=sys.stderr)
-        sys.exit(1)
+    if args.size is not None:
+        generators_to_run = [("random", [f"--size={args.size}"])]
+        print(f"Searching for smallest acts suite above size {args.size}...")
+        found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
+        if found is not None:
+            strength, acts_size = found
+            print(f"  Found: strength={strength} yields {acts_size} test cases.")
+            generators_to_run.append(("acts", [f"--strength={strength}"]))
+        else:
+            print(f"  No acts suite found above size {args.size} (tried strength 1-6); skipping acts.")
+    else:
+        acts_size = _acts_suite_size(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.strength)
+        print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
+        generators_to_run = [
+            ("acts", [f"--strength={args.strength}"]),
+            ("random", [f"--size={acts_size}"]),
+        ]
 
     module_paths: list[Path] = [Path("gemeaspy/acquisition")]
     excluded_modules: list[str] = [
@@ -389,9 +431,9 @@ def main():
         print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
 
     try:
-        for generator in requested_generators:
+        for generator, generator_args in generators_to_run:
             _generate_and_run_test_suite(
-                generator, DEFAULT_GENERATOR_ARGUMENTS[generator], config,
+                generator, generator_args, config,
                 modules_to_mutate, equivalent_fingerprints,
                 PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
                 PYTEST_TEST_DIR, ROOT_DIR,
@@ -410,7 +452,7 @@ def main():
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
     print()
     print("Output files:")
-    for generator in requested_generators:
+    for generator, _ in generators_to_run:
         print(f"  [{generator}] session:       {os.path.join(DATA_DIR, f'cosmicray_{generator}.sqlite')}")
         print(f"  [{generator}] review report: {os.path.join(DATA_DIR, f'survived_review_{generator}.txt')}")
     print()
