@@ -439,7 +439,7 @@ def main():
     config["distributor"]["name"] = "http"
 
     worker_count = args.workers if args.workers is not None else multiprocessing.cpu_count()
-    worker_ports = [9190 + i for i in range(worker_count)]
+    worker_ports = [55430 + i for i in range(worker_count)]
     if not "distributor" in config:
         config["distributor"] = {}
     if not "http" in config["distributor"]:
