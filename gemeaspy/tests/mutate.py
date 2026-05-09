@@ -207,7 +207,8 @@ def write_review_report(
     """Write survived, non-equivalent mutants to a text file for manual review.
 
     Each entry shows the module, line, operator, and diff.
-    Mutants whose lines have no coverage data are tagged [UNCOVERED].
+    Mutants whose lines have no coverage data are tagged [UNCOVERED]; they are excluded
+    from the covered score but counted as unkilled in the full score.
     To mark a mutant as equivalent, add its fingerprint to equivalent_mutants.json.
     """
     report_path = os.path.join(data_dir, f"survived_review_{generator}.txt")
@@ -262,12 +263,15 @@ def print_summary(
             elif covered and not _is_covered(mutation, covered):
                 num_uncovered += 1
 
-    # Denominator excludes mutants that can't meaningfully be killed:
-    # incompetent (trivially caught), uncovered (never executed), equivalent.
-    # NO_TEST, ABNORMAL, and SKIPPED have no test_outcome and are already excluded
-    # by counting only killed + survived.
-    denominator = num_killed + num_survived - num_equivalent - num_uncovered
-    mutation_score = num_killed / denominator if denominator > 0 else 0.0
+    # covered_denom: excludes equivalent and uncovered - only mutants the suite could
+    # realistically kill. This is the primary score.
+    # full_denom: excludes only equivalent - treats uncovered mutants as survivable gaps,
+    # giving a lower bound that penalises missing coverage.
+    # Both exclude incompetent, NO_TEST, ABNORMAL, and SKIPPED (no meaningful test outcome).
+    covered_denom = num_killed + num_survived - num_equivalent - num_uncovered
+    full_denom    = num_killed + num_survived - num_equivalent
+    covered_score = num_killed / covered_denom if covered_denom > 0 else 0.0
+    full_score    = num_killed / full_denom    if full_denom    > 0 else 0.0
 
     def pct(n) -> str:
         return f"{n / total:.1%}" if total else "N/A"
@@ -281,7 +285,8 @@ def print_summary(
     print(f"Untested:     {num_no_test} ({pct(num_no_test)})")
     print(f"Abnormal:     {num_abnormal} ({pct(num_abnormal)})")
     print(f"Skipped:      {num_skipped} ({pct(num_skipped)})")
-    print(f"Mutation score: {mutation_score:.1%} ({num_killed}/{denominator})")
+    print(f"Mutation score (covered):  {covered_score:.1%} ({num_killed}/{covered_denom})")
+    print(f"Mutation score (full):     {full_score:.1%} ({num_killed}/{full_denom})")
 
 
 def _generate_and_run_test_suite(
@@ -483,8 +488,12 @@ def main():
     print("       <diff>")
     print()
     print("  2. Entries tagged [UNCOVERED] were never executed by the test suite.")
-    print("     They are excluded from the mutation score automatically.")
-    print("     Improving test coverage may expose them as real gaps.")
+    print("     Two mutation scores are reported:")
+    print("       covered: excludes uncovered mutants from the denominator (primary score).")
+    print("       full:    includes uncovered mutants as unkilled - a lower bound that")
+    print("                penalises missing coverage.")
+    print("     Improving test coverage will raise both scores.")
+
     print()
     print("  3. For mutants that are semantically equivalent to the original,")
     print(f"     add an entry to {equiv_file}:")
