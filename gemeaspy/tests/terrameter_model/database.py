@@ -197,13 +197,13 @@ class ProjectDatabase:
                 value = None
                 try:
                     value = int(row.Value)
-                except:
+                except Exception:
                     try:
                         value = float(row.Value)
-                    except:
+                    except Exception:
                         try:
                             value = [float(v) for v in row.Value.split()]
-                        except:
+                        except Exception:
                             return None # Bad value
                 return value
     

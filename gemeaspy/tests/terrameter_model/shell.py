@@ -593,11 +593,11 @@ class TerrameterShell(Cmd):
         separator_index = len(args) # >= len(args) implies none found
         try:
             separator_index = split_args.index("&&")
-        except:
+        except Exception:
             pass
         try:
             separator_index = min(separator_index, split_args.index("||"))
-        except:
+        except Exception:
             pass
         if separator_index < len(args):
             # one of || or && must immediately follow ] if they're present
