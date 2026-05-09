@@ -6,18 +6,6 @@ excluded-modules = ["gemeaspy/acquisition/error.py", "gemeaspy/acquisition/subvi
 [cosmic-ray.distributor]
 name = "http"
 
-[cosmic-ray.distributor.http]
-worker-urls = [
-    "http://localhost:9190", 
-    "http://localhost:9191", 
-    "http://localhost:9192", 
-    "http://localhost:9193", 
-    "http://localhost:9194", 
-    "http://localhost:9195", 
-    "http://localhost:9196", 
-    "http://localhost:9197",
-]
-
 [cosmic-ray.filters.operators-filter]
 exclude-operators = [
     #   Binary operator replacements

@@ -414,6 +414,10 @@ def main():
 
     worker_count = multiprocessing.cpu_count()
     worker_ports = [9190 + i for i in range(worker_count)]
+    if not "distributor" in config:
+        config["distributor"] = {}
+    if not "http" in config["distributor"]:
+        config["distributor"]["http"] = {}
     config["distributor"]["http"]["worker-urls"] = [f"http://localhost:{port}" for port in worker_ports]
 
     sandbox_dirs: list[Path] = []
