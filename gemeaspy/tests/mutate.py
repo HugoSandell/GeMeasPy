@@ -120,12 +120,13 @@ def run_baseline_coverage(
     pytest_args: list[str],
     log_file: str,
     data_dir: str,
-) -> dict[str, set[int]]:
-    """Run the test suite once to collect baseline line coverage.
+) -> tuple[dict[str, set[int]], float]:
+    """Run the test suite once to collect baseline line coverage and measure its duration.
 
     Configures coverage.py so that acquisition subprocesses spawned by the tests
     also contribute coverage data.
-    Returns {absolute_filepath: {covered_line_numbers}}, or {} on failure.
+    Returns ({absolute_filepath: {covered_line_numbers}}, elapsed_seconds).
+    The coverage dict is {} on failure; elapsed_seconds is always set.
     """
     data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}.coverage"))
     json_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}_coverage.json"))
@@ -142,6 +143,7 @@ def run_baseline_coverage(
         )
 
     env = {**os.environ, "COVERAGE_PROCESS_START": coveragerc}
+    t0 = time.monotonic()
     subprocess.run(
         [
             python_path,
@@ -157,6 +159,7 @@ def run_baseline_coverage(
         ],
         env=env,
     )
+    elapsed = time.monotonic() - t0
 
     # Merge parallel .coverage.* files created by the main process and subprocesses.
     subprocess.run(
@@ -172,7 +175,7 @@ def run_baseline_coverage(
 
     if not os.path.isfile(json_file):
         print("Warning: baseline coverage JSON not generated - skipping coverage-based flagging.")
-        return {}
+        return {}, elapsed
 
     with open(json_file, encoding="utf-8") as f:
         cov_data = json.load(f)
@@ -186,10 +189,10 @@ def run_baseline_coverage(
         print("Warning: no acquisition module lines in coverage data.")
         print("  The acquisition subprocess may not have reported coverage.")
         print("  Ensure 'coverage' is installed in the active venv and COVERAGE_PROCESS_START is readable.")
-        return {}
+        return {}, elapsed
 
     print(f"  Baseline coverage: {acq_count} acquisition module(s) tracked.")
-    return covered
+    return covered, elapsed
 
 
 def _is_covered(mutation: MutationSpec, covered: dict[str, set[int]]) -> bool:
@@ -246,6 +249,7 @@ def print_summary(
     total = len(results)
 
     num_killed      = sum(1 for _, r in results if r.test_outcome == TestOutcome.KILLED)
+    num_timeout     = sum(1 for _, r in results if r.test_outcome == TestOutcome.KILLED and r.output == "timeout")
     num_survived    = sum(1 for _, r in results if r.test_outcome == TestOutcome.SURVIVED)
     num_incompetent = sum(1 for _, r in results if r.test_outcome == TestOutcome.INCOMPETENT)
     num_no_test     = sum(1 for _, r in results if r.worker_outcome == WorkerOutcome.NO_TEST)
@@ -276,6 +280,8 @@ def print_summary(
     def pct(n) -> str:
         return f"{n / total:.1%}" if total else "N/A"
     print(f"Killed:       {num_killed} ({pct(num_killed)})")
+    if num_timeout:
+        print(f"  Timeout:    {num_timeout}")
     print(f"Survived:     {num_survived} ({pct(num_survived)})")
     if num_equivalent or num_uncovered:
         # Indented because they are a subset of the total number of surviving mutants
@@ -330,9 +336,11 @@ def _generate_and_run_test_suite(
         with contextlib.redirect_stdout(io.StringIO()): # pragma_no_mutate is noisy!
             pragma_no_mutate.main((cr_session_file,))
         print(f"Collecting baseline coverage for '{generator}'...")
-        covered = run_baseline_coverage(
+        covered, baseline_time = run_baseline_coverage(
             python_path, generator, generator_args, pytest_log_file, data_dir,
         )
+        config["timeout"] = baseline_time * 5
+        print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
         print(f"Executing {len(db.pending_work_items)} work items...")
         report_end_event = Event()
         report_thread = Thread(target=_progress_reporter, args=(db, report_end_event), daemon=True)
@@ -426,7 +434,7 @@ def main():
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["module-path"] = module_paths
-    config["timeout"] = 120.0
+
     config["excluded-modules"] = excluded_modules
     config["distributor"]["name"] = "http"
 
