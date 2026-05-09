@@ -77,7 +77,13 @@ def _progress_reporter(db: WorkDB, end_event: Event):
             last_done = done
         elif eta_s is not None:
             eta_s = max(0.0, eta_s - tick_elapsed)
-        eta_str = f"  ETA {int(eta_s // 60)}m{int(eta_s % 60):02d}s" if eta_s is not None else ""
+        if eta_s is None:
+            eta_str = ""
+        elif eta_s <= 0:
+            eta_str = "  Any time now..."
+        else:
+            eta_buffered = eta_s + 10
+            eta_str = f"  ETA {int(eta_buffered // 60)}m{int(eta_buffered % 60):02d}s"
         width = os.get_terminal_size().columns
         msg = f"\rRunning work item {done}/{num_items}{eta_str}"
         print("\r" + (" " * width) + msg, end="")
@@ -376,6 +382,7 @@ def main():
     group.add_argument("--size", type=int, metavar="N", help="Run random(--size=N) and the smallest acts suite above that size")
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
     parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
+    parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count)")
     args = parser.parse_args()
 
     if args.size is not None:
@@ -408,9 +415,9 @@ def main():
         "gemeaspy/acquisition/check_input.py",
         "gemeaspy/acquisition/subvision_relay.py",
     ]
-    modules_to_mutate = cr_modules.filter_paths(
+    modules_to_mutate = list(cr_modules.filter_paths(
         cr_modules.find_modules(module_paths), excluded_modules
-    )
+    ))
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["module-path"] = module_paths
@@ -418,7 +425,7 @@ def main():
     config["excluded-modules"] = excluded_modules
     config["distributor"]["name"] = "http"
 
-    worker_count = multiprocessing.cpu_count()
+    worker_count = args.workers if args.workers is not None else multiprocessing.cpu_count()
     worker_ports = [9190 + i for i in range(worker_count)]
     if not "distributor" in config:
         config["distributor"] = {}
