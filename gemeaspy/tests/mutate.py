@@ -375,18 +375,22 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--size", type=int, metavar="N", help="Run random(--size=N) and the smallest acts suite above that size")
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
+    parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
     args = parser.parse_args()
 
     if args.size is not None:
         generators_to_run = [("random", [f"--size={args.size}"])]
-        print(f"Searching for smallest acts suite above size {args.size}...")
-        found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
-        if found is not None:
-            strength, acts_size = found
-            print(f"  Found: strength={strength} yields {acts_size} test cases.")
-            generators_to_run.append(("acts", [f"--strength={strength}"]))
-        else:
-            print(f"  No acts suite found above size {args.size} (tried strength 1-6); skipping acts.")
+        if args.only != "random":
+            print(f"Searching for smallest acts suite above size {args.size}...")
+            found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
+            if found is not None:
+                strength, acts_size = found
+                print(f"  Found: strength={strength} yields {acts_size} test cases.")
+                generators_to_run.append(("acts", [f"--strength={strength}"]))
+            else:
+                print(f"  No acts suite found above size {args.size} (tried strength 1-6); skipping acts.")
+        if args.only == "acts":
+            generators_to_run = [g for g in generators_to_run if g[0] == "acts"]
     else:
         acts_size = _acts_suite_size(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.strength)
         print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
@@ -394,6 +398,8 @@ def main():
             ("acts", [f"--strength={args.strength}"]),
             ("random", [f"--size={acts_size}"]),
         ]
+        if args.only is not None:
+            generators_to_run = [g for g in generators_to_run if g[0] == args.only]
 
     module_paths: list[Path] = [Path("gemeaspy/acquisition")]
     excluded_modules: list[str] = [
