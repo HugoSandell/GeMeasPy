@@ -350,7 +350,7 @@ def _acts_suite_size(python_path: str, pytest_test_dir: str, root_dir: str, stre
     result = subprocess.run(
         [python_path, "-m", "pytest", pytest_test_dir,
          f"--rootdir={root_dir}", "--generator=acts", f"--strength={strength}",
-         "--collect-only", "-q", "--no-header"],
+         "--collect-only", "-q", "--no-header", "--maxfail=1"],
         capture_output=True, text=True,
     )
     return sum(1 for line in result.stdout.splitlines() if "::" in line)
