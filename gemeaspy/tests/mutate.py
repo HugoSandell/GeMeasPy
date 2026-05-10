@@ -1,6 +1,7 @@
 """CLI script to perform testing and mutation analysis."""
 
 import argparse
+import asyncio
 import contextlib
 import io
 import json
@@ -14,6 +15,8 @@ import time
 from collections.abc import Iterable
 from pathlib import Path
 from threading import Event, Thread
+
+import aiohttp
 
 import cosmic_ray.config
 import cosmic_ray.modules as cr_modules
@@ -380,6 +383,90 @@ def _find_min_acts_strength_above(
     return None
 
 
+def _run_baseline_check(
+    generator: str,
+    generator_args: list[str],
+    python_path: str,
+    pytest_test_dir: str,
+    root_dir: str,
+    pytest_log_file: str,
+    worker_urls: list[str],
+    worker_count: int,
+) -> None:
+    """Run 2 * worker_count unmodified test-suite passes through the worker pool.
+
+    Each pass applies no mutations, so every run should report SURVIVED.  Any
+    failure indicates that the worker infrastructure (sandboxing, port
+    assignment, concurrent I/O) is interfering with the tests.
+    """
+    num_runs = 2 * worker_count
+    test_command = (
+        f"\"{python_path}\" "
+        f"-m pytest \"{pytest_test_dir}\" "
+        f"--rootdir=\"{root_dir}\" "
+        f"{' '.join(generator_args)} "
+        f"--generator={generator} "
+        f"--log-file=\"{pytest_log_file}\""
+    )
+
+    print(f"Benchmarking '{generator}' suite...")
+    t0 = time.monotonic()
+    subprocess.run(
+        [python_path, "-m", "pytest", pytest_test_dir,
+         f"--rootdir={root_dir}", *generator_args, f"--generator={generator}",
+         f"--log-file={pytest_log_file}"],
+        capture_output=True,
+    )
+    benchmark_time = time.monotonic() - t0
+    timeout = benchmark_time * 3
+    print(f"  Benchmark: {benchmark_time:.1f}s; timeout: {timeout:.1f}s")
+    print(f"Running {num_runs} baseline passes ({worker_count} workers)...")
+
+    async def _post(session: aiohttp.ClientSession, url: str) -> dict:
+        params = {"mutations": [], "test_command": test_command, "timeout": timeout}
+        try:
+            async with session.post(url, json=params) as resp:
+                return await resp.json()
+        except Exception as exc:
+            return {"worker_outcome": "abnormal", "test_outcome": None,
+                    "output": str(exc), "diff": None}
+
+    async def _run_all() -> list[dict]:
+        results: list[dict] = []
+        available = list(worker_urls)
+        in_flight: dict[asyncio.Task, str] = {}
+        async with aiohttp.ClientSession() as session:
+            for _ in range(num_runs):
+                while not available:
+                    done, _ = await asyncio.wait(in_flight.keys(), return_when=asyncio.FIRST_COMPLETED)
+                    for task in done:
+                        available.append(in_flight.pop(task))
+                        results.append(task.result())
+                url = available.pop()
+                task = asyncio.create_task(_post(session, url))
+                in_flight[task] = url
+            while in_flight:
+                done, _ = await asyncio.wait(in_flight.keys(), return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    available.append(in_flight.pop(task))
+                    results.append(task.result())
+        return results
+
+    results = asyncio.run(_run_all())
+
+    passed = sum(1 for r in results if r.get("test_outcome") == "survived")
+    failed = num_runs - passed
+    if failed == 0:
+        print(f"  All {num_runs} baseline passes passed.")
+    else:
+        print(f"  {failed}/{num_runs} baseline passes FAILED:")
+        for i, r in enumerate(results):
+            if r.get("test_outcome") != "survived":
+                out = (r.get("output") or "").strip().splitlines()
+                tail = out[-1] if out else "(no output)"
+                print(f"    Run {i + 1}: {r.get('worker_outcome')} | {tail}")
+
+
 def main():
     ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
@@ -396,6 +483,7 @@ def main():
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
     parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
     parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count)")
+    parser.add_argument("--verify-baseline", dest="baseline", action="store_true", help="Run baseline verification instead of mutation analysis: sends 2 * workers unmodified test passes through the worker pool")
     args = parser.parse_args()
 
     if args.size is not None:
@@ -421,22 +509,25 @@ def main():
         if args.only is not None:
             generators_to_run = [g for g in generators_to_run if g[0] == args.only]
 
-    module_paths: list[Path] = [Path("gemeaspy/acquisition")]
-    excluded_modules: list[str] = [
-        "**/__init__.py",
-        "**/__main__.py",
-        "gemeaspy/acquisition/check_input.py",
-        "gemeaspy/acquisition/subvision_relay.py",
-    ]
-    modules_to_mutate = list(cr_modules.filter_paths(
-        cr_modules.find_modules(module_paths), excluded_modules
-    ))
-
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
-    config["module-path"] = module_paths
-
-    config["excluded-modules"] = excluded_modules
     config["distributor"]["name"] = "http"
+
+    modules_to_mutate: list[Path] = []
+    equivalent_fingerprints: set[tuple[str, str, int]] = set()
+
+    if not args.baseline:
+        module_paths: list[Path] = [Path("gemeaspy/acquisition")]
+        excluded_modules: list[str] = [
+            "**/__init__.py",
+            "**/__main__.py",
+            "gemeaspy/acquisition/check_input.py",
+            "gemeaspy/acquisition/subvision_relay.py",
+        ]
+        modules_to_mutate = list(cr_modules.filter_paths(
+            cr_modules.find_modules(module_paths), excluded_modules
+        ))
+        config["module-path"] = module_paths
+        config["excluded-modules"] = excluded_modules
 
     worker_count = args.workers if args.workers is not None else multiprocessing.cpu_count()
     worker_ports = [55430 + i for i in range(worker_count)]
@@ -458,18 +549,29 @@ def main():
 
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    equivalent_fingerprints = load_equivalent_fingerprints(DATA_DIR)
-    if equivalent_fingerprints:
-        print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
+    if not args.baseline:
+        equivalent_fingerprints = load_equivalent_fingerprints(DATA_DIR)
+        if equivalent_fingerprints:
+            print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
+
+
+    worker_urls = config["distributor"]["http"]["worker-urls"]
 
     try:
         for generator, generator_args in generators_to_run:
-            _generate_and_run_test_suite(
-                generator, generator_args, config,
-                modules_to_mutate, equivalent_fingerprints,
-                PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
-                PYTEST_TEST_DIR, ROOT_DIR,
-            )
+            if args.baseline:
+                _run_baseline_check(
+                    generator, generator_args,
+                    PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, PYTEST_LOG_FILE,
+                    worker_urls, worker_count,
+                )
+            else:
+                _generate_and_run_test_suite(
+                    generator, generator_args, config,
+                    modules_to_mutate, equivalent_fingerprints,
+                    PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
+                    PYTEST_TEST_DIR, ROOT_DIR,
+                )
     finally:
         for worker in workers:
             try:
@@ -480,6 +582,9 @@ def main():
                 pass
         for sandbox in sandbox_dirs:
             shutil.rmtree(str(sandbox), ignore_errors=True)
+
+    if args.baseline:
+        return
 
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
     print()
