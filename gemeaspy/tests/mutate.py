@@ -3,11 +3,13 @@
 import argparse
 import asyncio
 import contextlib
+import http.server
 import io
 import json
 import multiprocessing
 import os
 import shutil
+import socketserver
 import subprocess
 import sys
 import tempfile
@@ -24,7 +26,6 @@ from cosmic_ray import work_db
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
-from cosmic_ray.distribution.http import run_worker
 from cosmic_ray.tools.filters import operators_filter, pragma_no_mutate
 from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 
@@ -57,7 +58,55 @@ def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
       points there and Python imports gemeaspy from the sandbox.
     """
     os.chdir(sandbox_dir)
-    run_worker(port=port)
+    _run_worker_threaded(port)
+
+
+def _run_worker_threaded(port: int) -> None:
+    """Threading-based HTTP worker that avoids ProactorEventLoop problems on Windows.
+    ThreadingTCPServer runs each request in its own OS thread.
+    """
+    from cosmic_ray.mutating import mutate_and_test as _mutate_and_test
+    from cosmic_ray.work_item import MutationSpec as _MutationSpec
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, format, *args):  # noqa: A002
+            pass
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length))
+            mutations = [
+                _MutationSpec(
+                    module_path=Path(m["module_path"]),
+                    operator_name=m["operator"],
+                    occurrence=m["occurrence"],
+                    start_pos=(0, 0),
+                    end_pos=(0, 1),
+                )
+                for m in body["mutations"]
+            ]
+            result = _mutate_and_test(
+                mutations=mutations,
+                test_command=body["test_command"],
+                timeout=body["timeout"],
+            )
+            payload = json.dumps({
+                "worker_outcome": result.worker_outcome.value,
+                "output": result.output,
+                "test_outcome": result.test_outcome.value if result.test_outcome is not None else None,
+                "diff": result.diff,
+            }).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+    class _Server(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+
+    with _Server(("", port), _Handler) as server:
+        server.serve_forever()
 
 
 def _progress_reporter(db: WorkDB, end_event: Event):
@@ -330,7 +379,7 @@ def _generate_and_run_test_suite(
         os.remove(cr_session_file)
 
     start_time = time.monotonic()
-    with work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:
+    with work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:  # type: ignore[attr-defined]
         print("Initialising WorkDB")
         cr_init(modules_to_mutate, work_db=db, operator_cfgs={})
         print(f"Created {db.num_work_items} work items.")
@@ -441,13 +490,11 @@ def _run_baseline_check(
     worker_urls: list[str],
     worker_count: int,
 ) -> None:
-    """Run 2 * worker_count unmodified test-suite passes through the worker pool.
+    """Run 2 rounds of worker_count unmodified passes through the worker pool.
 
-    Each pass applies no mutations, so every run should report SURVIVED.  Any
-    failure indicates that the worker infrastructure (sandboxing, port
-    assignment, concurrent I/O) is interfering with the tests.
+    Round 1 is timed. The elapsed time*3 becomes the timeout for round 2. 
+    Any failure indicates a prolbem with the worker infrastructure (sandboxing, port assignment, concurrent I/O).
     """
-    num_runs = 2 * worker_count
     test_command = (
         f"\"{python_path}\" "
         f"-m pytest \"{pytest_test_dir}\" "
@@ -457,62 +504,63 @@ def _run_baseline_check(
         f"--log-file=\"{pytest_log_file}\""
     )
 
-    print(f"Benchmarking '{generator}' suite...")
-    t0 = time.monotonic()
-    subprocess.run(
-        [python_path, "-m", "pytest", pytest_test_dir,
-         f"--rootdir={root_dir}", *generator_args, f"--generator={generator}",
-         f"--log-file={pytest_log_file}"],
-        capture_output=True,
-    )
-    benchmark_time = time.monotonic() - t0
-    timeout = benchmark_time * 3
-    print(f"  Benchmark: {benchmark_time:.1f}s; timeout: {timeout:.1f}s")
-    print(f"Running {num_runs} baseline passes ({worker_count} workers)...")
-
-    async def _post(session: aiohttp.ClientSession, url: str) -> dict:
-        params = {"mutations": [], "test_command": test_command, "timeout": timeout}
-        try:
-            async with session.post(url, json=params) as resp:
-                return await resp.json()
-        except Exception as exc:
-            return {"worker_outcome": "abnormal", "test_outcome": None,
-                    "output": str(exc), "diff": None}
-
-    async def _run_all() -> list[dict]:
-        results: list[dict] = []
+    async def _run_round(timeout: float) -> list[dict]:
         available = list(worker_urls)
         in_flight: dict[asyncio.Task, str] = {}
-        async with aiohttp.ClientSession() as session:
-            for _ in range(num_runs):
-                while not available:
-                    done, _ = await asyncio.wait(in_flight.keys(), return_when=asyncio.FIRST_COMPLETED)
-                    for task in done:
-                        available.append(in_flight.pop(task))
-                        results.append(task.result())
-                url = available.pop()
-                task = asyncio.create_task(_post(session, url))
-                in_flight[task] = url
-            while in_flight:
+        results: list[dict] = []
+
+        async def _post(url: str) -> dict:
+            params = {"mutations": [], "test_command": test_command, "timeout": timeout}
+            try:
+                async with aiohttp.request("POST", url, json=params) as resp:
+                    return await resp.json()
+            except Exception as exc:
+                return {"worker_outcome": "abnormal", "test_outcome": None,
+                        "output": str(exc), "diff": None}
+
+        for _ in range(worker_count):
+            while not available:
                 done, _ = await asyncio.wait(in_flight.keys(), return_when=asyncio.FIRST_COMPLETED)
                 for task in done:
                     available.append(in_flight.pop(task))
                     results.append(task.result())
+            url = available.pop()
+            task = asyncio.create_task(_post(url))
+            in_flight[task] = url
+        while in_flight:
+            done, _ = await asyncio.wait(in_flight.keys(), return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                available.append(in_flight.pop(task))
+                results.append(task.result())
         return results
 
-    results = asyncio.run(_run_all())
+    print(f"Running baseline verification for '{generator}' ({worker_count} workers, 2 rounds)...")
 
-    passed = sum(1 for r in results if r.get("test_outcome") == "survived")
+    print(f"  Round 1/2: {worker_count} passes (calibrating timeout)...")
+    t0 = time.monotonic()
+    round_1_results = asyncio.run(_run_round(3600.0))
+    round_1_elapsed = time.monotonic() - t0
+    calibrated_timeout = round_1_elapsed * 3
+    print(f"  Round 1 elapsed: {round_1_elapsed:.1f}s. Timeout for round 2: {calibrated_timeout:.1f}s")
+
+    print(f"  Round 2/2: {worker_count} passes...")
+    all_results = round_1_results + asyncio.run(_run_round(calibrated_timeout))
+
+    num_runs = 2 * worker_count
+    passed = sum(1 for r in all_results if r.get("test_outcome") == "survived")
     failed = num_runs - passed
     if failed == 0:
         print(f"  All {num_runs} baseline passes passed.")
     else:
         print(f"  {failed}/{num_runs} baseline passes FAILED:")
-        for i, r in enumerate(results):
+        for i, r in enumerate(all_results):
             if r.get("test_outcome") != "survived":
                 out = (r.get("output") or "").strip().splitlines()
-                tail = out[-1] if out else "(no output)"
-                print(f"    Run {i + 1}: {r.get('worker_outcome')} | {tail}")
+                relevant = [ln for ln in out if "FAILED" in ln or "Error" in ln or "assert" in ln.lower()]
+                relevant = relevant or (out[-5:] if out else ["(no output)"])
+                print(f"    Run {i + 1}: {r.get('worker_outcome')}")
+                for ln in relevant:
+                    print(f"      {ln}")
 
 
 def main():
@@ -594,6 +642,7 @@ def main():
         if equivalent_fingerprints:
             print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
 
+    baseline_t0 = time.monotonic()
     try:
         for generator, generator_args in generators_to_run:
             if args.baseline:
@@ -613,6 +662,7 @@ def main():
         _stop_workers(workers, sandbox_dirs)
 
     if args.baseline:
+        print(f"Total verification time: {time.monotonic() - baseline_t0:.1f}s")
         return
 
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
