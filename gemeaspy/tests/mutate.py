@@ -383,6 +383,54 @@ def _find_min_acts_strength_above(
     return None
 
 
+def _physical_cpu_count() -> int:
+    """Tries to return physical core count."""
+    try:
+        import psutil # type: ignore[import]
+        n = psutil.cpu_count(logical=False)
+        if n:
+            return n
+    except ImportError:
+        pass
+    return multiprocessing.cpu_count() # Fallback
+
+
+def _start_workers(
+    worker_count: int,
+    root_dir: str,
+    port_base: int,
+) -> tuple[list[str], list[multiprocessing.Process], list[Path]]:
+    """Start worker_count HTTP worker processes and return (urls, processes, sandbox_dirs)."""
+    ports = [port_base + i for i in range(worker_count)]
+    sandbox_dirs: list[Path] = []
+    workers: list[multiprocessing.Process] = []
+    for i, port in enumerate(ports):
+        sandbox = Path(tempfile.mkdtemp(prefix=f"cr_worker_{port_base - 55430 + i}_"))
+        sandbox_dirs.append(sandbox)
+        _setup_worker_sandbox(sandbox, Path(root_dir))
+        worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox)))
+        workers.append(worker)
+        worker.start()
+    urls = [f"http://localhost:{port}" for port in ports]
+    return urls, workers, sandbox_dirs
+
+
+def _stop_workers(
+    workers: list[multiprocessing.Process],
+    sandbox_dirs: list[Path],
+) -> None:
+    """Terminate all worker processes and remove their sandbox directories."""
+    for worker in workers:
+        try:
+            worker.terminate()
+            worker.join(5)
+            worker.close()
+        except Exception:
+            pass
+    for sandbox in sandbox_dirs:
+        shutil.rmtree(str(sandbox), ignore_errors=True)
+
+
 def _run_baseline_check(
     generator: str,
     generator_args: list[str],
@@ -529,23 +577,15 @@ def main():
         config["module-path"] = module_paths
         config["excluded-modules"] = excluded_modules
 
-    worker_count = args.workers if args.workers is not None else multiprocessing.cpu_count()
-    worker_ports = [55430 + i for i in range(worker_count)]
+    worker_count = args.workers if args.workers is not None else _physical_cpu_count()
+    PORT_BASE = 55430
     if not "distributor" in config:
         config["distributor"] = {}
     if not "http" in config["distributor"]:
         config["distributor"]["http"] = {}
-    config["distributor"]["http"]["worker-urls"] = [f"http://localhost:{port}" for port in worker_ports]
 
-    sandbox_dirs: list[Path] = []
-    workers: list[multiprocessing.Process] = []
-    for i, port in enumerate(worker_ports):
-        sandbox = Path(tempfile.mkdtemp(prefix=f"cr_worker_{i}_"))
-        sandbox_dirs.append(sandbox)
-        _setup_worker_sandbox(sandbox, Path(ROOT_DIR))
-        worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox)))
-        workers.append(worker)
-        worker.start()
+    worker_urls, workers, sandbox_dirs = _start_workers(worker_count, ROOT_DIR, PORT_BASE)
+    config["distributor"]["http"]["worker-urls"] = worker_urls
 
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -553,9 +593,6 @@ def main():
         equivalent_fingerprints = load_equivalent_fingerprints(DATA_DIR)
         if equivalent_fingerprints:
             print(f"Loaded {len(equivalent_fingerprints)} equivalent mutant fingerprint(s).")
-
-
-    worker_urls = config["distributor"]["http"]["worker-urls"]
 
     try:
         for generator, generator_args in generators_to_run:
@@ -573,15 +610,7 @@ def main():
                     PYTEST_TEST_DIR, ROOT_DIR,
                 )
     finally:
-        for worker in workers:
-            try:
-                worker.terminate()
-                worker.join(5)
-                worker.close()
-            except Exception:
-                pass
-        for sandbox in sandbox_dirs:
-            shutil.rmtree(str(sandbox), ignore_errors=True)
+        _stop_workers(workers, sandbox_dirs)
 
     if args.baseline:
         return
