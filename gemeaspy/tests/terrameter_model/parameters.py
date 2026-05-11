@@ -12,7 +12,6 @@ class TerrameterMisbehavior(StrEnum):
     #DROPPED_MESSAGES = auto() # Lose every Nth incoming message
     #TIMEOUT = auto() # Timeout before first measurement
 
-# TODO: Implement in emulator and test setup
 # TODO: Implement in oracle
 class TerrameterProjectState(StrEnum):
     UNINITIALISED = auto() # No project created
