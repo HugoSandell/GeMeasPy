@@ -106,6 +106,7 @@ async def test_main(test_case: AcquisitionTestCase,
         )
     except asyncio.TimeoutError:
         proc.kill()
+        await proc.wait()
         pytest.fail(f"Acquisition timed out after {ACQUISITION_TIMEOUT}s")
 
     oracle_result: OracleResult = oracle.evaluate_test(
