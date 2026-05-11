@@ -692,6 +692,7 @@ def main():
     print('       { "module_path": "<module>", "operator_name": "<operator>",')
     print('         "occurrence": <occurrence>, "reason": "<why it is equivalent>" }')
     print("     The three fingerprint values are taken directly from the entry header.")
+    print('     This can be done in a more convenient way by running review_mutants.py')
     print("     Equivalent mutants are excluded from the mutation score on the next run.")
     print()
     print("  4. Re-run with the same generators to see the updated mutation score.")
