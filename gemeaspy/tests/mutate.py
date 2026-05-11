@@ -96,11 +96,14 @@ def _run_worker_threaded(port: int) -> None:
                 "test_outcome": result.test_outcome.value if result.test_outcome is not None else None,
                 "diff": result.diff,
             }).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            except OSError:
+                pass  # client disconnected before we could send the response
 
     class _Server(socketserver.ThreadingTCPServer):
         allow_reuse_address = True
@@ -350,6 +353,19 @@ def print_summary(
     print(f"Mutation score (full):     {full_score:.1%} ({num_killed}/{full_denom})")
 
 
+def _reset_abnormal_to_pending(cr_session_file: str) -> int:
+    """Delete ABNORMAL result rows from the WorkDB so cr_execute retries them as pending.
+    Returns the number of rows deleted.
+    """
+    import sqlite3 as _sqlite3
+    with _sqlite3.connect(cr_session_file) as conn:
+        cursor = conn.execute(
+            "DELETE FROM work_results WHERE worker_outcome = ?",
+            (WorkerOutcome.ABNORMAL,),
+        )
+        return cursor.rowcount
+
+
 def _generate_and_run_test_suite(
     generator: str,
     generator_args: list[str],
@@ -388,8 +404,10 @@ def _generate_and_run_test_suite(
     with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
         if session_exists:
             total = db.num_work_items
+            abnormal_reset = _reset_abnormal_to_pending(cr_session_file)
             pending = len(db.pending_work_items)
-            print(f"Resuming '{generator}' ({suite_size} cases): {total - pending}/{total} done, {pending} pending.")
+            reset_str = f", {abnormal_reset} ABNORMAL reset" if abnormal_reset else ""
+            print(f"Resuming '{generator}' ({suite_size} cases): {total - pending}/{total} done, {pending} pending{reset_str}.")
         else:
             print(f"Running mutation analysis on test case generator '{generator}' ({suite_size} cases)")
             print("Initialising WorkDB")
@@ -410,11 +428,23 @@ def _generate_and_run_test_suite(
         report_end_event = Event()
         report_thread = Thread(target=_progress_reporter, args=(db, report_end_event), daemon=True)
         report_thread.start()
-        cr_execute(work_db=db, config=config)
-        report_end_event.set()
-        report_thread.join(5)
-        if report_thread.is_alive():
-            _logging.warning("Progress reporter didn't exit after all work items were executed.")
+        try:
+            cr_execute(work_db=db, config=config)
+            for _attempt in range(1, 4):
+                abnormal_count = sum(
+                    1 for _, r in db.completed_work_items
+                    if r.worker_outcome == WorkerOutcome.ABNORMAL
+                )
+                if abnormal_count == 0:
+                    break
+                print(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...")
+                _reset_abnormal_to_pending(cr_session_file)
+                cr_execute(work_db=db, config=config)
+        finally:
+            report_end_event.set()
+            report_thread.join(5)
+            if report_thread.is_alive():
+                _logging.warning("Progress reporter didn't exit after all work items were executed.")
 
         print(f"Done with session: {cr_session_file}")
         print_summary(db, equivalent_fingerprints, covered)
@@ -484,8 +514,15 @@ def _stop_workers(
     """Terminate all worker processes and remove their sandbox directories."""
     for worker in workers:
         try:
-            worker.terminate()
-            worker.join(5)
+            if worker.is_alive():
+                worker.terminate()
+                worker.join(3)
+            if worker.is_alive():
+                worker.kill()
+                worker.join(2)
+        except Exception:
+            pass
+        try:
             worker.close()
         except Exception:
             pass
@@ -671,6 +708,9 @@ def main():
                     PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
                     PYTEST_TEST_DIR, ROOT_DIR,
                 )
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        return
     finally:
         _stop_workers(workers, sandbox_dirs)
 
