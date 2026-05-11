@@ -169,6 +169,7 @@ def load_equivalent_fingerprints(data_dir: str) -> set[tuple[str, str, int]]:
 def run_baseline_coverage(
     python_path: str,
     generator: str,
+    suite_size: int,
     pytest_args: list[str],
     log_file: str,
     data_dir: str,
@@ -180,9 +181,10 @@ def run_baseline_coverage(
     Returns ({absolute_filepath: {covered_line_numbers}}, elapsed_seconds).
     The coverage dict is {} on failure; elapsed_seconds is always set.
     """
-    data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}.coverage"))
-    json_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}_coverage.json"))
-    coveragerc = os.path.abspath(os.path.join(data_dir, f"baseline_{generator}.coveragerc"))
+    label = f"{generator}_{suite_size}"
+    data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{label}.coverage"))
+    json_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{label}_coverage.json"))
+    coveragerc = os.path.abspath(os.path.join(data_dir, f"baseline_{label}.coveragerc"))
 
     with open(coveragerc, "w", encoding="utf-8") as f:
         f.write(
@@ -255,6 +257,7 @@ def _is_covered(mutation: MutationSpec, covered: dict[str, set[int]]) -> bool:
 def write_review_report(
     db: WorkDB,
     generator: str,
+    suite_size: int,
     data_dir: str,
     equivalent_fingerprints: set[tuple[str, str, int]],
     covered: dict[str, set[int]],
@@ -266,7 +269,7 @@ def write_review_report(
     from the covered score but counted as unkilled in the full score.
     To mark a mutant as equivalent, add its fingerprint to equivalent_mutants.json.
     """
-    report_path = os.path.join(data_dir, f"survived_review_{generator}.txt")
+    report_path = os.path.join(data_dir, f"survived_review_{generator}_{suite_size}.txt")
     count = 0
     with open(report_path, "w", encoding="utf-8") as f:
         for work_item, result in db.completed_work_items:
@@ -350,6 +353,8 @@ def print_summary(
 def _generate_and_run_test_suite(
     generator: str,
     generator_args: list[str],
+    suite_size: int,
+    fresh: bool,
     config: ConfigDict,
     modules_to_mutate: Iterable[Path],
     equivalent_fingerprints: set[tuple[str, str, int]],
@@ -360,7 +365,6 @@ def _generate_and_run_test_suite(
     pytest_test_dir: str,
     root_dir: str,
 ):
-    print(f"Running mutation analysis on test case generator '{generator}'")
     # Workers run with cwd=sandbox_dir, so we must give pytest an absolute path
     # to the test directory and explicitly set --rootdir so that conftest.py at
     # the project root is still discovered.
@@ -373,23 +377,32 @@ def _generate_and_run_test_suite(
         f"--log-file=\"{pytest_log_file}\""
     )
 
-
-    cr_session_file = os.path.join(data_dir, f"cosmicray_{generator}.sqlite")
-    if os.path.isfile(cr_session_file):
+    cr_session_file = os.path.join(data_dir, f"cosmicray_{generator}_{suite_size}.sqlite")
+    session_exists = os.path.isfile(cr_session_file)
+    if session_exists and fresh:
         os.remove(cr_session_file)
+        session_exists = False
 
+    db_mode = WorkDB.Mode.open if session_exists else WorkDB.Mode.create
     start_time = time.monotonic()
-    with work_db.use_db(cr_session_file, mode=WorkDB.Mode.create) as db:  # type: ignore[attr-defined]
-        print("Initialising WorkDB")
-        cr_init(modules_to_mutate, work_db=db, operator_cfgs={})
-        print(f"Created {db.num_work_items} work items.")
-        print("Filtering...")
-        operators_filter.main((cr_session_file, cr_config_file))
-        with contextlib.redirect_stdout(io.StringIO()): # pragma_no_mutate is noisy!
-            pragma_no_mutate.main((cr_session_file,))
+    with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
+        if session_exists:
+            total = db.num_work_items
+            pending = len(db.pending_work_items)
+            print(f"Resuming '{generator}' ({suite_size} cases): {total - pending}/{total} done, {pending} pending.")
+        else:
+            print(f"Running mutation analysis on test case generator '{generator}' ({suite_size} cases)")
+            print("Initialising WorkDB")
+            cr_init(modules_to_mutate, work_db=db, operator_cfgs={})
+            print(f"Created {db.num_work_items} work items.")
+            print("Filtering...")
+            operators_filter.main((cr_session_file, cr_config_file))
+            with contextlib.redirect_stdout(io.StringIO()):  # pragma_no_mutate is noisy!
+                pragma_no_mutate.main((cr_session_file,))
+
         print(f"Collecting baseline coverage for '{generator}'...")
         covered, baseline_time = run_baseline_coverage(
-            python_path, generator, generator_args, pytest_log_file, data_dir,
+            python_path, generator, suite_size, generator_args, pytest_log_file, data_dir,
         )
         config["timeout"] = baseline_time * 5
         print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
@@ -405,7 +418,7 @@ def _generate_and_run_test_suite(
 
         print(f"Done with session: {cr_session_file}")
         print_summary(db, equivalent_fingerprints, covered)
-        write_review_report(db, generator, data_dir, equivalent_fingerprints, covered)
+        write_review_report(db, generator, suite_size, data_dir, equivalent_fingerprints, covered)
 
     execution_time = time.monotonic() - start_time
     print(f"'{generator}' done in {execution_time:.1f} seconds.")
@@ -579,18 +592,19 @@ def main():
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
     parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
     parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count)")
+    parser.add_argument("--fresh", action="store_true", help="Delete any existing session file and start a fresh mutation run (default: resume from existing session)")
     parser.add_argument("--verify-baseline", dest="baseline", action="store_true", help="Run baseline verification instead of mutation analysis: sends 2 * workers unmodified test passes through the worker pool")
     args = parser.parse_args()
 
     if args.size is not None:
-        generators_to_run = [("random", [f"--size={args.size}"])]
+        generators_to_run = [("random", [f"--size={args.size}"], args.size)]
         if args.only != "random":
             print(f"Searching for smallest acts suite above size {args.size}...")
             found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
             if found is not None:
                 strength, acts_size = found
                 print(f"  Found: strength={strength} yields {acts_size} test cases.")
-                generators_to_run.append(("acts", [f"--strength={strength}"]))
+                generators_to_run.append(("acts", [f"--strength={strength}"], acts_size))
             else:
                 print(f"  No acts suite found above size {args.size} (tried strength 1-6); skipping acts.")
         if args.only == "acts":
@@ -599,8 +613,8 @@ def main():
         acts_size = _acts_suite_size(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.strength)
         print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
         generators_to_run = [
-            ("acts", [f"--strength={args.strength}"]),
-            ("random", [f"--size={acts_size}"]),
+            ("acts", [f"--strength={args.strength}"], acts_size),
+            ("random", [f"--size={acts_size}"], acts_size),
         ]
         if args.only is not None:
             generators_to_run = [g for g in generators_to_run if g[0] == args.only]
@@ -627,11 +641,10 @@ def main():
 
     worker_count = args.workers if args.workers is not None else _physical_cpu_count()
     PORT_BASE = 55430
-    if not "distributor" in config:
+    if "distributor" not in config:
         config["distributor"] = {}
-    if not "http" in config["distributor"]:
+    if "http" not in config["distributor"]:
         config["distributor"]["http"] = {}
-
     worker_urls, workers, sandbox_dirs = _start_workers(worker_count, ROOT_DIR, PORT_BASE)
     config["distributor"]["http"]["worker-urls"] = worker_urls
 
@@ -644,7 +657,7 @@ def main():
 
     baseline_t0 = time.monotonic()
     try:
-        for generator, generator_args in generators_to_run:
+        for generator, generator_args, suite_size in generators_to_run:
             if args.baseline:
                 _run_baseline_check(
                     generator, generator_args,
@@ -653,7 +666,7 @@ def main():
                 )
             else:
                 _generate_and_run_test_suite(
-                    generator, generator_args, config,
+                    generator, generator_args, suite_size, args.fresh, config,
                     modules_to_mutate, equivalent_fingerprints,
                     PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
                     PYTEST_TEST_DIR, ROOT_DIR,
@@ -668,9 +681,10 @@ def main():
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
     print()
     print("Output files:")
-    for generator, _ in generators_to_run:
-        print(f"  [{generator}] session:       {os.path.join(DATA_DIR, f'cosmicray_{generator}.sqlite')}")
-        print(f"  [{generator}] review report: {os.path.join(DATA_DIR, f'survived_review_{generator}.txt')}")
+    for generator, _, suite_size in generators_to_run:
+        label = f"{generator}_{suite_size}"
+        print(f"  [{label}] session:       {os.path.join(DATA_DIR, f'cosmicray_{label}.sqlite')}")
+        print(f"  [{label}] review report: {os.path.join(DATA_DIR, f'survived_review_{label}.txt')}")
     print()
     print("Testing complete. Next steps for manual review:")
     print()
