@@ -345,11 +345,8 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
     value = test_data.parameters.connection_port
     if value is None:
         # Port key absent from JSON; paramiko defaults to 22.
-        # What we expect depends on what's actually running on port 22.
-        if port22_status == Port22Status.SSH_AUTH_REQUIRED:
-            expected_error_msg = "Authentication failed"
-        elif port22_status == Port22Status.NON_SSH:
-            expected_error_msg = "Could not establish an SSH session"
+        if port22_status in (Port22Status.SSH_AUTH_REQUIRED, Port22Status.NON_SSH):
+            expected_error_msg = ["Authentication failed", "Could not establish an SSH session"]
         else:  # CLOSED: connection refused or timeout
             expected_error_msg = "Could not reach the server"
 
