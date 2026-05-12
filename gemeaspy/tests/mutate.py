@@ -19,6 +19,7 @@ from pathlib import Path
 from threading import Event, Thread
 
 import aiohttp
+import psutil
 
 import cosmic_ray.config
 import cosmic_ray.modules as cr_modules
@@ -475,18 +476,6 @@ def _find_min_acts_strength_above(
     return None
 
 
-def _physical_cpu_count() -> int:
-    """Tries to return physical core count."""
-    try:
-        import psutil # type: ignore[import]
-        n = psutil.cpu_count(logical=False)
-        if n:
-            return n
-    except ImportError:
-        pass
-    return multiprocessing.cpu_count() # Fallback
-
-
 def _start_workers(
     worker_count: int,
     root_dir: str,
@@ -628,7 +617,7 @@ def main():
     group.add_argument("--size", type=int, metavar="N", help="Run random(--size=N) and the smallest acts suite above that size")
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
     parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
-    parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count)")
+    parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count - 1)")
     parser.add_argument("--fresh", action="store_true", help="Delete any existing session file and start a fresh mutation run (default: resume from existing session)")
     parser.add_argument("--verify-baseline", dest="baseline", action="store_true", help="Run baseline verification instead of mutation analysis: sends 2 * workers unmodified test passes through the worker pool")
     args = parser.parse_args()
@@ -676,7 +665,15 @@ def main():
         config["module-path"] = module_paths
         config["excluded-modules"] = excluded_modules
 
-    worker_count = args.workers if args.workers is not None else _physical_cpu_count()
+    worker_count: int | None = 1
+    if args.workers and isinstance(args.workers, int):
+        worker_count = args.workers
+    elif (num_cpus := psutil.cpu_count(logical=False)) != None:
+        worker_count = max(1, num_cpus - 1)
+    else:
+        print("Failed to determine number of worker threads; please set manually with --workers.")
+        return
+        
     PORT_BASE = 55430
     if "distributor" not in config:
         config["distributor"] = {}
