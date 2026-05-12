@@ -177,6 +177,7 @@ def run_baseline_coverage(
     pytest_args: list[str],
     log_file: str,
     data_dir: str,
+    fresh: bool = False,
 ) -> tuple[dict[str, set[int]], float]:
     """Run the test suite once to collect baseline line coverage and measure its duration.
 
@@ -184,11 +185,25 @@ def run_baseline_coverage(
     also contribute coverage data.
     Returns ({absolute_filepath: {covered_line_numbers}}, elapsed_seconds).
     The coverage dict is {} on failure; elapsed_seconds is always set.
+    If fresh=False and a previous coverage run exists, it is loaded instead of re-running.
     """
     label = f"{generator}_{suite_size}"
     data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{label}.coverage"))
     json_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{label}_coverage.json"))
+    time_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{label}_time.txt"))
     coveragerc = os.path.abspath(os.path.join(data_dir, f"baseline_{label}.coveragerc"))
+
+    if not fresh and os.path.isfile(json_file) and os.path.isfile(time_file):
+        with open(time_file, encoding="utf-8") as f:
+            elapsed = float(f.read().strip())
+        with open(json_file, encoding="utf-8") as f:
+            cov_data = json.load(f)
+        covered: dict[str, set[int]] = {}
+        for filepath, file_data in cov_data.get("files", {}).items():
+            covered[str(Path(filepath).resolve())] = set(file_data.get("executed_lines", []))
+        acq_count = sum(1 for p in covered if "acquisition" in p)
+        print(f"  Loaded cached baseline coverage for '{generator}' ({acq_count} acquisition module(s), {elapsed:.1f}s).")
+        return covered, elapsed
 
     with open(coveragerc, "w", encoding="utf-8") as f:
         f.write(
@@ -234,6 +249,9 @@ def run_baseline_coverage(
     if not os.path.isfile(json_file):
         print("Warning: baseline coverage JSON not generated - skipping coverage-based flagging.")
         return {}, elapsed
+
+    with open(time_file, "w", encoding="utf-8") as f:
+        f.write(str(elapsed))
 
     with open(json_file, encoding="utf-8") as f:
         cov_data = json.load(f)
@@ -354,17 +372,17 @@ def print_summary(
     print(f"Mutation score (full):     {full_score:.1%} ({num_killed}/{full_denom})")
 
 
-def _reset_abnormal_to_pending(cr_session_file: str) -> int:
-    """Delete ABNORMAL result rows from the WorkDB so cr_execute retries them as pending.
+def _reset_abnormal_to_pending(db: WorkDB) -> int:
+    """Delete ABNORMAL result rows so cr_execute retries them as pending.
     Returns the number of rows deleted.
     """
-    import sqlite3 as _sqlite3
-    with _sqlite3.connect(cr_session_file) as conn:
-        cursor = conn.execute(
-            "DELETE FROM work_results WHERE worker_outcome = ?",
-            (WorkerOutcome.ABNORMAL,),
+    from cosmic_ray.work_db import WorkResultStorage as _WorkResultStorage
+    with db._session_maker.begin() as session:  # type: ignore[attr-defined]
+        return (
+            session.query(_WorkResultStorage)
+            .where(_WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL)
+            .delete()
         )
-        return cursor.rowcount
 
 
 def _generate_and_run_test_suite(
@@ -405,7 +423,7 @@ def _generate_and_run_test_suite(
     with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
         if session_exists:
             total = db.num_work_items
-            abnormal_reset = _reset_abnormal_to_pending(cr_session_file)
+            abnormal_reset = _reset_abnormal_to_pending(db)
             pending = len(db.pending_work_items)
             reset_str = f", {abnormal_reset} ABNORMAL reset" if abnormal_reset else ""
             print(f"Resuming '{generator}' ({suite_size} cases): {total - pending}/{total} done, {pending} pending{reset_str}.")
@@ -421,7 +439,7 @@ def _generate_and_run_test_suite(
 
         print(f"Collecting baseline coverage for '{generator}'...")
         covered, baseline_time = run_baseline_coverage(
-            python_path, generator, suite_size, generator_args, pytest_log_file, data_dir,
+            python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh,
         )
         config["timeout"] = baseline_time * 5
         print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
@@ -439,7 +457,7 @@ def _generate_and_run_test_suite(
                 if abnormal_count == 0:
                     break
                 print(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...")
-                _reset_abnormal_to_pending(cr_session_file)
+                _reset_abnormal_to_pending(db)
                 cr_execute(work_db=db, config=config)
         finally:
             report_end_event.set()
