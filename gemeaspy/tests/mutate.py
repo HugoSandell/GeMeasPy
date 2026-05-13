@@ -151,23 +151,33 @@ def _mutation_fingerprint(mutation: MutationSpec) -> tuple[str, str, int]:
     return (str(mutation.module_path), mutation.operator_name, mutation.occurrence)
 
 
-def load_equivalent_fingerprints(data_dir: str) -> set[tuple[str, str, int]]:
-    """Load manually tagged equivalent mutants from equivalent_mutants.json.
+def _load_fingerprints_json(path: str) -> set[tuple[str, str, int]]:
+    """Load (module_path, operator_name, occurrence) fingerprints from a JSON classification file
 
     The JSON file is a list of objects with keys:
       module_path   - relative path as shown by cosmic-ray (e.g. "gemeaspy/acquisition/session.py")
       operator_name - cosmic-ray operator string (e.g. "core/ReplaceComparisonOperator")
       occurrence    - zero-based occurrence index of that operator in the module
       reason        - (optional) manual note, not used in calculation
-
-    Returns a set of (module_path, operator_name, occurrence) tuples.
     """
-    equiv_file = os.path.join(data_dir, "equivalent_mutants.json")
-    if not os.path.isfile(equiv_file):
+    if not os.path.isfile(path):
         return set()
-    with open(equiv_file, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         entries = json.load(f)
     return {(e["module_path"], e["operator_name"], e["occurrence"]) for e in entries}
+
+
+def load_equivalent_fingerprints(data_dir: str) -> set[tuple[str, str, int]]:
+    """Load manually tagged equivalent mutants from equivalent_mutants.json."""
+    return _load_fingerprints_json(os.path.join(data_dir, "equivalent_mutants.json"))
+
+
+def _fingerprints_from_review_report(path: str) -> set[tuple[str, str, int]]:
+    """Parse fingerprints from a survived_review_*.txt file."""
+    from gemeaspy.tests.review_mutants import parse_review_file
+    if not os.path.isfile(path):
+        return set()
+    return {e.fingerprint() for e in parse_review_file(Path(path))}
 
 
 def run_baseline_coverage(
@@ -437,33 +447,41 @@ def _generate_and_run_test_suite(
             with contextlib.redirect_stdout(io.StringIO()):  # pragma_no_mutate is noisy!
                 pragma_no_mutate.main((cr_session_file,))
 
-        print(f"Collecting baseline coverage for '{generator}'...")
-        covered, baseline_time = run_baseline_coverage(
-            python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh,
-        )
-        config["timeout"] = baseline_time * 5
-        print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
-        print(f"Executing {len(db.pending_work_items)} work items...")
-        report_end_event = Event()
-        report_thread = Thread(target=_progress_reporter, args=(db, report_end_event), daemon=True)
-        report_thread.start()
-        try:
-            cr_execute(work_db=db, config=config)
-            for _attempt in range(1, 4):
-                abnormal_count = sum(
-                    1 for _, r in db.completed_work_items
-                    if r.worker_outcome == WorkerOutcome.ABNORMAL
-                )
-                if abnormal_count == 0:
-                    break
-                print(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...")
-                _reset_abnormal_to_pending(db)
+        pending = len(db.pending_work_items)
+
+        if pending == 0:
+            print(f"  All work items already completed, skipping execution.")
+            covered, _ = run_baseline_coverage(
+                python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh=False,
+            )
+        else:
+            print(f"Collecting baseline coverage for '{generator}'...")
+            covered, baseline_time = run_baseline_coverage(
+                python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh,
+            )
+            config["timeout"] = baseline_time * 5
+            print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
+            print(f"Executing {pending} work items...")
+            report_end_event = Event()
+            report_thread = Thread(target=_progress_reporter, args=(db, report_end_event), daemon=True)
+            report_thread.start()
+            try:
                 cr_execute(work_db=db, config=config)
-        finally:
-            report_end_event.set()
-            report_thread.join(5)
-            if report_thread.is_alive():
-                _logging.warning("Progress reporter didn't exit after all work items were executed.")
+                for _attempt in range(1, 4):
+                    abnormal_count = sum(
+                        1 for _, r in db.completed_work_items
+                        if r.worker_outcome == WorkerOutcome.ABNORMAL
+                    )
+                    if abnormal_count == 0:
+                        break
+                    print(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...")
+                    _reset_abnormal_to_pending(db)
+                    cr_execute(work_db=db, config=config)
+            finally:
+                report_end_event.set()
+                report_thread.join(5)
+                if report_thread.is_alive():
+                    _logging.warning("Progress reporter didn't exit after all work items were executed.")
 
         print(f"Done with session: {cr_session_file}")
         print_summary(db, equivalent_fingerprints, covered)
@@ -740,6 +758,19 @@ def main():
         label = f"{generator}_{suite_size}"
         print(f"  [{label}] session:       {os.path.join(DATA_DIR, f'cosmicray_{label}.sqlite')}")
         print(f"  [{label}] review report: {os.path.join(DATA_DIR, f'survived_review_{label}.txt')}")
+
+    reviewed = (
+        _load_fingerprints_json(os.path.join(DATA_DIR, "equivalent_mutants.json"))
+        | _load_fingerprints_json(os.path.join(DATA_DIR, "not_equivalent_mutants.json"))
+    )
+    report_fingerprints: set[tuple[str, str, int]] = set()
+    for g, _, s in generators_to_run:
+        report_fingerprints |= _fingerprints_from_review_report(
+            os.path.join(DATA_DIR, f"survived_review_{g}_{s}.txt")
+        )
+    if report_fingerprints.issubset(reviewed):
+        return
+
     print()
     print("Testing complete. Next steps for manual review:")
     print()
