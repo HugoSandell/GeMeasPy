@@ -32,6 +32,11 @@ from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 
 import gemeaspy
 from gemeaspy.tests import _logging
+from gemeaspy.tests._sgr import (
+    CLR_CYAN_FG, CLR_GREEN_FG, CLR_RED_FG, CLR_YELLOW_FG,
+    STYLE_BOLD, STYLE_DIM,
+    with_sgr,
+)
 
 
 def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
@@ -302,7 +307,11 @@ def write_review_report(
     To mark a mutant as equivalent, add its fingerprint to equivalent_mutants.json.
     """
     report_path = os.path.join(data_dir, f"survived_review_{generator}_{suite_size}.txt")
-    count = 0
+    not_equivalent_fingerprints = _load_fingerprints_json(
+        os.path.join(data_dir, "not_equivalent_mutants.json")
+    )
+    total_count = 0
+    unreviewed_count = 0
     with open(report_path, "w", encoding="utf-8") as f:
         for work_item, result in db.completed_work_items:
             if result.test_outcome != TestOutcome.SURVIVED:
@@ -322,8 +331,13 @@ def write_review_report(
                     f.write(result.diff.strip())
                     f.write("\n")
                 f.write("\n")
-                count += 1
-    print(f"Review report: {report_path} ({count} survived mutant(s) to review)")
+                total_count += 1
+                if _mutation_fingerprint(mutation) not in not_equivalent_fingerprints:
+                    unreviewed_count += 1
+    reviewed_count = total_count - unreviewed_count
+    detail = f", {reviewed_count} already reviewed" if reviewed_count else ""
+    count_str = with_sgr(f"{unreviewed_count} survived mutant(s) to review", CLR_YELLOW_FG if unreviewed_count else CLR_GREEN_FG)
+    print(f"Review report: {with_sgr(report_path, STYLE_DIM)} ({count_str}{detail})")
 
 
 def print_summary(
@@ -366,20 +380,25 @@ def print_summary(
 
     def pct(n) -> str:
         return f"{n / total:.1%}" if total else "N/A"
-    print(f"Killed:       {num_killed} ({pct(num_killed)})")
+
+    def score_color(s: float) -> int:
+        return CLR_GREEN_FG if s >= 0.8 else CLR_YELLOW_FG if s >= 0.6 else CLR_RED_FG
+
+    print(f"Killed:       {with_sgr(f'{num_killed} ({pct(num_killed)})', CLR_GREEN_FG)}")
     if num_timeout:
-        print(f"  Timeout:    {num_timeout}")
-    print(f"Survived:     {num_survived} ({pct(num_survived)})")
+        print(f"  Timeout:    {with_sgr(str(num_timeout), CLR_YELLOW_FG)}")
+    survived_color = CLR_RED_FG if num_survived > 0 else CLR_GREEN_FG
+    print(f"Survived:     {with_sgr(f'{num_survived} ({pct(num_survived)})', survived_color)}")
     if num_equivalent or num_uncovered:
-        # Indented because they are a subset of the total number of surviving mutants
-        print(f"  Equivalent: {num_equivalent}")
-        print(f"  Uncovered:  {num_uncovered}")
-    print(f"Incompetent:  {num_incompetent} ({pct(num_incompetent)})")
-    print(f"Untested:     {num_no_test} ({pct(num_no_test)})")
-    print(f"Abnormal:     {num_abnormal} ({pct(num_abnormal)})")
-    print(f"Skipped:      {num_skipped} ({pct(num_skipped)})")
-    print(f"Mutation score (covered):  {covered_score:.1%} ({num_killed}/{covered_denom})")
-    print(f"Mutation score (full):     {full_score:.1%} ({num_killed}/{full_denom})")
+        print(f"  {with_sgr('Equivalent:', STYLE_DIM)} {num_equivalent}")
+        print(f"  {with_sgr('Uncovered: ', STYLE_DIM)} {num_uncovered}")
+    print(f"{with_sgr('Incompetent:  ', STYLE_DIM)}{num_incompetent} ({pct(num_incompetent)})")
+    print(f"{with_sgr('Untested:     ', STYLE_DIM)}{num_no_test} ({pct(num_no_test)})")
+    abnormal_val = f"{num_abnormal} ({pct(num_abnormal)})"
+    print(f"{with_sgr('Abnormal:     ', STYLE_DIM)}{with_sgr(abnormal_val, CLR_YELLOW_FG) if num_abnormal else abnormal_val}")
+    print(f"{with_sgr('Skipped:      ', STYLE_DIM)}{num_skipped} ({pct(num_skipped)})")
+    print(f"{with_sgr('Mutation score (covered):', STYLE_BOLD)}  {with_sgr(f'{covered_score:.1%}', score_color(covered_score))} ({num_killed}/{covered_denom})")
+    print(f"{with_sgr('Mutation score (full):   ', STYLE_BOLD)}  {with_sgr(f'{full_score:.1%}', score_color(full_score))} ({num_killed}/{full_denom})")
 
 
 def _reset_abnormal_to_pending(db: WorkDB) -> int:
@@ -435,10 +454,10 @@ def _generate_and_run_test_suite(
             total = db.num_work_items
             abnormal_reset = _reset_abnormal_to_pending(db)
             pending = len(db.pending_work_items)
-            reset_str = f", {abnormal_reset} ABNORMAL reset" if abnormal_reset else ""
-            print(f"Resuming '{generator}' ({suite_size} cases): {total - pending}/{total} done, {pending} pending{reset_str}.")
+            reset_str = f", {with_sgr(f'{abnormal_reset} ABNORMAL reset', CLR_YELLOW_FG)}" if abnormal_reset else ""
+            print(f"Resuming {with_sgr(generator, STYLE_BOLD)} ({suite_size} cases): {total - pending}/{total} done, {pending} pending{reset_str}.")
         else:
-            print(f"Running mutation analysis on test case generator '{generator}' ({suite_size} cases)")
+            print(f"Running mutation analysis on {with_sgr(generator, STYLE_BOLD)} ({suite_size} cases)")
             print("Initialising WorkDB")
             cr_init(modules_to_mutate, work_db=db, operator_cfgs={})
             print(f"Created {db.num_work_items} work items.")
@@ -474,7 +493,7 @@ def _generate_and_run_test_suite(
                     )
                     if abnormal_count == 0:
                         break
-                    print(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...")
+                    print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL item(s) (attempt {_attempt}/3)...", CLR_YELLOW_FG))
                     _reset_abnormal_to_pending(db)
                     cr_execute(work_db=db, config=config)
             finally:
@@ -483,7 +502,7 @@ def _generate_and_run_test_suite(
                 if report_thread.is_alive():
                     _logging.warning("Progress reporter didn't exit after all work items were executed.")
 
-        print(f"Done with session: {cr_session_file}")
+        print(with_sgr(f"Done with session: {cr_session_file}", STYLE_DIM))
         print_summary(db, equivalent_fingerprints, covered)
         write_review_report(db, generator, suite_size, data_dir, equivalent_fingerprints, covered)
 
@@ -625,9 +644,9 @@ def _run_baseline_check(
     passed = sum(1 for r in all_results if r.get("test_outcome") == "survived")
     failed = num_runs - passed
     if failed == 0:
-        print(f"  All {num_runs} baseline passes passed.")
+        print(with_sgr(f"  All {num_runs} baseline passes passed.", CLR_GREEN_FG))
     else:
-        print(f"  {failed}/{num_runs} baseline passes FAILED:")
+        print(with_sgr(f"  {failed}/{num_runs} baseline passes FAILED:", CLR_RED_FG))
         for i, r in enumerate(all_results):
             if r.get("test_outcome") != "survived":
                 out = (r.get("output") or "").strip().splitlines()
@@ -742,7 +761,7 @@ def main():
                     PYTEST_TEST_DIR, ROOT_DIR,
                 )
     except KeyboardInterrupt:
-        print("\nInterrupted.")
+        print(with_sgr("\nInterrupted.", CLR_YELLOW_FG))
         return
     finally:
         _stop_workers(workers, sandbox_dirs)
@@ -772,7 +791,7 @@ def main():
         return
 
     print()
-    print("Testing complete. Next steps for manual review:")
+    print(with_sgr("Testing complete. Next steps for manual review:", STYLE_BOLD))
     print()
     print("  1. Open each review report listed above.")
     print("     Each entry has the form:")
