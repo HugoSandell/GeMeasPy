@@ -1,5 +1,5 @@
 
-import functools
+import hashlib
 import itertools
 import random
 from typing import TypeAlias
@@ -35,11 +35,20 @@ def _max_invalid_cases(param_spec: ParameterSpec, constraints: list[Constraint])
                     total += 1
     return total
 
-RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
+RNGSeed: TypeAlias = None | int | str
 def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint], case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
-    
+    # Assign a fixed seed to None to make caching more meaningful
+    seed_repr: str = str(seed) # A string encoding the seed
+    if seed is None:
+        seed = random.getrandbits(64)
+    if isinstance(seed, int):
+        seed_repr = seed.to_bytes().hex()
+    elif isinstance(seed, str):
+        seed_repr = seed.encode().hex()
+
     # Check cache
-    cache = _cache.try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
+    cache_tag = f"n{case_count}_s{seed_repr}"
+    cache = _cache.try_load_cache(param_spec, constraints, cache_tag)
     if cache is not None:
         return cache
     
@@ -124,5 +133,5 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     
 
     _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
-    _cache.save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}")
+    _cache.save_cache(test_data, param_spec, constraints, cache_tag)
     return test_data
