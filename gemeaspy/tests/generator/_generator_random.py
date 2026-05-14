@@ -39,7 +39,7 @@ RNGSeed: TypeAlias = None | int | float | str | bytes | bytearray
 def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint], case_count: int, seed: RNGSeed = None, invalid_rate: float = -1.0) -> list[TestCase]:
     
     # Check cache
-    cache = _cache.try_load_cache(param_spec, None, f"n{case_count}_s{seed}")
+    cache = _cache.try_load_cache(param_spec, constraints, f"n{case_count}_s{seed}")
     if cache is not None:
         return cache
     
@@ -124,5 +124,5 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     
 
     _logging.debug(f"Random test case generation finished. {len(test_data)} cases generated.")
-    _cache.save_cache(test_data, param_spec, None, f"n{case_count}_s{seed}")
+    _cache.save_cache(test_data, param_spec, constraints, f"n{case_count}_s{seed}")
     return test_data
