@@ -420,9 +420,13 @@ class _GeneratorSpec:
     generator: str
     generator_args: list[str]
     suite_size: int
+    label_suffix: str | None = None
 
     def label(self) -> str:
-        return f"{self.generator}_{self.suite_size}"
+        result = f"{self.generator}_{self.suite_size}"
+        if self.label_suffix:
+            result += f"_{self.label_suffix}"
+        return result
 
 
 def _generate_and_run_test_suite(
@@ -699,13 +703,25 @@ def main():
     group.add_argument("--strength", type=int, metavar="N", help="Run acts(--strength=N) and random with the resulting suite size")
     parser.add_argument("--only", choices=["random", "acts"], metavar="{random,acts}", help="Restrict to a single generator")
     parser.add_argument("--workers", type=int, default=None, metavar="N", help="Number of HTTP workers (default: cpu count - 1)")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Seed for random test suite (default: 0)",
+    )
     parser.add_argument("--fresh", action="store_true", help="Delete any existing session file and start a fresh mutation run (default: resume from existing session)")
     parser.add_argument("--verify-baseline", dest="baseline", action="store_true", help="Run baseline verification instead of mutation analysis: sends 2 * workers unmodified test passes through the worker pool")
     args = parser.parse_args()
 
     if args.size is not None:
         generators_to_run = [
-            _GeneratorSpec("random", [f"--size={args.size}"], args.size)
+            _GeneratorSpec(
+                generator="random",
+                generator_args=[f"--size={args.size}", f"--seed={args.seed}"],
+                suite_size=args.size,
+                label_suffix=f"s{args.seed}",
+            )
         ]
         if args.only != "random":
             print(f"Searching for smallest acts suite above size {args.size}...")
@@ -725,7 +741,12 @@ def main():
         print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
         generators_to_run = [
             _GeneratorSpec("acts", [f"--strength={args.strength}"], acts_size),
-            _GeneratorSpec("random", [f"--size={acts_size}"], acts_size),
+            _GeneratorSpec(
+                generator="random",
+                generator_args=[f"--size={acts_size}", f"--seed={args.seed}"],
+                suite_size=acts_size,
+                label_suffix=f"s{args.seed}",
+            ),
         ]
         if args.only is not None:
             generators_to_run = [
