@@ -1,5 +1,3 @@
-
-import hashlib
 import itertools
 import random
 from typing import TypeAlias
@@ -42,7 +40,7 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     if seed is None:
         seed = random.getrandbits(64)
     if isinstance(seed, int):
-        seed_repr = seed.to_bytes().hex()
+        seed_repr = f"{seed:x}"
     elif isinstance(seed, str):
         seed_repr = seed.encode().hex()
 
