@@ -15,14 +15,14 @@ import sys
 import tempfile
 import time
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Event, Thread
 
 import aiohttp
-import psutil
-
 import cosmic_ray.config
 import cosmic_ray.modules as cr_modules
+import psutil
 from cosmic_ray import work_db
 from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
@@ -33,8 +33,11 @@ from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 import gemeaspy
 from gemeaspy.tests import _logging
 from gemeaspy.tests._sgr import (
-    CLR_CYAN_FG, CLR_GREEN_FG, CLR_RED_FG, CLR_YELLOW_FG,
-    STYLE_BOLD, STYLE_DIM,
+    CLR_GREEN_FG,
+    CLR_RED_FG,
+    CLR_YELLOW_FG,
+    STYLE_BOLD,
+    STYLE_DIM,
     with_sgr,
 )
 
@@ -188,7 +191,7 @@ def _fingerprints_from_review_report(path: str) -> set[tuple[str, str, int]]:
 def run_baseline_coverage(
     python_path: str,
     generator: str,
-    suite_size: int,
+    label: str,
     pytest_args: list[str],
     log_file: str,
     data_dir: str,
@@ -202,7 +205,6 @@ def run_baseline_coverage(
     The coverage dict is {} on failure; elapsed_seconds is always set.
     If fresh=False and a previous coverage run exists, it is loaded instead of re-running.
     """
-    label = f"{generator}_{suite_size}"
     data_file = os.path.abspath(os.path.join(data_dir, f"baseline_{label}.coverage"))
     json_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{label}_coverage.json"))
     time_file  = os.path.abspath(os.path.join(data_dir, f"baseline_{label}_time.txt"))
@@ -293,8 +295,7 @@ def _is_covered(mutation: MutationSpec, covered: dict[str, set[int]]) -> bool:
 
 def write_review_report(
     db: WorkDB,
-    generator: str,
-    suite_size: int,
+    label: str,
     data_dir: str,
     equivalent_fingerprints: set[tuple[str, str, int]],
     covered: dict[str, set[int]],
@@ -306,7 +307,7 @@ def write_review_report(
     from the covered score but counted as unkilled in the full score.
     To mark a mutant as equivalent, add its fingerprint to equivalent_mutants.json.
     """
-    report_path = os.path.join(data_dir, f"survived_review_{generator}_{suite_size}.txt")
+    report_path = os.path.join(data_dir, f"survived_review_{label}.txt")
     not_equivalent_fingerprints = _load_fingerprints_json(
         os.path.join(data_dir, "not_equivalent_mutants.json")
     )
@@ -414,10 +415,18 @@ def _reset_abnormal_to_pending(db: WorkDB) -> int:
         )
 
 
+@dataclass
+class _GeneratorSpec:
+    generator: str
+    generator_args: list[str]
+    suite_size: int
+
+    def label(self) -> str:
+        return f"{self.generator}_{self.suite_size}"
+
+
 def _generate_and_run_test_suite(
-    generator: str,
-    generator_args: list[str],
-    suite_size: int,
+    generator_spec: _GeneratorSpec,
     fresh: bool,
     config: ConfigDict,
     modules_to_mutate: Iterable[Path],
@@ -429,6 +438,11 @@ def _generate_and_run_test_suite(
     pytest_test_dir: str,
     root_dir: str,
 ):
+    generator = generator_spec.generator
+    generator_args = generator_spec.generator_args
+    suite_size = generator_spec.suite_size
+    label = generator_spec.label()
+
     # Workers run with cwd=sandbox_dir, so we must give pytest an absolute path
     # to the test directory and explicitly set --rootdir so that conftest.py at
     # the project root is still discovered.
@@ -441,7 +455,7 @@ def _generate_and_run_test_suite(
         f"--log-file=\"{pytest_log_file}\""
     )
 
-    cr_session_file = os.path.join(data_dir, f"cosmicray_{generator}_{suite_size}.sqlite")
+    cr_session_file = os.path.join(data_dir, f"cosmicray_{label}.sqlite")
     session_exists = os.path.isfile(cr_session_file)
     if session_exists and fresh:
         os.remove(cr_session_file)
@@ -471,12 +485,24 @@ def _generate_and_run_test_suite(
         if pending == 0:
             print(f"  All work items already completed, skipping execution.")
             covered, _ = run_baseline_coverage(
-                python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh=False,
+                python_path,
+                generator,
+                label,
+                generator_args,
+                pytest_log_file,
+                data_dir,
+                fresh=False,
             )
         else:
             print(f"Collecting baseline coverage for '{generator}'...")
             covered, baseline_time = run_baseline_coverage(
-                python_path, generator, suite_size, generator_args, pytest_log_file, data_dir, fresh,
+                python_path,
+                generator,
+                label,
+                generator_args,
+                pytest_log_file,
+                data_dir,
+                fresh,
             )
             config["timeout"] = baseline_time * 5
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
@@ -504,7 +530,7 @@ def _generate_and_run_test_suite(
 
         print(with_sgr(f"Done with session: {cr_session_file}", STYLE_DIM))
         print_summary(db, equivalent_fingerprints, covered)
-        write_review_report(db, generator, suite_size, data_dir, equivalent_fingerprints, covered)
+        write_review_report(db, label, data_dir, equivalent_fingerprints, covered)
 
     execution_time = time.monotonic() - start_time
     print(f"'{generator}' done in {execution_time:.1f} seconds.")
@@ -575,8 +601,7 @@ def _stop_workers(
 
 
 def _run_baseline_check(
-    generator: str,
-    generator_args: list[str],
+    generator_spec: _GeneratorSpec,
     python_path: str,
     pytest_test_dir: str,
     root_dir: str,
@@ -589,11 +614,12 @@ def _run_baseline_check(
     Round 1 is timed. The elapsed time*3 becomes the timeout for round 2. 
     Any failure indicates a prolbem with the worker infrastructure (sandboxing, port assignment, concurrent I/O).
     """
+    generator = generator_spec.generator
     test_command = (
         f"\"{python_path}\" "
         f"-m pytest \"{pytest_test_dir}\" "
         f"--rootdir=\"{root_dir}\" "
-        f"{' '.join(generator_args)} "
+        f"{' '.join(generator_spec.generator_args)} "
         f"--generator={generator} "
         f"--log-file=\"{pytest_log_file}\""
     )
@@ -678,27 +704,33 @@ def main():
     args = parser.parse_args()
 
     if args.size is not None:
-        generators_to_run = [("random", [f"--size={args.size}"], args.size)]
+        generators_to_run = [
+            _GeneratorSpec("random", [f"--size={args.size}"], args.size)
+        ]
         if args.only != "random":
             print(f"Searching for smallest acts suite above size {args.size}...")
             found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
             if found is not None:
                 strength, acts_size = found
                 print(f"  Found: strength={strength} yields {acts_size} test cases.")
-                generators_to_run.append(("acts", [f"--strength={strength}"], acts_size))
+                generators_to_run.append(
+                    _GeneratorSpec("acts", [f"--strength={strength}"], acts_size)
+                )
             else:
                 print(f"  No acts suite found above size {args.size} (tried strength 1-6); skipping acts.")
         if args.only == "acts":
-            generators_to_run = [g for g in generators_to_run if g[0] == "acts"]
+            generators_to_run = [g for g in generators_to_run if g.generator == "acts"]
     else:
         acts_size = _acts_suite_size(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.strength)
         print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
         generators_to_run = [
-            ("acts", [f"--strength={args.strength}"], acts_size),
-            ("random", [f"--size={acts_size}"], acts_size),
+            _GeneratorSpec("acts", [f"--strength={args.strength}"], acts_size),
+            _GeneratorSpec("random", [f"--size={acts_size}"], acts_size),
         ]
         if args.only is not None:
-            generators_to_run = [g for g in generators_to_run if g[0] == args.only]
+            generators_to_run = [
+                g for g in generators_to_run if g.generator == args.only
+            ]
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["distributor"]["name"] = "http"
@@ -746,19 +778,30 @@ def main():
 
     baseline_t0 = time.monotonic()
     try:
-        for generator, generator_args, suite_size in generators_to_run:
+        for generator in generators_to_run:
             if args.baseline:
                 _run_baseline_check(
-                    generator, generator_args,
-                    PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, PYTEST_LOG_FILE,
-                    worker_urls, worker_count,
+                    generator,
+                    PYTHON_PATH,
+                    PYTEST_TEST_DIR,
+                    ROOT_DIR,
+                    PYTEST_LOG_FILE,
+                    worker_urls,
+                    worker_count,
                 )
             else:
                 _generate_and_run_test_suite(
-                    generator, generator_args, suite_size, args.fresh, config,
-                    modules_to_mutate, equivalent_fingerprints,
-                    PYTHON_PATH, PYTEST_LOG_FILE, DATA_DIR, CR_CONFIG_FILE,
-                    PYTEST_TEST_DIR, ROOT_DIR,
+                    generator,
+                    args.fresh,
+                    config,
+                    modules_to_mutate,
+                    equivalent_fingerprints,
+                    PYTHON_PATH,
+                    PYTEST_LOG_FILE,
+                    DATA_DIR,
+                    CR_CONFIG_FILE,
+                    PYTEST_TEST_DIR,
+                    ROOT_DIR,
                 )
     except KeyboardInterrupt:
         print(with_sgr("\nInterrupted.", CLR_YELLOW_FG))
@@ -773,8 +816,8 @@ def main():
     equiv_file = os.path.join(DATA_DIR, "equivalent_mutants.json")
     print()
     print("Output files:")
-    for generator, _, suite_size in generators_to_run:
-        label = f"{generator}_{suite_size}"
+    for generator in generators_to_run:
+        label = generator.label()
         print(f"  [{label}] session:       {os.path.join(DATA_DIR, f'cosmicray_{label}.sqlite')}")
         print(f"  [{label}] review report: {os.path.join(DATA_DIR, f'survived_review_{label}.txt')}")
 
@@ -783,9 +826,9 @@ def main():
         | _load_fingerprints_json(os.path.join(DATA_DIR, "not_equivalent_mutants.json"))
     )
     report_fingerprints: set[tuple[str, str, int]] = set()
-    for g, _, s in generators_to_run:
+    for generator in generators_to_run:
         report_fingerprints |= _fingerprints_from_review_report(
-            os.path.join(DATA_DIR, f"survived_review_{g}_{s}.txt")
+            os.path.join(DATA_DIR, f"survived_review_{generator.label()}.txt")
         )
     if report_fingerprints.issubset(reviewed):
         return
