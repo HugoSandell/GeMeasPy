@@ -106,7 +106,7 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     
 @dataclass(init=False)
 class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
-    _parameters: AcquisitionTestCaseParameters = field(default_factory=AcquisitionTestCaseParameters)
+    _parameters: AcquisitionTestCaseParameters
     @property
     def parameters(self) -> AcquisitionTestCaseParameters:
         return self._parameters
