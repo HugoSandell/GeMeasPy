@@ -114,5 +114,8 @@ class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
     def parameters(self, value: AcquisitionTestCaseParameters) -> None:
         self._parameters = value
         
-    def __init__(self, parameters: AcquisitionTestCaseParameters = AcquisitionTestCaseParameters()):
-        self._parameters = parameters
+    def __init__(self, parameters: AcquisitionTestCaseParameters | None = None):
+        if parameters is not None:
+            self._parameters = parameters 
+        else:
+            self._parameters = AcquisitionTestCaseParameters()
