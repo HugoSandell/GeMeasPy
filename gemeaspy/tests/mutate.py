@@ -8,6 +8,7 @@ import io
 import json
 import multiprocessing
 import os
+import re
 import shutil
 import socketserver
 import subprocess
@@ -689,6 +690,86 @@ def _run_baseline_check(
                     print(f"      {ln}")
 
 
+_DIFF_LINE_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
+def _check_review_consistency(data_dir: str, root_dir: str, labels: list[str]) -> list[str]:
+    """Verify that diffs in existing review files still match the current source files.
+    Returns a list of discrepancy descriptions - empty means all consistent.
+    """
+    from gemeaspy.tests.review_mutants import parse_review_file
+
+    review_files = [
+        p for label in labels
+        if (p := Path(data_dir) / f"survived_review_{label}.txt").is_file()
+    ]
+    if not review_files:
+        return []
+
+    discrepancies: list[str] = []
+
+    for review_path in review_files:
+        for entry in parse_review_file(review_path):
+            if not entry.diff:
+                continue
+
+            diff_lines = entry.diff.splitlines()
+
+            source_rel: str | None = None
+            for line in diff_lines:
+                if line.startswith("--- a"):
+                    source_rel = line[5:]
+                    break
+            if source_rel is None:
+                continue
+
+            source_path = Path(root_dir) / source_rel.replace("\\", "/")
+            if not source_path.is_file():
+                discrepancies.append(
+                    f"{review_path.name}: source file not found: {source_rel}"
+                )
+                continue
+
+            source_lines = source_path.read_text(encoding="utf-8").splitlines()
+            label = (
+                f"{review_path.name}: "
+                f"{entry.module_path} {entry.operator_name} #{entry.occurrence}"
+            )
+
+            diff_start: int | None = None
+            src_offset = 0
+
+            for diff_line in diff_lines:
+                m = _DIFF_LINE_RE.match(diff_line)
+                if m:
+                    diff_start = int(m.group(1))
+                    src_offset = 0
+                    continue
+                if diff_start is None:
+                    continue
+                if diff_line.startswith("+") and not diff_line.startswith("+++"):
+                    continue  # added line, not in the original source
+                if diff_line.startswith("\\"):
+                    continue  # "\ No newline at end of file" marker
+                # only removed lines are compared against the current source
+                is_removed = diff_line.startswith("-") and not diff_line.startswith("---")
+                if is_removed:
+                    expected = diff_line[1:].rstrip()
+                    line_idx = diff_start + src_offset - 1  # convert to 0-based
+                    if line_idx >= len(source_lines):
+                        discrepancies.append(
+                            f"{label}: line {line_idx + 1} is beyond end of file "
+                            f"(file has {len(source_lines)} lines)"
+                        )
+                    elif source_lines[line_idx].rstrip() != expected:
+                        discrepancies.append(
+                            f"{label}: line {line_idx + 1}:\n"
+                            f"    expected: {expected!r}\n"
+                            f"    got:      {source_lines[line_idx]!r}"
+                        )
+                src_offset += 1
+
+    return discrepancies
+
+
 def main():
     ROOTPKG_DIR = os.path.split(gemeaspy.__file__)[0]
     ROOT_DIR = os.path.split(ROOTPKG_DIR)[0]
@@ -754,6 +835,14 @@ def main():
             generators_to_run = [
                 g for g in generators_to_run if g.generator == args.only
             ]
+
+    discrepancies = _check_review_consistency(DATA_DIR, ROOT_DIR, [g.label() for g in generators_to_run])
+    if discrepancies:
+        print(with_sgr("Warning: review file(s) are stale - source has changed since they were generated:", CLR_YELLOW_FG))
+        for msg in discrepancies:
+            print(f"  {msg}")
+        print("Delete or regenerate the stale review file(s) before continuing.")
+        sys.exit(1)
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["distributor"]["name"] = "http"
