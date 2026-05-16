@@ -407,10 +407,12 @@ def _reset_abnormal_to_pending(db: WorkDB) -> int:
     Returns the number of rows deleted.
     """
     from cosmic_ray.work_db import WorkResultStorage as _WorkResultStorage
+
     with db._session_maker.begin() as session:  # type: ignore[attr-defined]
         return (
             session.query(_WorkResultStorage)
-            .where(_WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL)
+            # The timeout reset is a temporary solution to timeouts caused by environmental factors
+            .where(_WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL or _WorkResultStorage.output == "timeout")
             .delete()
         )
 
