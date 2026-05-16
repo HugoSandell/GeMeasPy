@@ -104,7 +104,7 @@ class AcquisitionTestCaseParameters(TestCaseParameters):
     taskfile2_task2_settings: str = ""
     taskfile2_task2_spacing: str = ""
     
-@dataclass
+@dataclass(init=False)
 class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
     _parameters: AcquisitionTestCaseParameters = field(default_factory=AcquisitionTestCaseParameters)
     @property
@@ -113,4 +113,6 @@ class AcquisitionTestCase(TestCase[AcquisitionTestCaseParameters]):
     @parameters.setter
     def parameters(self, value: AcquisitionTestCaseParameters) -> None:
         self._parameters = value
-    
+        
+    def __init__(self, parameters: AcquisitionTestCaseParameters = AcquisitionTestCaseParameters()):
+        self._parameters = parameters

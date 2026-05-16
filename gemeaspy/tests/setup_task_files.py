@@ -89,55 +89,61 @@ def resolve_task_files(test: AcquisitionTestCase):
 
 
 if __name__ == "__main__":
-    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        num_args=2,
-        arg_taskfile1=parameter_spec.VALID_TASKFILE1,
-        arg_taskfile2=parameter_spec.VALID_TASKFILE2,
-        taskfile1_number_of_tasks=2,
-        taskfile1_relay_type="",
-        taskfile1_task1_name="Task1",
-        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
-        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
-        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
-        taskfile1_task1_spacing="1 1 1",
-        taskfile1_task2_name="#TaskX",
-        taskfile1_task2_spread=parameter_spec.INVALID_FILE,
-        taskfile1_task2_protocol=parameter_spec.INVALID_FILE,
-        taskfile1_task2_settings=parameter_spec.INVALID_FILE,
-        taskfile1_task2_spacing="1 1 1 1",
-    ))
+    test_case = AcquisitionTestCase(
+        AcquisitionTestCaseParameters(
+            num_args=2,
+            arg_taskfile1=parameter_spec.VALID_TASKFILE1,
+            arg_taskfile2=parameter_spec.VALID_TASKFILE2,
+            taskfile1_number_of_tasks=2,
+            taskfile1_relay_type="",
+            taskfile1_task1_name="Task1",
+            taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+            taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+            taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+            taskfile1_task1_spacing="1 1 1",
+            taskfile1_task2_name="#TaskX",
+            taskfile1_task2_spread=parameter_spec.INVALID_FILE,
+            taskfile1_task2_protocol=parameter_spec.INVALID_FILE,
+            taskfile1_task2_settings=parameter_spec.INVALID_FILE,
+            taskfile1_task2_spacing="1 1 1 1",
+        )
+    )
     print("- - - - - - - - - - - - - - -")
     resolved = resolve_task_files(test_case)
     print(resolved[0])
     print(resolved[1])
-    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        num_args=1,
-        arg_taskfile1=parameter_spec.VALID_TASKFILE1,
-        taskfile1_number_of_tasks=1,
-        taskfile1_number_of_tasks_error = IntFieldError.MINUS_1,
-        taskfile1_relay_type="",
-        taskfile1_task1_name="Task1",
-        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
-        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
-        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
-        taskfile1_task1_spacing="1 1 1",
-    ))
+    test_case = AcquisitionTestCase(
+        AcquisitionTestCaseParameters(
+            num_args=1,
+            arg_taskfile1=parameter_spec.VALID_TASKFILE1,
+            taskfile1_number_of_tasks=1,
+            taskfile1_number_of_tasks_error = IntFieldError.MINUS_1,
+            taskfile1_relay_type="",
+            taskfile1_task1_name="Task1",
+            taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+            taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+            taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+            taskfile1_task1_spacing="1 1 1",
+        )
+    )
     print("- - - - - - - - - - - - - - -")
     resolved = resolve_task_files(test_case)
     print(resolved[0])
     print(resolved[1])
-    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
-        num_args=1,
-        arg_taskfile1=parameter_spec.INVALID_FILE,
-        taskfile1_number_of_tasks=1,
-        taskfile1_number_of_tasks_error = IntFieldError.PLUS_1,
-        taskfile1_relay_type="",
-        taskfile1_task1_name="Task1",
-        taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
-        taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
-        taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
-        taskfile1_task1_spacing="1 1 1",
-    ))
+    test_case = AcquisitionTestCase(
+        AcquisitionTestCaseParameters(
+            num_args=1,
+            arg_taskfile1=parameter_spec.INVALID_FILE,
+            taskfile1_number_of_tasks=1,
+            taskfile1_number_of_tasks_error = IntFieldError.PLUS_1,
+            taskfile1_relay_type="",
+            taskfile1_task1_name="Task1",
+            taskfile1_task1_spread=parameter_spec.VALID_SPREADFILE,
+            taskfile1_task1_protocol=parameter_spec.VALID_PROTOCOLFILE,
+            taskfile1_task1_settings=parameter_spec.VALID_SETTINGSFILE,
+            taskfile1_task1_spacing="1 1 1",
+        )
+    )
     print("- - - - - - - - - - - - - - -")
     resolved = resolve_task_files(test_case)
     print(resolved[0])

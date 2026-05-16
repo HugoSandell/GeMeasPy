@@ -124,7 +124,8 @@ class ConfigState:
 
 
 if __name__ == "__main__":
-    test_case = AcquisitionTestCase(_parameters=AcquisitionTestCaseParameters(
+    test_case = AcquisitionTestCase()
+    test_case.parameters=AcquisitionTestCaseParameters(
         config_projects_folder=parameter_spec.VALID_PROJECTS_FOLDER,
         config_local_data_path=parameter_spec.VALID_LOCAL_DATA_PATH,
         config_connection_file=parameter_spec.VALID_CONNECTION_FILE,
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         connection_port=-1,
         connection_password=None,
     )
-    )
+    
     state = ConfigState(test_case, 2222)
     print(config.TERRAMETER_PROJECTS_FOLDER)
     print(config.LOCAL_PATH_TO_DATA)
