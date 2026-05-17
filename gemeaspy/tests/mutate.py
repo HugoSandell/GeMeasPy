@@ -412,8 +412,7 @@ def _reset_abnormal_to_pending(db: WorkDB) -> int:
     with db._session_maker.begin() as session:  # type: ignore[attr-defined]
         return (
             session.query(_WorkResultStorage)
-            # The timeout reset is a temporary solution to timeouts caused by environmental factors
-            .where(_WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL or _WorkResultStorage.output == "timeout")
+            .where(_WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL)
             .delete()
         )
 
