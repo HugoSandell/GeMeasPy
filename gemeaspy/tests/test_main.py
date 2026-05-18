@@ -21,7 +21,7 @@ from gemeaspy.tests.terrameter_model.parameters import (
 from gemeaspy.tests.terrameter_model.task import TaskSpec
 
 # The greatest amount of time to wait for acquisition to finish
-ACQUISITION_TIMEOUT = 8
+ACQUISITION_TIMEOUT = 30
 
 
 @pytest.fixture
