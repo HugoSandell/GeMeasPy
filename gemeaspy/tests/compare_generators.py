@@ -29,9 +29,15 @@ def _load_kills(session_file: Path) -> set[tuple[str, str, int]]:
     return killed
 
 
-def _suite_size(session_file: Path) -> str:
-    """Get the suite size suffix from a session filename"""
-    return session_file.stem.rsplit("_", 1)[-1]
+def _suite_size(session_file: Path) -> tuple[str, int]:
+    """Get the suite suffix and size from a session filename"""
+    end_split = session_file.stem.rsplit("_", 2)
+    final = end_split[-1]
+    if final.startswith("s"):
+        if len(end_split) != 3:
+            raise ValueError(f"Unsupported file name {session_file.stem}. Expected ending in _<size> or _<size>_s<seed>.")
+        return (f"{end_split[-2]}_{final}", int(end_split[-2]))
+    return final, int(final)
 
 
 def _write_json(path: Path, fingerprints: set[tuple[str, str, int]]) -> None:
@@ -66,16 +72,18 @@ def main() -> None:
         sys.exit(1)
 
     # Load kills per file, keyed by suite size
-    random_kills: dict[str, set[tuple[str, str, int]]] = {}
+    random_kills: dict[int, dict[str, set[tuple[str, str, int]]]] = {}
     for f in random_files:
-        size = _suite_size(f)
+        suffix, size = _suite_size(f)
         batch = _load_kills(f)
-        random_kills[size] = batch
+        if size not in random_kills:
+            random_kills[size] = {}
+        random_kills[size][suffix] = batch
         print(f"  {with_sgr(f.name, STYLE_DIM)}: {len(batch)} killed")
 
-    acts_kills: dict[str, set[tuple[str, str, int]]] = {}
+    acts_kills: dict[int, set[tuple[str, str, int]]] = {}
     for f in acts_files:
-        size = _suite_size(f)
+        suffix, size = _suite_size(f)
         batch = _load_kills(f)
         acts_kills[size] = batch
         print(f"  {with_sgr(f.name, STYLE_DIM)}: {len(batch)} killed")
@@ -86,32 +94,33 @@ def main() -> None:
     unpaired_acts   = [s for s in all_sizes if s in acts_kills   and s not in random_kills]
 
     if unpaired_random:
-        print(f"Warning: no matching ACTS session for random size(s): {', '.join(unpaired_random)}", file=sys.stderr)
+        print(f"Warning: no matching ACTS session for random size(s): {', '.join(', '.join(random_kills[k].keys()) for k in unpaired_random)}", file=sys.stderr)
     if unpaired_acts:
-        print(f"Warning: no matching random session for ACTS size(s): {', '.join(unpaired_acts)}", file=sys.stderr)
+        print(f"Warning: no matching random session for ACTS size(s): {', '.join(str(s) for s in unpaired_acts)}", file=sys.stderr)
 
     print()
     for size in paired_sizes:
-        r_killed = random_kills[size]
-        a_killed = acts_kills[size]
-        only_random = r_killed - a_killed
-        only_acts   = a_killed - r_killed
-        both        = r_killed & a_killed
+        for r_suffix in random_kills[size]:
+            r_killed = random_kills[size][r_suffix]
+            a_killed = acts_kills[size]
+            only_random = r_killed - a_killed
+            only_acts   = a_killed - r_killed
+            both        = r_killed & a_killed
 
-        print(with_sgr(f"Size {size}:", STYLE_BOLD))
-        print(f"  random killed:     {len(r_killed)}")
-        print(f"  acts killed:       {len(a_killed)}")
-        print(f"  killed by both:    {with_sgr(str(len(both)), CLR_GREEN_FG)}")
-        print(f"  only by random:    {with_sgr(str(len(only_random)), CLR_YELLOW_FG if only_random else CLR_GREEN_FG)}")
-        print(f"  only by acts:      {with_sgr(str(len(only_acts)),   CLR_YELLOW_FG if only_acts   else CLR_GREEN_FG)}")
+            print(with_sgr(f"Size {r_suffix}:", STYLE_BOLD))
+            print(f"  random killed:     {len(r_killed)}")
+            print(f"  acts killed:       {len(a_killed)}")
+            print(f"  killed by both:    {with_sgr(str(len(both)), CLR_GREEN_FG)}")
+            print(f"  only by random:    {with_sgr(str(len(only_random)), CLR_YELLOW_FG if only_random else CLR_GREEN_FG)}")
+            print(f"  only by acts:      {with_sgr(str(len(only_acts)),   CLR_YELLOW_FG if only_acts   else CLR_GREEN_FG)}")
 
-        only_random_file = data_dir / f"only_random_{size}_killed.json"
-        only_acts_file   = data_dir / f"only_acts_{size}_killed.json"
-        _write_json(only_random_file, only_random)
-        _write_json(only_acts_file,   only_acts)
-        print(f"  → {with_sgr(str(only_random_file), STYLE_DIM)}")
-        print(f"  → {with_sgr(str(only_acts_file),   STYLE_DIM)}")
-        print()
+            only_random_file = data_dir / f"only_random_{r_suffix}_killed.json"
+            only_acts_file   = data_dir / f"only_acts_{r_suffix}_killed.json"
+            _write_json(only_random_file, only_random)
+            _write_json(only_acts_file,   only_acts)
+            print(f"  → {with_sgr(str(only_random_file), STYLE_DIM)}")
+            print(f"  → {with_sgr(str(only_acts_file),   STYLE_DIM)}")
+            print()
 
 if __name__ == "__main__":
     main()
