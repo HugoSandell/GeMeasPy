@@ -523,14 +523,15 @@ def _generate_and_run_test_suite(
             report_thread.start()
             try:
                 cr_execute(work_db=db, config=config)
-                for _attempt in range(1, 3):
+                _max_retries = 2
+                for _attempt in range(1, _max_retries + 1):
                     abnormal_count = sum(
                         1 for _, r in db.completed_work_items
                         if r.worker_outcome == WorkerOutcome.ABNORMAL or r.output == "timeout"
                     )
                     if abnormal_count == 0:
                         break
-                    print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL/TIMEOUT item(s) (attempt {_attempt}/3)...", CLR_YELLOW_FG))
+                    print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL/TIMEOUT item(s) (attempt {_attempt}/{_max_retries})...", CLR_YELLOW_FG))
                     _reset_abnormal_and_timeout_to_pending(db)
                     cr_execute(work_db=db, config=config)
             finally:
