@@ -404,7 +404,7 @@ def print_summary(
 
 
 def _reset_abnormal_and_timeout_to_pending(db: WorkDB) -> int:
-    """Delete ABNORMAL and timed-out result rows so cr_execute retries them as pending.
+    """Delete ABNORMAL, timed-out, and NO_TEST result rows so cr_execute retries them as pending.
     Returns the number of rows deleted.
     """
     from sqlalchemy import or_
@@ -415,6 +415,7 @@ def _reset_abnormal_and_timeout_to_pending(db: WorkDB) -> int:
             session.query(_WorkResultStorage)
             .where(or_(
                 _WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL,
+                _WorkResultStorage.worker_outcome == WorkerOutcome.NO_TEST,
                 _WorkResultStorage.output == "timeout",
             ))
             .delete()
