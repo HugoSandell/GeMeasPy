@@ -515,7 +515,7 @@ def _generate_and_run_test_suite(
                 data_dir,
                 fresh,
             )
-            config["timeout"] = baseline_time * 5
+            config["timeout"] = baseline_time * 2.5
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
             print(f"Executing {pending} work items...")
             report_end_event = Event()
@@ -523,7 +523,7 @@ def _generate_and_run_test_suite(
             report_thread.start()
             try:
                 cr_execute(work_db=db, config=config)
-                for _attempt in range(1, 4):
+                for _attempt in range(1, 3):
                     abnormal_count = sum(
                         1 for _, r in db.completed_work_items
                         if r.worker_outcome == WorkerOutcome.ABNORMAL or r.output == "timeout"
