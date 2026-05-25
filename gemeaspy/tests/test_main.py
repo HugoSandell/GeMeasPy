@@ -21,7 +21,7 @@ from gemeaspy.tests.terrameter_model.parameters import (
 from gemeaspy.tests.terrameter_model.task import TaskSpec
 
 # The greatest amount of time to wait for acquisition to finish
-ACQUISITION_TIMEOUT = 30
+ACQUISITION_TIMEOUT = 10
 
 
 @pytest.fixture
@@ -108,6 +108,12 @@ async def test_main(test_case: AcquisitionTestCase,
         proc.kill()
         await proc.wait()
         pytest.fail(f"Acquisition timed out after {ACQUISITION_TIMEOUT}s")
+
+    _CAPTURE_LIMIT = 256 * 1024
+    if len(stdout_bytes) > _CAPTURE_LIMIT:
+        stdout_bytes = stdout_bytes[:_CAPTURE_LIMIT]
+    if len(stderr_bytes) > _CAPTURE_LIMIT:
+        stderr_bytes = stderr_bytes[:_CAPTURE_LIMIT]
 
     oracle_result: OracleResult = oracle.evaluate_test(
         test_case, config, task_files,
