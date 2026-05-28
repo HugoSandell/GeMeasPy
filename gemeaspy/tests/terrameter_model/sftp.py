@@ -1,5 +1,6 @@
 import os
 import pathlib
+from io import BytesIO
 
 import paramiko
 import paramiko.common
@@ -20,8 +21,14 @@ class EmulatorSFTPHandle(SFTPHandle):
         self.flags = flags
         self._instrument = instrument
         try:
-            self.readfile = self._instrument.open_file(path)
-            self.writefile = self.readfile
+            live = self._instrument.open_file(path)
+            if flags & (os.O_WRONLY | os.O_RDWR):
+                self.readfile = live
+                self.writefile = live
+            else:
+                snapshot = BytesIO(live.getvalue())
+                self.readfile = snapshot
+                self.writefile = snapshot
         except IsADirectoryError:
             pass
     
