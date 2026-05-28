@@ -403,23 +403,26 @@ def print_summary(
     print(f"{with_sgr('Mutation score (full):   ', STYLE_BOLD)}  {with_sgr(f'{full_score:.1%}', score_color(full_score))} ({num_killed}/{full_denom})")
 
 
-def _reset_abnormal_and_timeout_to_pending(db: WorkDB) -> int:
+def _reset_abnormal_and_timeout_to_pending(db: WorkDB, exclude_job_ids: set[str] | None = None) -> int:
     """Delete ABNORMAL, timed-out, and NO_TEST result rows so cr_execute retries them as pending.
     Returns the number of rows deleted.
+    Job IDs in exclude_job_ids are left untouched.
     """
     from sqlalchemy import or_
     from cosmic_ray.work_db import WorkResultStorage as _WorkResultStorage
 
     with db._session_maker.begin() as session:  # type: ignore[attr-defined]
-        return (
+        query = (
             session.query(_WorkResultStorage)
             .where(or_(
                 _WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL,
                 _WorkResultStorage.worker_outcome == WorkerOutcome.NO_TEST,
                 _WorkResultStorage.output == "timeout",
             ))
-            .delete()
         )
+        if exclude_job_ids:
+            query = query.where(_WorkResultStorage.job_id.notin_(exclude_job_ids))
+        return query.delete()
 
 
 @dataclass
@@ -475,8 +478,14 @@ def _generate_and_run_test_suite(
     db_mode = WorkDB.Mode.open if session_exists else WorkDB.Mode.create
     start_time = time.monotonic()
     with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
+        preexisting_timeout_job_ids: set[str] = set()
         if session_exists:
             total = db.num_work_items
+            preexisting_timeout_job_ids = {
+                work_item.job_id
+                for work_item, result in db.completed_work_items
+                if result.output == "timeout"
+            }
             abnormal_reset = _reset_abnormal_and_timeout_to_pending(db)
             pending = len(db.pending_work_items)
             reset_str = f", {with_sgr(f'{abnormal_reset} ABNORMAL/TIMEOUT reset', CLR_YELLOW_FG)}" if abnormal_reset else ""
@@ -515,7 +524,7 @@ def _generate_and_run_test_suite(
                 data_dir,
                 fresh,
             )
-            config["timeout"] = baseline_time * 2.5
+            config["timeout"] = baseline_time * 4
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
             print(f"Executing {pending} work items...")
             report_end_event = Event()
@@ -523,16 +532,17 @@ def _generate_and_run_test_suite(
             report_thread.start()
             try:
                 cr_execute(work_db=db, config=config)
-                _max_retries = 2
+                _max_retries = 1
                 for _attempt in range(1, _max_retries + 1):
                     abnormal_count = sum(
-                        1 for _, r in db.completed_work_items
-                        if r.worker_outcome == WorkerOutcome.ABNORMAL or r.output == "timeout"
+                        1 for work_item, r in db.completed_work_items
+                        if (r.worker_outcome == WorkerOutcome.ABNORMAL or r.output == "timeout")
+                        and work_item.job_id not in preexisting_timeout_job_ids
                     )
                     if abnormal_count == 0:
                         break
                     print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL/TIMEOUT item(s) (attempt {_attempt}/{_max_retries})...", CLR_YELLOW_FG))
-                    _reset_abnormal_and_timeout_to_pending(db)
+                    _reset_abnormal_and_timeout_to_pending(db, exclude_job_ids=preexisting_timeout_job_ids)
                     cr_execute(work_db=db, config=config)
             finally:
                 report_end_event.set()
