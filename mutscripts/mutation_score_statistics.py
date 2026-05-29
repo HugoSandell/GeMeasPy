@@ -22,6 +22,13 @@ from statsmodels.stats.proportion import proportion_confint
 from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB, WorkerOutcome
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from gemeaspy.tests._sgr import (
+    with_sgr,
+    CLR_YELLOW_FG, CLR_CYAN_FG, CLR_BRIGHT_WHITE_FG,
+    STYLE_BOLD,
+)
+
 
 
 _Fp = tuple[str, str, int]
@@ -320,16 +327,17 @@ def _fmt_p(p: float | None) -> str:
 
 def print_size_header(size: int, label: str | None) -> None:
     tag = f" [{label}]" if label else ""
-    print(f"\nSUITE SIZE {size}{tag}")
+    print(f"\n{with_sgr(f'SUITE SIZE {size}{tag}', [STYLE_BOLD, CLR_BRIGHT_WHITE_FG])}")
 
 def print_comparison(c: MetricComparison) -> None:
-    print(f"\n  {c.metric}")
+    print(f"\n  {with_sgr(c.metric, [STYLE_BOLD, CLR_CYAN_FG])}")
     print(f"    random (n={c.n}): mean={_fmt(c.mean)} SD={_fmt(c.sd)} "
           f"median={_fmt(c.median)} min={_fmt(c.minimum)} max={_fmt(c.maximum)}")
     if c.acts is None:
-        print("    ACTS value unavailable - comparison skipped")
+        print(with_sgr("    ACTS value unavailable - comparison skipped", CLR_YELLOW_FG))
         return
-    print(f"    ACTS: {_fmt(c.acts)}    diff (ACTS - mean random): "
+
+    print(f"    ACTS: {with_sgr(_fmt(c.acts), STYLE_BOLD)}    diff (ACTS - mean random): "
           f"{_fmt(c.diff_pp, 3)} pp")
     print(f"    Wilcoxon signed-rank (one-sided, ACTS > random): p = {_fmt_p(c.wilcoxon_p)}")
     ci = c.prop_ci or (float('nan'), float('nan'))
@@ -387,10 +395,9 @@ def run_db_analysis(args: argparse.Namespace) -> None:
         complete = {s: sc for s, sc in random_scores.items() if not sc.pending}
         skipped_pending = sorted(set(random_scores) - set(complete))
         if skipped_pending:
-            print(f"\n  Excluded seeds with pending items: "
-                  f"{skipped_pending}")
+            print(with_sgr(f"\n  Excluded seeds with pending items: {skipped_pending}", CLR_YELLOW_FG))
         if acts_score is not None and acts_score.pending:
-            print("  The ACTS session has pending items and is incomplete.")
+            print(with_sgr("  The ACTS session has pending items and is incomplete.", CLR_YELLOW_FG))
 
         seeds_sorted = sorted(complete)
         cov_arr = np.array([complete[s].covered_score for s in seeds_sorted])
@@ -405,7 +412,7 @@ def run_db_analysis(args: argparse.Namespace) -> None:
         branch_arr = np.array(branch_vals, dtype=float)
 
         # ---- H1 / H2 comparisons ----
-        print("\nH1 / H2")
+        print(f"\n{with_sgr('H1 / H2', STYLE_BOLD)}")
         comparisons = [
             compare_metric("Covered mutation score (primary)", size, cov_arr,
                            acts_score.covered_score if acts_score else None, args.alpha),
@@ -419,11 +426,11 @@ def run_db_analysis(args: argparse.Namespace) -> None:
         all_comparisons.extend(comparisons)
 
         # ---- H3 McNemar ----
-        print("\nH3 (exact McNemar)")
+        print(f"\n{with_sgr('H3 (exact McNemar)', STYLE_BOLD)}")
         if acts_score is None or acts_score.pending:
-            print("  ACTS session unavailable/incomplete - H3 skipped.")
+            print(with_sgr("  ACTS session unavailable/incomplete - H3 skipped.", CLR_YELLOW_FG))
         elif not complete:
-            print("  No complete random suite - H3 skipped.")
+            print(with_sgr("  No complete random suite - H3 skipped.", CLR_YELLOW_FG))
         else:
             a_killed = acts_score.killed_fps
             bs, cs = [], []
@@ -446,7 +453,7 @@ def run_db_analysis(args: argparse.Namespace) -> None:
 
         # ---- per-mutant kill-rate distribution ----
         if size == args.supplementary_size and len(complete) >= 2 and acts_score is not None:
-            print(f"\nPer-mutant kill-rate distribution (n={len(complete)} random seeds, size {size})")
+            print(f"\n{with_sgr(f'Per-mutant kill-rate distribution (n={len(complete)} random seeds, size {size})', STYLE_BOLD)}")
             universe: set[_Fp] = set()
             for sc in complete.values():
                 universe |= sc.universe_fps
