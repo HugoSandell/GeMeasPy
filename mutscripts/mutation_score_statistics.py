@@ -435,23 +435,32 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             print(with_sgr("  No complete random suite - H3 skipped.", CLR_YELLOW_FG))
         else:
             a_killed = acts_score.killed_fps
+            n_seeds = len(seeds_sorted)
+            b_gt_c = 0
+            sig = 0
             bs, cs = [], []
             for s in seeds_sorted:
                 u = acts_score.universe_fps & complete[s].universe_fps
                 ak = a_killed & u
                 rk = complete[s].killed_fps & u
-                bs.append(len(ak - rk))
-                cs.append(len(rk - ak))
-            mean_b = sum(bs) / len(bs)
-            mean_c = sum(cs) / len(cs)
-            b = round(mean_b)
-            c = round(mean_c)
-            p = mcnemar_exact(b, c)
-            print(f"  averaged over {len(seeds_sorted)} random seeds:")
-            print(f"    mean b (killed only by ACTS)   = {mean_b:.2f}  (rounded: {b})")
-            print(f"    mean c (killed only by random) = {mean_c:.2f}  (rounded: {c})")
-            print(f"    discordant pairs b+c           = {b + c}")
-            print(f"    exact McNemar p                = {_fmt_p(p)}")
+                b = len(ak - rk)
+                c = len(rk - ak)
+                bs.append(b)
+                cs.append(c)
+                if b > c:
+                    b_gt_c += 1
+                p = mcnemar_exact(b, c)
+                if p is not None and p < args.alpha:
+                    sig += 1
+            _, mean_b, sd_b, med_b, min_b, max_b = summary(np.array(bs, dtype=float))
+            _, mean_c, sd_c, med_c, min_c, max_c = summary(np.array(cs, dtype=float))
+            print(f"  over {n_seeds} random seeds:")
+            print(f"    b (killed only by ACTS):   mean={fmt(mean_b)} SD={fmt(sd_b)} "
+                  f"median={fmt(med_b)} min={fmt(min_b)} max={fmt(max_b)}")
+            print(f"    c (killed only by random): mean={fmt(mean_c)} SD={fmt(sd_c)} "
+                  f"median={fmt(med_c)} min={fmt(min_c)} max={fmt(max_c)}")
+            print(f"    seeds with b > c (ACTS kills more uniquely) = {b_gt_c}/{n_seeds}")
+            print(f"    seeds with p < {args.alpha}                  = {sig}/{n_seeds}")
 
         # ---- per-mutant kill-rate distribution ----
         if size == args.supplementary_size and len(complete) >= 2 and acts_score is not None:
