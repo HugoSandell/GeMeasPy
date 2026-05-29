@@ -313,9 +313,11 @@ def mcnemar_exact(b: int, c: int) -> float | None:
 
 # Reporting
 
-def _fmt(x: float | None, places: int = 4) -> str:
+def fmt(x: float | None, places: int | None = None) -> str:
     if x is None or (isinstance(x, float) and np.isnan(x)):
         return "n/a"
+    if places is None:
+        return f"{x:.4g}"
     return f"{x:.{places}f}"
 
 
@@ -331,19 +333,19 @@ def print_size_header(size: int, label: str | None) -> None:
 
 def print_comparison(c: MetricComparison) -> None:
     print(f"\n  {with_sgr(c.metric, [STYLE_BOLD, CLR_CYAN_FG])}")
-    print(f"    random (n={c.n}): mean={_fmt(c.mean)} SD={_fmt(c.sd)} "
-          f"median={_fmt(c.median)} min={_fmt(c.minimum)} max={_fmt(c.maximum)}")
+    print(f"    random (n={c.n}): mean={fmt(c.mean)} SD={fmt(c.sd)} "
+          f"median={fmt(c.median)} min={fmt(c.minimum)} max={fmt(c.maximum)}")
     if c.acts is None:
         print(with_sgr("    ACTS value unavailable - comparison skipped", CLR_YELLOW_FG))
         return
 
-    print(f"    ACTS: {with_sgr(_fmt(c.acts), STYLE_BOLD)}    diff (ACTS - mean random): "
-          f"{_fmt(c.diff_pp, 3)} pp")
+    print(f"    ACTS: {with_sgr(fmt(c.acts), STYLE_BOLD)}    diff (ACTS - mean random): "
+          f"{fmt(c.diff_pp, 3)} pp")
     print(f"    Wilcoxon signed-rank (one-sided, ACTS > random): p = {_fmt_p(c.wilcoxon_p)}")
     ci = c.prop_ci or (float('nan'), float('nan'))
-    print(f"    P(random >= ACTS): {c.prop_count}/{c.n} = {_fmt(c.prop_ge, 3)}  "
-          f"95% Wilson CI [{_fmt(ci[0], 3)}, {_fmt(ci[1], 3)}]")
-    print(f"    Vargha-Delaney A12 = {_fmt(c.a12, 3)}")
+    print(f"    P(random >= ACTS): {c.prop_count}/{c.n} = {fmt(c.prop_ge, 3)}  "
+          f"95% Wilson CI [{fmt(ci[0], 3)}, {fmt(ci[1], 3)}]")
+    print(f"    Vargha-Delaney A12 = {fmt(c.a12, 3)}")
 
 
 def run_db_analysis(args: argparse.Namespace) -> None:
