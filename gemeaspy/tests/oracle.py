@@ -348,7 +348,7 @@ def _evaluate_port(test_data: AcquisitionTestCase, stdout: str, stderr: str) -> 
         if port22_status in (Port22Status.SSH_AUTH_REQUIRED, Port22Status.NON_SSH):
             expected_error_msg = ["Authentication failed", "Could not establish an SSH session"]
         else:  # CLOSED: connection refused or timeout
-            expected_error_msg = "Could not reach the server"
+            expected_error_msg = ["Could not reach the server", "Connection timed out"]
 
     elif not isinstance(value, int) or isinstance(value, bool):
         expected_error_msg = "Port number should be an integer"
