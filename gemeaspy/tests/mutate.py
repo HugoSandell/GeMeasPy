@@ -59,6 +59,18 @@ def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
     )
 
 
+_TIMEOUT_TAG = "CR:TIMEOUT"
+_VALID_FAIL_TAG = "CR:VALID_FAIL"
+
+
+def _error_lines(output: str) -> str:
+    return "\n".join(
+        line.rstrip("\r")
+        for line in output.splitlines()
+        if line.lstrip("\r").startswith("E ")
+    )
+
+
 def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
     """Start a cosmic-ray HTTP worker isolated in its own sandbox directory.
 
@@ -75,7 +87,10 @@ def _run_worker_threaded(port: int) -> None:
     """Threading-based HTTP worker that avoids ProactorEventLoop problems on Windows.
     ThreadingTCPServer runs each request in its own OS thread.
     """
+    import cosmic_ray.plugins
     from cosmic_ray.mutating import mutate_and_test as _mutate_and_test
+    from cosmic_ray.mutating import mutate_code as _mutate_code
+    from cosmic_ray.util import read_python_source as _read_python_source
     from cosmic_ray.work_item import MutationSpec as _MutationSpec
 
     class _Handler(http.server.BaseHTTPRequestHandler):
@@ -95,17 +110,57 @@ def _run_worker_threaded(port: int) -> None:
                 )
                 for m in body["mutations"]
             ]
-            result = _mutate_and_test(
-                mutations=mutations,
-                test_command=body["test_command"],
-                timeout=body["timeout"],
-            )
-            payload = json.dumps({
-                "worker_outcome": result.worker_outcome.value,
-                "output": result.output,
-                "test_outcome": result.test_outcome.value if result.test_outcome is not None else None,
-                "diff": result.diff,
-            }).encode()
+
+            def _build_result() -> dict:
+                # Check each mutation compiles before running the test suite.
+                # A mutation that produces a SyntaxError cannot produce a meaningful test verdict, so return INCOMPETENT immediately.
+                for mutation in mutations:
+                    try:
+                        operator_class = cosmic_ray.plugins.get_operator(mutation.operator_name)
+                        try:
+                            operator_args = mutation.operator_args
+                        except AttributeError:
+                            operator_args = {}
+                        operator = operator_class(**operator_args)
+                        original_code = _read_python_source(mutation.module_path)
+                        mutated_code = _mutate_code(original_code, operator, mutation.occurrence)
+                    except Exception:
+                        continue  # can't pre-check this mutation; let _mutate_and_test handle it
+                    if mutated_code is not None:
+                        import warnings 
+                        try:
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore", SyntaxWarning)
+                                compile(mutated_code, str(mutation.module_path), "exec") # Warnings should be left alone
+                        except SyntaxError as exc:
+                            return {
+                                "worker_outcome": WorkerOutcome.NORMAL.value,
+                                "output": f"SyntaxError in mutated {mutation.module_path}: {exc}",
+                                "test_outcome": TestOutcome.INCOMPETENT.value,
+                                "diff": None,
+                            }
+                result = _mutate_and_test(
+                    mutations=mutations,
+                    test_command=body["test_command"],
+                    timeout=body["timeout"],
+                )
+                if result.test_outcome == TestOutcome.KILLED:
+                    errors = _error_lines(result.output or "")
+                    if _TIMEOUT_TAG in errors or _VALID_FAIL_TAG not in errors:
+                        return {
+                            "worker_outcome": result.worker_outcome.value,
+                            "output": result.output,
+                            "test_outcome": TestOutcome.INCOMPETENT.value,
+                            "diff": result.diff,
+                        }
+                return {
+                    "worker_outcome": result.worker_outcome.value,
+                    "output": result.output,
+                    "test_outcome": result.test_outcome.value if result.test_outcome is not None else None,
+                    "diff": result.diff,
+                }
+
+            payload = json.dumps(_build_result()).encode()
             try:
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
