@@ -1,6 +1,5 @@
 [cosmic-ray]
 module-path = ["gemeaspy/acquisition"]
-excluded-modules = ["gemeaspy/acquisition/error.py", "gemeaspy/acquisition/subvision_relay.py"]
 
 [cosmic-ray.distributor]
 name = "http"
