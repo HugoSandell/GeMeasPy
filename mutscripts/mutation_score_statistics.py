@@ -8,6 +8,7 @@ Usage: python mutation_score_statistics.py [data_dir] [options]
 """
 
 import argparse
+import csv
 import json
 import sys
 import tempfile
@@ -369,6 +370,8 @@ def run_db_analysis(args: argparse.Namespace) -> None:
                    args.supplementary_size: "supplementary, t=1"}
 
     all_comparisons: list[MetricComparison] = []
+    csv_rows: dict[int, list[dict]] = {}
+    max_seeds_map = {int(e.split(':')[0]): int(e.split(':')[1]) for e in (args.max_seeds or [])}
 
     for size in paired:
         group = groups[size]
@@ -402,6 +405,8 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             print(with_sgr("  The ACTS session has pending items and is incomplete.", CLR_YELLOW_FG))
 
         seeds_sorted = sorted(complete)
+        if size in max_seeds_map:
+            seeds_sorted = seeds_sorted[:max_seeds_map[size]]
         cov_arr = np.array([complete[s].covered_score for s in seeds_sorted])
         full_arr = np.array([complete[s].full_score for s in seeds_sorted])
 
@@ -427,6 +432,16 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             print_comparison(c)
         all_comparisons.extend(comparisons)
 
+        # ---- McNemar b/c per seed (used by H3 and --csv) ----
+        seed_mcnemar: dict[int, tuple[int, int]] = {}
+        if acts_score is not None and not acts_score.pending and complete:
+            a_killed = acts_score.killed_fps
+            for s in seeds_sorted:
+                u = acts_score.universe_fps & complete[s].universe_fps
+                ak = a_killed & u
+                rk = complete[s].killed_fps & u
+                seed_mcnemar[s] = (len(ak - rk), len(rk - ak))
+
         # ---- H3 McNemar ----
         print(f"\n{with_sgr('H3 (exact McNemar)', STYLE_BOLD)}")
         if acts_score is None or acts_score.pending:
@@ -434,17 +449,12 @@ def run_db_analysis(args: argparse.Namespace) -> None:
         elif not complete:
             print(with_sgr("  No complete random suite - H3 skipped.", CLR_YELLOW_FG))
         else:
-            a_killed = acts_score.killed_fps
             n_seeds = len(seeds_sorted)
             b_gt_c = 0
             sig = 0
             bs, cs = [], []
             for s in seeds_sorted:
-                u = acts_score.universe_fps & complete[s].universe_fps
-                ak = a_killed & u
-                rk = complete[s].killed_fps & u
-                b = len(ak - rk)
-                c = len(rk - ak)
+                b, c = seed_mcnemar[s]
                 bs.append(b)
                 cs.append(c)
                 if b > c:
@@ -461,6 +471,21 @@ def run_db_analysis(args: argparse.Namespace) -> None:
                   f"median={fmt(med_c)} min={fmt(min_c)} max={fmt(max_c)}")
             print(f"    seeds with b > c (ACTS kills more uniquely) = {b_gt_c}/{n_seeds}")
             print(f"    seeds with p < {args.alpha}                  = {sig}/{n_seeds}")
+
+        # collect CSV rows
+        if args.csv:
+            rows = []
+            for s in seeds_sorted:
+                sc = complete[s]
+                b, c = seed_mcnemar.get(s, (None, None))
+                rows.append({
+                    'seed': s,
+                    'Scov': round(sc.covered_score * 100, 6),
+                    'Sfull': round(sc.full_score * 100, 6),
+                    'mcnemar_b': b,
+                    'mcnemar_c': c,
+                })
+            csv_rows[size] = rows
 
         # ---- per-mutant kill-rate distribution ----
         if size == args.supplementary_size and len(complete) >= 2 and acts_score is not None:
@@ -480,6 +505,22 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             for lab, cnt in zip(labels, counts):
                 print(f"    kill rate {lab:<10}: {cnt}")
 
+    if args.csv:
+        size_filenames = {
+            args.primary_size: f"random{args.primary_size}.csv",
+            args.supplementary_size: f"random{args.supplementary_size}.csv",
+        }
+        fieldnames = ['seed', 'Scov', 'Sfull', 'mcnemar_b', 'mcnemar_c']
+        for sz, filename in size_filenames.items():
+            if sz not in csv_rows:
+                continue
+            out_path = data_dir / filename
+            with open(out_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(csv_rows[sz])
+            print(f"CSV written: {out_path}")
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -491,6 +532,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="suite size labelled supplementary / t=1 (default: 59)")
     p.add_argument("--alpha", type=float, default=0.05,
                    help="significance level for the Wilson confidence interval (default: 0.05)")
+    p.add_argument("--max-seeds", action="append", default=None, metavar="K:N",
+                   help="limit suite size K to the first N seeds (ascending); repeatable")
+    p.add_argument("--csv", action="store_true",
+                   help="write per-seed scores and McNemar counts to <data_dir>/random{size}.csv")
     return p
 
 
