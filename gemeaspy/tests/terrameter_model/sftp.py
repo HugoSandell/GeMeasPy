@@ -1,5 +1,6 @@
 import os
 import pathlib
+import time
 from io import BytesIO
 
 import paramiko
@@ -54,7 +55,9 @@ class EmulatorSFTPServerInterface(SFTPServerInterface):
     def open(self, path: str, flags: int, attr: SFTPAttributes) -> int | SFTPHandle:
         try:
             if not self._instrument.path_exists(path):
-                return SFTP_NO_SUCH_FILE
+                time.sleep(0.1) # Try again; the emulator might just need a little time
+                if not self._instrument.path_exists(path):
+                    return SFTP_NO_SUCH_FILE
             if not self._instrument.stat(path).st_mode & S_IFREG:
                 return SFTP_IS_DIRECTORY
             return EmulatorSFTPHandle(flags, path, self._instrument)
