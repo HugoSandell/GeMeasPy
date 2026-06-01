@@ -3,6 +3,8 @@
 import argparse
 import asyncio
 import contextlib
+import difflib
+import glob
 import http.server
 import io
 import json
@@ -62,6 +64,69 @@ def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
 _TIMEOUT_TAG = "CR:TIMEOUT"
 _VALID_FAIL_TAG = "CR:VALID_FAIL"
 
+_incompetent_cache: dict[str, set[tuple]] = {}
+
+def _incompetent_fingerprint(
+    module_path: str,
+    operator_name: str,
+    original_code: str,
+    mutated_code: str,
+) -> tuple[str, str, int, tuple[str, ...]]:
+    line = 0
+    changed: list[str] = []
+    for dl in difflib.unified_diff(original_code.splitlines(), mutated_code.splitlines(), lineterm=""):
+        if dl.startswith("@@"):
+            m = re.match(r"^@@ -(\d+)", dl)
+            if m:
+                line = int(m.group(1))
+        elif dl.startswith(("+", "-")) and not dl.startswith(("---", "+++")):
+            changed.append(dl)
+    return (module_path, operator_name, line, tuple(changed))
+
+
+def _load_incompetent_cache(cache_path: str) -> set[tuple]:
+    if not os.path.isfile(cache_path):
+        return set()
+    try:
+        with open(cache_path, encoding="utf-8") as f:
+            entries = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return set()
+    return {(e["module_path"], e["operator"], e["line"], tuple(e["diff"])) for e in entries}
+
+
+def _check_incompetent_cache(cache_path: str, fp: tuple) -> bool:
+    if cache_path not in _incompetent_cache:
+        _incompetent_cache[cache_path] = _load_incompetent_cache(cache_path)
+    return fp in _incompetent_cache[cache_path]
+
+
+def _record_incompetent(cache_path: str, fp: tuple) -> None:
+    module_path, operator, line, diff_lines = fp
+    if cache_path not in _incompetent_cache:
+        _incompetent_cache[cache_path] = _load_incompetent_cache(cache_path)
+    if fp in _incompetent_cache[cache_path]:
+        return
+    _incompetent_cache[cache_path].add(fp)
+    try:
+        with open(cache_path, encoding="utf-8") as f:
+            entries = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        entries = []
+    entries.append({"module_path": module_path, "operator": operator, "line": line, "diff": list(diff_lines)})
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=2)
+        
+        
+def _merge_incompetent_caches() -> None:
+    files = glob.glob("test_data/incompetent_mutants_W*.json")
+    entries = []
+    for filename in files:
+        entries.extend(_load_incompetent_cache(filename))
+    with open("test_data/incompetent_mutants.json", "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=2)
+    for filename in files:
+        os.unlink(filename)
 
 def _error_lines(output: str) -> str:
     return "\n".join(
@@ -71,7 +136,7 @@ def _error_lines(output: str) -> str:
     )
 
 
-def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
+def _run_worker_sandboxed(port: int, sandbox_dir: str, data_dir: str) -> None:
     """Start a cosmic-ray HTTP worker isolated in its own sandbox directory.
 
     Changing cwd to sandbox_dir before starting the server means:
@@ -80,13 +145,14 @@ def _run_worker_sandboxed(port: int, sandbox_dir: str) -> None:
       points there and Python imports gemeaspy from the sandbox.
     """
     os.chdir(sandbox_dir)
-    _run_worker_threaded(port)
+    _run_worker_threaded(port, data_dir)
 
 
-def _run_worker_threaded(port: int) -> None:
+def _run_worker_threaded(port: int, data_dir: str) -> None:
     """Threading-based HTTP worker that avoids ProactorEventLoop problems on Windows.
     ThreadingTCPServer runs each request in its own OS thread.
     """
+    cache_path = os.path.join(data_dir, "incompetent_mutants.json")
     import cosmic_ray.plugins
     from cosmic_ray.mutating import mutate_and_test as _mutate_and_test
     from cosmic_ray.mutating import mutate_code as _mutate_code
@@ -112,8 +178,8 @@ def _run_worker_threaded(port: int) -> None:
             ]
 
             def _build_result() -> dict:
-                # Check each mutation compiles before running the test suite.
-                # A mutation that produces a SyntaxError cannot produce a meaningful test verdict, so return INCOMPETENT immediately.
+                import warnings
+                fingerprints: list[tuple] = []
                 for mutation in mutations:
                     try:
                         operator_class = cosmic_ray.plugins.get_operator(mutation.operator_name)
@@ -126,19 +192,32 @@ def _run_worker_threaded(port: int) -> None:
                         mutated_code = _mutate_code(original_code, operator, mutation.occurrence)
                     except Exception:
                         continue  # can't pre-check this mutation; let _mutate_and_test handle it
-                    if mutated_code is not None:
-                        import warnings 
-                        try:
-                            with warnings.catch_warnings():
-                                warnings.simplefilter("ignore", SyntaxWarning)
-                                compile(mutated_code, str(mutation.module_path), "exec") # Warnings should be left alone
-                        except SyntaxError as exc:
-                            return {
-                                "worker_outcome": WorkerOutcome.NORMAL.value,
-                                "output": f"SyntaxError in mutated {mutation.module_path}: {exc}",
-                                "test_outcome": TestOutcome.INCOMPETENT.value,
-                                "diff": None,
-                            }
+                    if mutated_code is None:
+                        continue
+                    fp = _incompetent_fingerprint(
+                        str(mutation.module_path), mutation.operator_name,
+                        original_code, mutated_code,
+                    )
+                    fingerprints.append(fp)
+                    if _check_incompetent_cache(cache_path, fp):
+                        return {
+                            "worker_outcome": WorkerOutcome.NORMAL.value,
+                            "output": "Known incompetent (cached)",
+                            "test_outcome": TestOutcome.INCOMPETENT.value,
+                            "diff": None,
+                        }
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", SyntaxWarning)
+                            compile(mutated_code, str(mutation.module_path), "exec")
+                    except SyntaxError as exc:
+                        _record_incompetent(cache_path, fp)
+                        return {
+                            "worker_outcome": WorkerOutcome.NORMAL.value,
+                            "output": f"SyntaxError in mutated {mutation.module_path}: {exc}",
+                            "test_outcome": TestOutcome.INCOMPETENT.value,
+                            "diff": None,
+                        }
                 result = _mutate_and_test(
                     mutations=mutations,
                     test_command=body["test_command"],
@@ -147,6 +226,8 @@ def _run_worker_threaded(port: int) -> None:
                 if result.test_outcome == TestOutcome.KILLED:
                     errors = _error_lines(result.output or "")
                     if _TIMEOUT_TAG in errors or _VALID_FAIL_TAG not in errors:
+                        for fp in fingerprints:
+                            _record_incompetent(cache_path, fp)
                         return {
                             "worker_outcome": result.worker_outcome.value,
                             "output": result.output,
@@ -637,6 +718,7 @@ def _find_min_acts_strength_above(
 def _start_workers(
     worker_count: int,
     root_dir: str,
+    data_dir: str,
     port_base: int,
 ) -> tuple[list[str], list[multiprocessing.Process], list[Path]]:
     """Start worker_count HTTP worker processes and return (urls, processes, sandbox_dirs)."""
@@ -647,7 +729,7 @@ def _start_workers(
         sandbox = Path(tempfile.mkdtemp(prefix=f"cr_worker_{port_base - 55430 + i}_"))
         sandbox_dirs.append(sandbox)
         _setup_worker_sandbox(sandbox, Path(root_dir))
-        worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox)))
+        worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox), data_dir))
         workers.append(worker)
         worker.start()
     urls = [f"http://localhost:{port}" for port in ports]
@@ -948,7 +1030,7 @@ def main():
         config["distributor"] = {}
     if "http" not in config["distributor"]:
         config["distributor"]["http"] = {}
-    worker_urls, workers, sandbox_dirs = _start_workers(worker_count, ROOT_DIR, PORT_BASE)
+    worker_urls, workers, sandbox_dirs = _start_workers(worker_count, ROOT_DIR, DATA_DIR, PORT_BASE)
     config["distributor"]["http"]["worker-urls"] = worker_urls
 
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -990,6 +1072,7 @@ def main():
         return
     finally:
         _stop_workers(workers, sandbox_dirs)
+        _merge_incompetent_caches()
 
     if args.baseline:
         print(f"Total verification time: {time.monotonic() - baseline_t0:.1f}s")
