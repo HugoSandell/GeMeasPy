@@ -10,9 +10,26 @@ from pathlib import Path
 
 _statement_map_cache: dict[str, dict[int, int]] = {}
 
+_COMPOUND_STATEMENT_TYPES: tuple[type, ...] = (
+    ast.If,
+    ast.For,
+    ast.While,
+    ast.With,
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.ClassDef,
+    ast.AsyncFor,
+    ast.AsyncWith,
+    ast.Try,
+    ast.Match,
+    ast.TryStar
+)
 
 def statement_start_line(source_path: str, line: int) -> int:
-    """Return the first line of the statement that contains the given line
+    """Return the first line of the simple statement that contains the given line.
+
+    Only maps continuation lines of simple (non-compound) statements. Compound statements are excluded because coverage.py tracks their body lines individually.
+    Returns line unchanged if it cannot be mapped.
     """
     if source_path not in _statement_map_cache:
         try:
@@ -23,7 +40,7 @@ def statement_start_line(source_path: str, line: int) -> int:
         else:
             mapping: dict[int, int] = {}
             for node in ast.walk(tree):
-                if isinstance(node, ast.stmt):
+                if isinstance(node, ast.stmt) and not isinstance(node, _COMPOUND_STATEMENT_TYPES):
                     start = node.lineno
                     end = getattr(node, "end_lineno", node.lineno)
                     for ln in range(start, end + 1):
