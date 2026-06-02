@@ -64,6 +64,7 @@ def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
 
 _TIMEOUT_TAG = "CR:TIMEOUT"
 _VALID_FAIL_TAG = "CR:VALID_FAIL"
+_INVALID_FAIL_TAG = "CR:INVALID_FAIL"
 
 _incompetent_cache: dict[str, set[tuple]] = {}
 
@@ -226,7 +227,7 @@ def _run_worker_threaded(port: int, data_dir: str) -> None:
                 )
                 if result.test_outcome == TestOutcome.KILLED:
                     errors = _error_lines(result.output or "")
-                    if _TIMEOUT_TAG in errors or _VALID_FAIL_TAG not in errors:
+                    if _TIMEOUT_TAG in errors or (_VALID_FAIL_TAG not in errors and _INVALID_FAIL_TAG not in errors):
                         for fp in fingerprints:
                             _record_incompetent(cache_path, fp)
                         return {

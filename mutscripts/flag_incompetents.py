@@ -14,12 +14,18 @@ from typing import cast
 from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB, WorkResultStorage
 
+# Machine-readable tags written by test_main.py (current databases)
+_TIMEOUT_TAG = "CR:TIMEOUT"
+_VALID_FAIL_TAG = "CR:VALID_FAIL"
+_INVALID_FAIL_TAG = "CR:INVALID_FAIL"
+
+# Text-based fallbacks for databases produced before the CR: tags were introduced
 _TIMEOUT_MARKER = "Acquisition timed out after"
 _INVALID_CASE_MARKER = "for invalid "
 _DATA_MODIFICATION_MARKER = "SUT modified file configured as LOCAL_PATH_TO_DATA"
 
-# Oracle messages that prove the SUT ran and produced specific output - these
-# are real kills even on a valid test case and must not be reclassified.
+# Oracle messages that prove the SUT ran and produced specific output - fallback
+# for old databases that predate CR:VALID_FAIL tagging.
 _REAL_KILL_MARKERS = (
     # _evaluate_transfer_valid
     "Could not find any project files on Terrameter emulator",
@@ -124,9 +130,12 @@ def reclassify_db(db_path: str) -> tuple[int, int, int]:
                     continue
                 output = cast(str | None, row.output) or ""
                 errors = _error_lines(output)
-                if _TIMEOUT_MARKER in errors:
+                # Check CR: tags first (current databases), then fall back for databases that predate the tags.
+                if _TIMEOUT_TAG in errors or _TIMEOUT_MARKER in errors:
                     row.test_outcome = TestOutcome.INCOMPETENT  # type: ignore[assignment]
                     timeout_count += 1
+                elif _VALID_FAIL_TAG in errors or _INVALID_FAIL_TAG in errors:
+                    pass  # tagged as a real oracle kill - keep KILLED
                 elif (
                     _INVALID_CASE_MARKER not in errors
                     and _DATA_MODIFICATION_MARKER not in errors

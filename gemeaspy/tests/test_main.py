@@ -135,5 +135,5 @@ async def test_main(test_case: AcquisitionTestCase,
     print("stderr:")
     print(stderr_bytes.decode(errors="replace"))
     # IMPORTANT: Do not break out the ":"
-    tag = f"CR{":"}VALID_FAIL " if test_case.invalid_parameter is None else ""
+    tag = f"CR{":"}VALID_FAIL " if test_case.invalid_parameter is None else f"CR{":"}INVALID_FAIL "
     assert oracle_result.ok, f"{tag}{oracle_result.msg} ({frame_str})"

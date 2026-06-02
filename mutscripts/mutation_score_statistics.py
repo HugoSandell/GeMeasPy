@@ -242,6 +242,7 @@ class MetricComparison:
     prop_ci: tuple[float, float] | None
     a12: float | None
     prop_count: int | None = None
+    a12_ci: tuple[float, float] | None = None
 
 
 def summary(values: np.ndarray) -> tuple[int, float, float, float, float, float]:
@@ -263,6 +264,28 @@ def vargha_delaney_a12(acts_value: float, random_scores: np.ndarray) -> float:
     greater = float(np.sum(acts_value > x))
     ties = float(np.sum(acts_value == x))
     return (greater + 0.5 * ties) / n
+
+
+def vargha_delaney_a12_ci(
+    acts_value: float, random_scores: np.ndarray, alpha: float = 0.05,
+) -> tuple[float, float]:
+    """Normal-approximation CI for A12 via the Mann-Whitney U formulation.
+
+    With m=1 (single ACTS value), A12 = U/n = mean of pairwise indicators
+    h_i in {0, 0.5, 1}.  SE = sd(h) / sqrt(n); CI is A12 +/- z * SE,
+    clamped to [0, 1].
+    """
+    x = random_scores[~np.isnan(random_scores)]
+    n = len(x)
+    if n < 2:
+        return float('nan'), float('nan')
+    h = np.where(acts_value > x, 1.0, np.where(acts_value == x, 0.5, 0.0))
+    se = float(h.std(ddof=1)) / np.sqrt(n)
+    z = float(stats.norm.ppf(1.0 - alpha / 2))
+    a12 = float(h.mean())
+    lo = float(np.clip(a12 - z * se, 0.0, 1.0))
+    hi = float(np.clip(a12 + z * se, 0.0, 1.0))
+    return lo, hi
 
 
 def wilcoxon_vs_constant(random_scores: np.ndarray, acts_value: float) -> float:
@@ -296,8 +319,9 @@ def compare_metric(metric: str, size: int, random_scores: np.ndarray,
     wp = wilcoxon_vs_constant(random_scores, acts_value)
     k, nn, p_ge, lo, hi = proportion_ge(random_scores, acts_value, alpha)
     a12 = vargha_delaney_a12(acts_value, random_scores)
+    a12_ci = vargha_delaney_a12_ci(acts_value, random_scores, alpha)
     return MetricComparison(metric, size, n, mean, sd, median, mn, mx,
-                            acts_value, diff_pp, wp, p_ge, (lo, hi), a12, k)
+                            acts_value, diff_pp, wp, p_ge, (lo, hi), a12, k, a12_ci=a12_ci)
 
 
 def mcnemar_exact(b: int, c: int) -> float | None:
@@ -341,7 +365,9 @@ def print_comparison(c: MetricComparison) -> None:
     ci = c.prop_ci or (float('nan'), float('nan'))
     print(f"    P(random >= ACTS): {c.prop_count}/{c.n} = {fmt(c.prop_ge, 3)}  "
           f"95% Wilson CI [{fmt(ci[0], 3)}, {fmt(ci[1], 3)}]")
-    print(f"    Vargha-Delaney A12 = {fmt(c.a12, 3)}")
+    a12_ci = c.a12_ci or (float('nan'), float('nan'))
+    print(f"    Vargha-Delaney A12 = {fmt(c.a12, 3)}  "
+          f"95% Mann-Whitney CI [{fmt(a12_ci[0], 3)}, {fmt(a12_ci[1], 3)}]")
 
 
 def run_db_analysis(args: argparse.Namespace) -> None:
@@ -473,10 +499,14 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             for s in seeds_sorted:
                 sc = complete[s]
                 b, c = seed_mcnemar.get(s, (None, None))
+                
+                Cb = branch_coverage(data_dir / f"baseline_random_{size}_s{s}.coverage") or float("NaN")
+
                 rows.append({
                     'seed': s,
                     'Scov': round(sc.covered_score * 100, 6),
                     'Sfull': round(sc.full_score * 100, 6),
+                    'Cb': round(Cb * 100, 6),
                     'mcnemar_b': b,
                     'mcnemar_c': c,
                 })
@@ -505,7 +535,7 @@ def run_db_analysis(args: argparse.Namespace) -> None:
             args.primary_size: f"random{args.primary_size}.csv",
             args.supplementary_size: f"random{args.supplementary_size}.csv",
         }
-        fieldnames = ['seed', 'Scov', 'Sfull', 'mcnemar_b', 'mcnemar_c']
+        fieldnames = ['seed', 'Scov', 'Sfull', 'Cb', 'mcnemar_b', 'mcnemar_c']
         for sz, filename in size_filenames.items():
             if sz not in csv_rows:
                 continue

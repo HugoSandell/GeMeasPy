@@ -75,7 +75,7 @@ def score_db(
 
 def main() -> None:
     if len(sys.argv) < 3:
-        print(f"Usage: python {sys.argv[0]} {{random|acts}} <size> [output.csv]",
+        print(f"Usage: python {sys.argv[0]} {{random|acts}} <size>",
               file=sys.stderr)
         sys.exit(1)
 
