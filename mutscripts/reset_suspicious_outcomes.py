@@ -6,6 +6,7 @@ from pathlib import Path
 
 from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB, WorkResultStorage
+from gemeaspy.tests.coverage_utils import is_covered as _is_covered
 
 # These were determined by examining test outputs, particularly for falsely killed Equivalent mutants.
 _SPURIOUS_MARKERS = [
@@ -43,9 +44,6 @@ def _load_coverage_lines(coverage_json: Path) -> dict[str, set[int]]:
         covered[str(Path(filepath).resolve())] = set(file_data.get("executed_lines", []))
     return covered
 
-def _is_covered(module_path: str, line: int, covered: dict[str, set[int]], root: Path) -> bool:
-    module_abs = str((root / module_path).resolve())
-    return module_abs in covered and line in covered[module_abs]
 
 def reset_uncovered_killed(db_path: str) -> int:
     db_file = Path(db_path)
@@ -85,18 +83,48 @@ def reset_uncovered_killed(db_path: str) -> int:
     return len(to_reset)
 
 
+def reset_job(db_path: str, job_id: str) -> bool:
+    from sqlalchemy import select
+
+    with work_db.use_db(db_path, mode=WorkDB.Mode.open) as db:
+        with db._session_maker.begin() as session:  # type: ignore[attr-defined]
+            row = session.execute(
+                select(WorkResultStorage).where(WorkResultStorage.job_id == job_id)
+            ).scalar_one_or_none()
+            if row is None:
+                return False
+            session.delete(row)
+    return True
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) < 2:
-        print(f"Usage: {argv[0]} <db_path> [<db_path> ...]", file=sys.stderr)
-        return 1
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("db", metavar="DB", nargs="+", help="Path(s) to cosmic-ray session sqlite file(s); supports wildcards")
+    parser.add_argument("--job", metavar="JOB_ID", help="Reset a specific job ID regardless of outcome")
+    args = parser.parse_args(argv[1:])
 
     paths: list[str] = []
-    for arg in argv[1:]:
-        expanded = glob.glob(arg)
+    for pattern in args.db:
+        expanded = glob.glob(pattern)
         if not expanded:
-            print(f"Error: {arg!r} matches no files", file=sys.stderr)
+            print(f"Error: {pattern!r} matches no files", file=sys.stderr)
             return 1
-        paths.extend(expanded)
+        paths.extend(sorted(expanded))
+
+    if args.job:
+        found = False
+        for db_path in paths:
+            if not Path(db_path).exists():
+                print(f"Error: {db_path!r} does not exist", file=sys.stderr)
+                return 1
+            if reset_job(db_path, args.job):
+                print(f"{Path(db_path).name}: reset job {args.job!r}")
+                found = True
+        if not found:
+            print(f"Job {args.job!r} not found in any of the specified databases.", file=sys.stderr)
+            return 1
+        return 0
 
     total = 0
     for db_path in paths:
@@ -104,9 +132,9 @@ def main(argv: list[str]) -> int:
             print(f"Error: {db_path!r} does not exist", file=sys.stderr)
             return 1
         count = reset_spurious_kills(db_path)
-        print(f"{db_path}: reset {count} spurious kill(s)")
+        print(f"{Path(db_path).name}: reset {count} spurious kill(s)")
         count2 = reset_uncovered_killed(db_path)
-        print(f"{db_path}: reset {count2} uncovered-but-killed item(s)")
+        print(f"{Path(db_path).name}: reset {count2} uncovered-but-killed item(s)")
         total += count + count2
 
     if len(paths) > 1:

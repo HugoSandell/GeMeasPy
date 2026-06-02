@@ -34,6 +34,7 @@ from cosmic_ray.tools.filters import operators_filter, pragma_no_mutate
 from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 
 import gemeaspy
+from gemeaspy.tests.coverage_utils import is_covered_abs as _is_covered_abs
 from gemeaspy.tests import _logging
 from gemeaspy.tests._sgr import (
     CLR_GREEN_FG,
@@ -424,10 +425,8 @@ def run_baseline_coverage(
     print(f"  Baseline coverage: {acq_count} acquisition module(s) tracked.")
     return covered, elapsed
 
-
 def _is_covered(mutation: MutationSpec, covered: dict[str, set[int]]) -> bool:
-    module_abs = str(mutation.module_path.resolve())
-    return module_abs in covered and mutation.start_pos[0] in covered[module_abs]
+    return _is_covered_abs(str(mutation.module_path.resolve()), mutation.start_pos[0], covered)
 
 
 def write_review_report(
@@ -616,6 +615,8 @@ def _generate_and_run_test_suite(
     with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
         preexisting_timeout_job_ids: set[str] = set()
         if session_exists:
+            with contextlib.redirect_stdout(io.StringIO()):  # pragma_no_mutate is noisy!
+                pragma_no_mutate.main((cr_session_file,))
             total = db.num_work_items
             preexisting_timeout_job_ids = {
                 work_item.job_id

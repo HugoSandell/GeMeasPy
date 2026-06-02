@@ -24,6 +24,7 @@ from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB, WorkerOutcome
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from gemeaspy.tests.coverage_utils import is_covered as _is_covered
 from gemeaspy.tests._sgr import (
     with_sgr,
     CLR_YELLOW_FG, CLR_CYAN_FG, CLR_BRIGHT_WHITE_FG,
@@ -92,12 +93,6 @@ def load_coverage_lines(coverage_json: Path) -> dict[str, set[int]]:
     for filepath, file_data in cov_data.get("files", {}).items():
         covered[str(Path(filepath).resolve())] = set(file_data.get("executed_lines", []))
     return covered
-
-
-def _is_covered(module_path: str, line: int, covered: dict[str, set[int]], root: Path) -> bool:
-    module_abs = str((root / module_path).resolve())
-    return module_abs in covered and line in covered[module_abs]
-
 
 def score_session(
     session_path: Path,

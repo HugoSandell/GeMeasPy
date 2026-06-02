@@ -14,6 +14,7 @@ from pathlib import Path
 
 from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB
+from gemeaspy.tests.coverage_utils import is_covered as _is_covered
 
 
 def _load_equivalent_fps(data_dir: Path) -> set[tuple[str, str, int]]:
@@ -36,9 +37,6 @@ def _load_covered_lines(coverage_json: Path) -> dict[str, set[int]]:
     return covered
 
 
-def _is_covered(module_path: str, line: int, covered: dict[str, set[int]], root: Path) -> bool:
-    module_abs = str((root / module_path).resolve())
-    return module_abs in covered and line in covered[module_abs]
 
 
 def score_db(

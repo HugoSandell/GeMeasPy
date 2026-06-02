@@ -1,4 +1,4 @@
-"""Reclassify KILLED work items as INCOMPETENT in cosmic-ray databases.
+"""Reclassify KILLED/SURVIVED work items as INCOMPETENT in cosmic-ray databases.
 
 Uses only the E-prefixed lines from pytest failure output so that source code is ignored.
 
@@ -7,6 +7,7 @@ Usage:
     python flag_incompetents.py # scans all test_data/*.sqlite
 """
 import sys
+import warnings
 from pathlib import Path
 from typing import cast
 
@@ -14,7 +15,6 @@ from cosmic_ray import work_db
 from cosmic_ray.work_db import TestOutcome, WorkDB, WorkResultStorage
 
 _TIMEOUT_MARKER = "Acquisition timed out after"
-_SYNTAX_ERROR_MARKER = "SyntaxError"
 _INVALID_CASE_MARKER = "for invalid "
 _DATA_MODIFICATION_MARKER = "SUT modified file configured as LOCAL_PATH_TO_DATA"
 
@@ -44,14 +44,71 @@ def _error_lines(output: str) -> str:
     )
 
 
+def _get_mutated_code(mutation, root_dir: Path) -> str | None:
+    import cosmic_ray.plugins
+    from cosmic_ray.mutating import mutate_code
+    from cosmic_ray.util import read_python_source
+
+    module_path = root_dir / mutation.module_path
+    if not module_path.is_file():
+        return None
+    try:
+        operator_class = cosmic_ray.plugins.get_operator(mutation.operator_name)
+        try:
+            operator_args = mutation.operator_args
+        except AttributeError:
+            operator_args = {}
+        operator = operator_class(**operator_args)
+        return mutate_code(read_python_source(module_path), operator, mutation.occurrence)
+    except Exception:
+        return None
+
+
 def reclassify_db(db_path: str) -> tuple[int, int, int]:
-    """Reclassify KILLED results in db_path as INCOMPETENT where appropriate.
+    """Reclassify results in db_path as INCOMPETENT where appropriate.
+    Returns (timeout_count, syntax_error_count, valid_case_count).
     """
     from sqlalchemy import select
 
+    root_dir = Path(db_path).resolve().parent.parent
+
+    # compile-check to find syntax-error job_ids (covers KILLED and SURVIVED).
+    syntax_error_ids: set[str] = set()
+    with work_db.use_db(db_path, mode=WorkDB.Mode.open) as db:
+        for work_item, result in db.completed_work_items:
+            if result.test_outcome not in (TestOutcome.KILLED, TestOutcome.SURVIVED):
+                continue
+            for mutation in work_item.mutations:
+                mutated_code = _get_mutated_code(mutation, root_dir)
+                if mutated_code is None:
+                    continue
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", SyntaxWarning)
+                        compile(mutated_code, str(root_dir / mutation.module_path), "exec")
+                except SyntaxError:
+                    syntax_error_ids.add(work_item.job_id)
+                    break
+
+    # apply all reclassifications in a single session.
     with work_db.use_db(db_path, mode=WorkDB.Mode.open) as db:
         with db._session_maker.begin() as session:  # type: ignore[attr-defined]
-            rows = (
+            syntax_error_count = 0
+            if syntax_error_ids:
+                syntax_rows = (
+                    session.execute(
+                        select(WorkResultStorage).where(
+                            WorkResultStorage.job_id.in_(syntax_error_ids)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                syntax_error_count = len(syntax_rows)
+                for row in syntax_rows:
+                    row.test_outcome = TestOutcome.INCOMPETENT  # type: ignore[assignment]
+
+            killed_rows = (
                 session.execute(
                     select(WorkResultStorage).where(
                         WorkResultStorage.test_outcome == TestOutcome.KILLED
@@ -61,17 +118,15 @@ def reclassify_db(db_path: str) -> tuple[int, int, int]:
                 .all()
             )
             timeout_count = 0
-            syntax_error_count = 0
             valid_case_count = 0
-            for row in rows:
+            for row in killed_rows:
+                if row.job_id in syntax_error_ids:
+                    continue
                 output = cast(str | None, row.output) or ""
                 errors = _error_lines(output)
                 if _TIMEOUT_MARKER in errors:
                     row.test_outcome = TestOutcome.INCOMPETENT  # type: ignore[assignment]
                     timeout_count += 1
-                elif _SYNTAX_ERROR_MARKER in output:
-                    row.test_outcome = TestOutcome.INCOMPETENT  # type: ignore[assignment]
-                    syntax_error_count += 1
                 elif (
                     _INVALID_CASE_MARKER not in errors
                     and _DATA_MODIFICATION_MARKER not in errors
@@ -79,6 +134,7 @@ def reclassify_db(db_path: str) -> tuple[int, int, int]:
                 ):
                     row.test_outcome = TestOutcome.INCOMPETENT  # type: ignore[assignment]
                     valid_case_count += 1
+
     return timeout_count, syntax_error_count, valid_case_count
 
 
