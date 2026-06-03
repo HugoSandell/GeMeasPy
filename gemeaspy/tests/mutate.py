@@ -36,6 +36,7 @@ from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
 import gemeaspy
 from gemeaspy.tests.coverage_utils import is_covered_abs as _is_covered_abs
 from gemeaspy.tests import _logging
+from gemeaspy.tests.test_main import ACQUISITION_TIMEOUT
 from gemeaspy.tests._sgr import (
     CLR_GREEN_FG,
     CLR_RED_FG,
@@ -662,7 +663,8 @@ def _generate_and_run_test_suite(
                 data_dir,
                 fresh,
             )
-            config["timeout"] = baseline_time * 4
+            min_timeout = baseline_time + ACQUISITION_TIMEOUT
+            config["timeout"] = max(baseline_time * 4, min_timeout)
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
             print(f"Executing {pending} work items...")
             report_end_event = Event()
@@ -717,6 +719,19 @@ def _find_min_acts_strength_above(
     return None
 
 
+def _wait_for_worker(port: int, timeout: float = 30.0, interval: float = 0.1) -> bool:
+    """Poll until the worker on `port` accepts TCP connections. Returns False on timeout."""
+    import socket
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("localhost", port), timeout=interval):
+                return True
+        except OSError:
+            time.sleep(interval)
+    return False
+
+
 def _start_workers(
     worker_count: int,
     root_dir: str,
@@ -734,6 +749,9 @@ def _start_workers(
         worker = multiprocessing.Process(target=_run_worker_sandboxed, args=(port, str(sandbox), data_dir))
         workers.append(worker)
         worker.start()
+    for port in ports:
+        if not _wait_for_worker(port):
+            raise RuntimeError(f"Worker on port {port} did not become ready within 30s")
     urls = [f"http://localhost:{port}" for port in ports]
     return urls, workers, sandbox_dirs
 
