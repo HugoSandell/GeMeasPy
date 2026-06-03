@@ -31,7 +31,7 @@ from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.tools.filters import operators_filter, pragma_no_mutate
-from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome
+from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome, WorkResultStorage
 
 import gemeaspy
 from gemeaspy.tests.coverage_utils import is_covered_abs as _is_covered_abs
@@ -562,6 +562,29 @@ def _reset_abnormal_and_timeout_to_pending(db: WorkDB, exclude_job_ids: set[str]
         return query.delete()
 
 
+def _skip_uncovered_work_items(db: WorkDB, covered: dict[str, set[int]]) -> int:
+    """Mark pending work items on uncovered lines as SURVIVED, returning the count."""
+    if not covered:
+        return 0
+    to_skip = [
+        wi.job_id
+        for wi in db.pending_work_items
+        if all(not _is_covered(m, covered) for m in wi.mutations)
+    ]
+    if not to_skip:
+        return 0
+    with db._session_maker.begin() as session:  # type: ignore[attr-defined]
+        for job_id in to_skip:
+            session.add(WorkResultStorage(
+                job_id=job_id,
+                worker_outcome=WorkerOutcome.NORMAL,
+                test_outcome=TestOutcome.SURVIVED,
+                output="Uncovered by baseline test suite",
+                diff="Not Available",
+            ))
+    return len(to_skip)
+
+
 @dataclass
 class _GeneratorSpec:
     generator: str
@@ -616,6 +639,8 @@ def _generate_and_run_test_suite(
     start_time = time.monotonic()
     with work_db.use_db(cr_session_file, mode=db_mode) as db:  # type: ignore[attr-defined]
         preexisting_timeout_job_ids: set[str] = set()
+        covered: dict[str, set[int]] = {}
+        baseline_time: float = 0.0
         if session_exists:
             with contextlib.redirect_stdout(io.StringIO()):  # pragma_no_mutate is noisy!
                 pragma_no_mutate.main((cr_session_file,))
@@ -629,6 +654,9 @@ def _generate_and_run_test_suite(
             pending = len(db.pending_work_items)
             reset_str = f", {with_sgr(f'{abnormal_reset} ABNORMAL/TIMEOUT reset', CLR_YELLOW_FG)}" if abnormal_reset else ""
             print(f"Resuming {with_sgr(generator, STYLE_BOLD)} ({suite_size} cases): {total - pending}/{total} done, {pending} pending{reset_str}.")
+            covered, baseline_time = run_baseline_coverage(
+                python_path, generator, label, generator_args, pytest_log_file, data_dir, fresh=False,
+            )
         else:
             print(f"Running mutation analysis on {with_sgr(generator, STYLE_BOLD)} ({suite_size} cases)")
             print("Initialising WorkDB")
@@ -638,31 +666,19 @@ def _generate_and_run_test_suite(
             operators_filter.main((cr_session_file, cr_config_file))
             with contextlib.redirect_stdout(io.StringIO()):  # pragma_no_mutate is noisy!
                 pragma_no_mutate.main((cr_session_file,))
+            print(f"Collecting baseline coverage for '{generator}'...")
+            covered, baseline_time = run_baseline_coverage(
+                python_path, generator, label, generator_args, pytest_log_file, data_dir, fresh,
+            )
+            num_coverage_skipped = _skip_uncovered_work_items(db, covered)
+            if num_coverage_skipped:
+                print(f"  Skipped {num_coverage_skipped} work item(s) on uncovered lines.")
 
         pending = len(db.pending_work_items)
 
         if pending == 0:
             print(f"  All work items already completed, skipping execution.")
-            covered, _ = run_baseline_coverage(
-                python_path,
-                generator,
-                label,
-                generator_args,
-                pytest_log_file,
-                data_dir,
-                fresh=False,
-            )
         else:
-            print(f"Collecting baseline coverage for '{generator}'...")
-            covered, baseline_time = run_baseline_coverage(
-                python_path,
-                generator,
-                label,
-                generator_args,
-                pytest_log_file,
-                data_dir,
-                fresh,
-            )
             min_timeout = baseline_time + ACQUISITION_TIMEOUT
             config["timeout"] = max(baseline_time * 4, min_timeout)
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
