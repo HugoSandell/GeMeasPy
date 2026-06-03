@@ -18,6 +18,16 @@ parser.add_argument(
     action="store_true",
     help="Delete INCOMPETENT result rows for equivalent mutants so they will be re-run",
 )
+parser.add_argument(
+    "--reset-killed",
+    action="store_true",
+    help="Delete KILLED result rows for equivalent mutants so they will be re-run",
+)
+parser.add_argument(
+    "--reset",
+    action="store_true",
+    help="Delete KILLED and INCOMPETENT result rows for equivalent mutants so they will be re-run",
+)
 args = parser.parse_args()
 
 db_paths: list[str] = []
@@ -39,6 +49,7 @@ equiv: dict[tuple, str] = {
 total_killed: list[tuple] = []
 total_skipped: list[tuple] = []
 total_incompetent_reset = 0
+total_killed_reset = 0
 
 for db_path in db_paths:
     if not Path(db_path).exists():
@@ -95,8 +106,30 @@ for db_path in db_paths:
             print(f"    equivalence reason: {equiv[mutation_data[:3]]}")
             print(f"    job: {job_id}")
             print(f"    test outcome: {test_outcome}")
-
-    if args.reset_incompetent:
+            
+    if args.reset_killed or args.reset:
+        killed_job_ids = [k[4] for k in killed]
+        if not killed_job_ids:
+            print("\nNo KILLED equivalent mutants to reset.")
+        else:
+            from sqlalchemy import select
+            with work_db.use_db(db_path, mode=WorkDB.Mode.open) as db:
+                with db._session_maker.begin() as session:  # type: ignore[attr-defined]
+                    rows = (
+                        session.execute(
+                            select(WorkResultStorage).where(
+                                WorkResultStorage.job_id.in_(killed_job_ids)
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
+                    for row in rows:
+                        session.delete(row)
+            reset_count = len(rows)
+            total_killed_reset += reset_count
+            print(f"\nReset {total_killed_reset} KILLED equivalent mutant(s).")
+    if args.reset_incompetent or args.reset:
         if not incompetent_job_ids:
             print("\nNo INCOMPETENT equivalent mutants to reset.")
         else:
