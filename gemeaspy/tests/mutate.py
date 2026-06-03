@@ -575,20 +575,49 @@ def _skip_uncovered_work_items(db: WorkDB, covered: dict[str, set[int]]) -> int:
     if not covered:
         return 0
     to_skip = [
-        wi.job_id
+        wi
         for wi in db.pending_work_items
         if all(not _is_covered(m, covered) for m in wi.mutations)
     ]
     if not to_skip:
         return 0
+
+    import cosmic_ray.plugins
+    from cosmic_ray.mutating import mutate_code as _cr_mutate_code
+    from cosmic_ray.util import read_python_source as _cr_read_source
+
+    def _make_diff(wi) -> str | None:
+        for mutation in wi.mutations:
+            try:
+                op_cls = cosmic_ray.plugins.get_operator(mutation.operator_name)
+                try:
+                    op_args = mutation.operator_args
+                except AttributeError:
+                    op_args = {}
+                op = op_cls(**op_args)
+                original = _cr_read_source(mutation.module_path)
+                mutated = _cr_mutate_code(original, op, mutation.occurrence)
+            except Exception:
+                continue
+            if mutated is None:
+                continue
+            module_str = str(mutation.module_path).replace("\\", "/")
+            return "".join(difflib.unified_diff(
+                original.splitlines(keepends=True),
+                mutated.splitlines(keepends=True),
+                fromfile=f"a/{module_str}",
+                tofile=f"b/{module_str}",
+            ))
+        return None
+
     with db._session_maker.begin() as session:  # type: ignore[attr-defined]
-        for job_id in to_skip:
+        for wi in to_skip:
             session.add(WorkResultStorage(
-                job_id=job_id,
+                job_id=wi.job_id,
                 worker_outcome=WorkerOutcome.NORMAL,
                 test_outcome=TestOutcome.SURVIVED,
                 output="Uncovered by baseline test suite",
-                diff="Diff not available, as mutant was never generated.",
+                diff=_make_diff(wi),
             ))
     return len(to_skip)
 
