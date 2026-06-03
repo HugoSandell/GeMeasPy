@@ -50,11 +50,9 @@ from gemeaspy.tests._sgr import (
 def _setup_worker_sandbox(sandbox_dir: Path, root_dir: Path) -> None:
     """Copy the entire gemeaspy source directory into sandbox_dir.
 
-    Each worker runs with cwd=sandbox_dir, so relative module paths (e.g.
-    "gemeaspy/acquisition/session.py") resolve inside the sandbox.  Python's
-    sys.path starts with '' (= cwd), so pytest subprocesses import gemeaspy
-    from the sandbox, eliminating file-system race conditions between 
-    concurrent workers.
+    Each worker runs with cwd=sandbox_dir, so relative module paths (e.g. "gemeaspy/acquisition/session.py") resolve inside the sandbox.  
+    Python's sys.path starts with '' (= cwd), so pytest subprocesses import gemeaspy from the sandbox, 
+    eliminating file-system race conditions between concurrent workers.
     """
     shutil.copytree(
         str(root_dir / "gemeaspy"),
@@ -554,12 +552,22 @@ def _reset_abnormal_and_timeout_to_pending(db: WorkDB, exclude_job_ids: set[str]
             .where(or_(
                 _WorkResultStorage.worker_outcome == WorkerOutcome.ABNORMAL,
                 _WorkResultStorage.worker_outcome == WorkerOutcome.NO_TEST,
-                _WorkResultStorage.output == "timeout",
+                (_WorkResultStorage.output == "timeout") & (_WorkResultStorage.test_outcome == TestOutcome.KILLED),
             ))
         )
         if exclude_job_ids:
             query = query.where(_WorkResultStorage.job_id.notin_(exclude_job_ids))
         return query.delete()
+
+
+def _count_abnormal(db: WorkDB, exclude_job_ids: set[str] | None = None) -> int:
+    """Count completed work items that would be reset by _reset_abnormal_and_timeout_to_pending."""
+    return sum(
+        1 for work_item, r in db.completed_work_items
+        if (r.worker_outcome in (WorkerOutcome.ABNORMAL, WorkerOutcome.NO_TEST)
+            or (r.output == "timeout" and r.test_outcome == TestOutcome.KILLED))
+        and (exclude_job_ids is None or work_item.job_id not in exclude_job_ids)
+    )
 
 
 def _skip_uncovered_work_items(db: WorkDB, covered: dict[str, set[int]]) -> int:
@@ -580,7 +588,7 @@ def _skip_uncovered_work_items(db: WorkDB, covered: dict[str, set[int]]) -> int:
                 worker_outcome=WorkerOutcome.NORMAL,
                 test_outcome=TestOutcome.SURVIVED,
                 output="Uncovered by baseline test suite",
-                diff="Not Available",
+                diff="Diff not available, as mutant was never generated.",
             ))
     return len(to_skip)
 
@@ -679,8 +687,7 @@ def _generate_and_run_test_suite(
         if pending == 0:
             print(f"  All work items already completed, skipping execution.")
         else:
-            min_timeout = baseline_time + ACQUISITION_TIMEOUT
-            config["timeout"] = max(baseline_time * 4, min_timeout)
+            config["timeout"] = baseline_time * 2 + ACQUISITION_TIMEOUT
             print(f"  Baseline time: {baseline_time:.1f}s; timeout set to {config['timeout']:.1f}s")
             print(f"Executing {pending} work items...")
             report_end_event = Event()
@@ -690,16 +697,15 @@ def _generate_and_run_test_suite(
                 cr_execute(work_db=db, config=config)
                 _max_retries = 1
                 for _attempt in range(1, _max_retries + 1):
-                    abnormal_count = sum(
-                        1 for work_item, r in db.completed_work_items
-                        if (r.worker_outcome == WorkerOutcome.ABNORMAL or r.output == "timeout")
-                        and work_item.job_id not in preexisting_timeout_job_ids
-                    )
+                    abnormal_count = _count_abnormal(db, exclude_job_ids=preexisting_timeout_job_ids)
                     if abnormal_count == 0:
                         break
                     print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL/TIMEOUT item(s) (attempt {_attempt}/{_max_retries})...", CLR_YELLOW_FG))
                     _reset_abnormal_and_timeout_to_pending(db, exclude_job_ids=preexisting_timeout_job_ids)
                     cr_execute(work_db=db, config=config)
+                abnormal_count = _count_abnormal(db, exclude_job_ids=preexisting_timeout_job_ids)
+                if abnormal_count > 0:
+                    print(with_sgr(f"  {abnormal_count} ABNORMAL/TIMEOUT item(s) unresolved", CLR_YELLOW_FG))
             finally:
                 report_end_event.set()
                 report_thread.join(5)
