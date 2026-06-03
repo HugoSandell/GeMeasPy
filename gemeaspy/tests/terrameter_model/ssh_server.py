@@ -67,8 +67,9 @@ class InstrumentServerEmulator:
 
         self._socket.settimeout(0.1) # Use timeout to prevent multithreading deadlocks
         self._socket.bind((host, port))
+        self._socket.listen()  # before thread starts so first accept() never races
         self.address = self._socket.getsockname()
-        
+
         self._listen_thread = threading.Thread(target=self._listen)
         self._listen_thread.start()
     
@@ -123,7 +124,6 @@ class InstrumentServerEmulator:
                 elif not self.instrument.allow_login:
                     time.sleep(0.01)
                     continue
-                self._socket.listen() 
                 client, addr = self._socket.accept()
                 self._connect(client)
             except TimeoutError as e:
