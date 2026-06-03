@@ -296,7 +296,7 @@ def _progress_reporter(db: WorkDB, end_event: Event):
 
 def _mutation_fingerprint(mutation: MutationSpec) -> tuple[str, str, int]:
     """Stable mutation identifier across runs: (module_path, operator_name, occurrence)."""
-    return (str(mutation.module_path), mutation.operator_name, mutation.occurrence)
+    return (str(mutation.module_path).replace("\\", "/"), mutation.operator_name, mutation.occurrence)
 
 
 def _load_fingerprints_json(path: str) -> set[tuple[str, str, int]]:
@@ -312,7 +312,7 @@ def _load_fingerprints_json(path: str) -> set[tuple[str, str, int]]:
         return set()
     with open(path, encoding="utf-8") as f:
         entries = json.load(f)
-    return {(e["module_path"], e["operator_name"], e["occurrence"]) for e in entries}
+    return {(str(e["module_path"]).replace("\\", "/"), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def load_equivalent_fingerprints(data_dir: str) -> set[tuple[str, str, int]]:

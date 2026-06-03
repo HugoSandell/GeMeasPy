@@ -28,7 +28,7 @@ class MutantEntry:
     diff: str
 
     def fingerprint(self) -> tuple[str, str, int]:
-        return (self.module_path, self.operator_name, self.occurrence)
+        return (self.module_path.replace("\\", "/"), self.operator_name, self.occurrence)
 
 
 _HEADER_RE = re.compile(
@@ -54,7 +54,7 @@ def parse_review_file(path: Path) -> list[MutantEntry]:
         if header is None:
             return
         entries.append(MutantEntry(
-            module_path=header["module"],
+            module_path=header["module"].replace("\\", "/"),
             line=int(header["line"]),
             tags=_parse_tags(header["tags"]),
             operator_name=header["operator"],
@@ -89,7 +89,7 @@ def _save_json_list(path: Path, entries: list[dict]) -> None:
 
 
 def _fingerprints(entries: list[dict]) -> set[tuple[str, str, int]]:
-    return {(e["module_path"], e["operator_name"], e["occurrence"]) for e in entries}
+    return {(e["module_path"].replace("\\", "/"), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def _display_entry(entry: MutantEntry, index: int, total: int) -> None:
