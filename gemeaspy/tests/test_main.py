@@ -121,6 +121,7 @@ async def test_main(test_case: AcquisitionTestCase,
         stdout_bytes.decode(encoding="utf-8", errors="backslashreplace"), 
         stderr_bytes.decode(encoding="utf-8", errors="backslashreplace"),
         emulator.instrument,
+        exit_code=0 if proc.returncode==None else proc.returncode,
     )
 
     frame_str = ""

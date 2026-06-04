@@ -705,7 +705,7 @@ def _generate_and_run_test_suite(
                 pragma_no_mutate.main((cr_session_file,))
             print(f"Collecting baseline coverage for '{generator}'...")
             covered, baseline_time = run_baseline_coverage(
-                python_path, generator, label, generator_args, pytest_log_file, data_dir, fresh,
+                python_path, generator, label, generator_args, pytest_log_file, data_dir, True,
             )
             num_coverage_skipped = _skip_uncovered_work_items(db, covered)
             if num_coverage_skipped:

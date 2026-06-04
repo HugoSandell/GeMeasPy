@@ -427,10 +427,18 @@ def evaluate_test(
     stdout: str,
     stderr: str,
     emulator: TerrameterLS,
+    exit_code: int = 0,
 ) -> OracleResult:
     result = _evaluate_any(config_state)
     if not result:
         return result
+
+    if test_data.invalid_parameter is None:
+        if exit_code != 0:
+            return OracleResult(False, f"Expected exit code 0 for valid run, got {exit_code}")
+    else:
+        if exit_code == 0:
+            return OracleResult(False, f"Expected non-zero exit code for invalid parameter, got 0")
 
     param_spec = AcquisitionParameterSpec()
     invalid_parameter = test_data.invalid_parameter
