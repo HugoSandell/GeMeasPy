@@ -275,9 +275,8 @@ class SSHTestServerChannel():
                     except EOFError:
                         pass
                     stdout.close()
-                except socket.error as e:
-                    if "Socket is closed" not in e.args:
-                        raise e
+                except (socket.error, EOFError, ConnectionResetError):
+                    pass
             else:
                 # Serve shell request
                 try:
@@ -292,9 +291,8 @@ class SSHTestServerChannel():
                         pty=self._pty,
                     )
                     shell.cmdloop()
-                except socket.error as e:
-                    if "Socket is closed" not in e.args:
-                        raise e
+                except (socket.error, EOFError, ConnectionResetError):
+                    pass
         finally:
             self.close()
 
