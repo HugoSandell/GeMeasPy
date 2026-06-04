@@ -61,7 +61,7 @@ def score_db(
                 incompetent += 1
             if outcome == TestOutcome.SURVIVED:
                 for mutation in work_item.mutations:
-                    fp = (str(mutation.module_path), mutation.operator_name, mutation.occurrence)
+                    fp = (mutation.module_path.as_posix(), mutation.operator_name, mutation.occurrence)
                     if fp in equivalent_fps:
                         equivalent += 1
                     elif covered and not _is_covered(
@@ -93,6 +93,7 @@ def main() -> None:
         sys.exit(1)
 
     equivalent_fps = _load_equivalent_fps(data_dir)
+    print("\n".join(str(e) for e in equivalent_fps))
 
     if suite_type == "random":
         sessions: list[tuple[int | None, Path]] = []
