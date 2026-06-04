@@ -93,7 +93,7 @@ def _load_incompetent_cache(cache_path: str) -> set[tuple]:
             entries = json.load(f)
     except (json.JSONDecodeError, OSError):
         return set()
-    return {(e["module_path"], e["operator"], e["line"], tuple(e["diff"])) for e in entries}
+    return {(Path(e["module_path"]).as_posix(), e["operator"], e["line"], tuple(e["diff"])) for e in entries}
 
 
 def _check_incompetent_cache(cache_path: str, fp: tuple) -> bool:
@@ -310,7 +310,7 @@ def _load_fingerprints_json(path: str) -> set[tuple[str, str, int]]:
         return set()
     with open(path, encoding="utf-8") as f:
         entries = json.load(f)
-    return {(str(e["module_path"]).replace("\\", "/"), e["operator_name"], e["occurrence"]) for e in entries}
+    return {(Path(e["module_path"]).as_posix(), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def load_equivalent_fingerprints(data_dir: str) -> set[tuple[str, str, int]]:

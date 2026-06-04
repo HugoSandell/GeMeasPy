@@ -42,7 +42,7 @@ with open(EQUIV_FILE, encoding="utf-8") as f:
     entries = json.load(f)
 
 equiv: dict[tuple, str] = {
-    (e["module_path"].replace("\\", "/"), e["operator_name"], e["occurrence"]): e["reason"]
+    (Path(e["module_path"]).as_posix(), e["operator_name"], e["occurrence"]): e["reason"]
     for e in entries
 }
 

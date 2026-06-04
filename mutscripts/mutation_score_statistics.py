@@ -80,7 +80,7 @@ def load_equivalent_fingerprints(data_dir: Path) -> set[_Fp]:
         return set()
     with open(path, encoding="utf-8") as f:
         entries = json.load(f)
-    return {(e["module_path"], e["operator_name"], e["occurrence"]) for e in entries}
+    return {(Path(e["module_path"]).as_posix(), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def load_coverage_lines(coverage_json: Path) -> dict[str, set[int]]:
@@ -132,7 +132,7 @@ def score_session(
                 skipped += 1
 
             for mutation in work_item.mutations:
-                fp = (str(mutation.module_path), mutation.operator_name, mutation.occurrence)
+                fp = (mutation.module_path.as_posix(), mutation.operator_name, mutation.occurrence)
                 universe_fps.add(fp)
                 if outcome == TestOutcome.KILLED:
                     killed_fps.add(fp)
@@ -140,7 +140,7 @@ def score_session(
                     if fp in equivalent_fps:
                         equivalent += 1
                     elif covered and not _is_covered(
-                        str(mutation.module_path), mutation.start_pos[0], covered, root
+                        mutation.module_path.as_posix(), mutation.start_pos[0], covered, root
                     ):
                         uncovered += 1
 

@@ -23,7 +23,7 @@ def _load_equivalent_fps(data_dir: Path) -> set[tuple[str, str, int]]:
         return set()
     with open(path, encoding="utf-8") as f:
         entries = json.load(f)
-    return {(e["module_path"], e["operator_name"], e["occurrence"]) for e in entries}
+    return {(Path(e["module_path"]).as_posix(), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def _load_covered_lines(coverage_json: Path) -> dict[str, set[int]]:

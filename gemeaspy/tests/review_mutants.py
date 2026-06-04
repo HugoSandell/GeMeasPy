@@ -89,7 +89,7 @@ def _save_json_list(path: Path, entries: list[dict]) -> None:
 
 
 def _fingerprints(entries: list[dict]) -> set[tuple[str, str, int]]:
-    return {(e["module_path"].replace("\\", "/"), e["operator_name"], e["occurrence"]) for e in entries}
+    return {(Path(e["module_path"]).as_posix(), e["operator_name"], e["occurrence"]) for e in entries}
 
 
 def _display_entry(entry: MutantEntry, index: int, total: int) -> None:
