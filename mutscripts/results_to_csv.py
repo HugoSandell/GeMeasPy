@@ -93,7 +93,6 @@ def main() -> None:
         sys.exit(1)
 
     equivalent_fps = _load_equivalent_fps(data_dir)
-    print("\n".join(str(e) for e in equivalent_fps))
 
     if suite_type == "random":
         sessions: list[tuple[int | None, Path]] = []
