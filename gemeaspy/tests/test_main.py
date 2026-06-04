@@ -110,11 +110,11 @@ async def test_main(test_case: AcquisitionTestCase,
         # IMPORTANT: Do not break out the ":"
         pytest.fail(f"CR{":"}TIMEOUT Acquisition timed out after {ACQUISITION_TIMEOUT}s")
 
-    _CAPTURE_LIMIT = 256 * 1024
+    _CAPTURE_LIMIT = 512 * 1024
     if len(stdout_bytes) > _CAPTURE_LIMIT:
-        stdout_bytes = stdout_bytes[:_CAPTURE_LIMIT]
+        stdout_bytes = stdout_bytes[-_CAPTURE_LIMIT:]
     if len(stderr_bytes) > _CAPTURE_LIMIT:
-        stderr_bytes = stderr_bytes[:_CAPTURE_LIMIT]
+        stderr_bytes = stderr_bytes[-_CAPTURE_LIMIT:]
 
     oracle_result: OracleResult = oracle.evaluate_test(
         test_case, config, task_files,
