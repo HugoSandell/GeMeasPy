@@ -105,10 +105,12 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
 def clear_buffer(connection: SSHConnection, mode: int) -> None:
     match mode:
         case 0:
-            while True:
+            for _ in range(8192):
                 channel_output = connection.read_channel_buffer(1)
                 if channel_output == '>':
                     break
+            else:
+                raise TerrameterResponseError("Terrameter prompt '>' not received after clearing buffer.")
         case 1:
             for i in range(5):
                 command = "g measure\n"
