@@ -939,7 +939,7 @@ def _check_review_consistency(data_dir: str, root_dir: str, labels: list[str]) -
             source_rel: str | None = None
             for line in diff_lines:
                 if line.startswith("--- a"):
-                    source_rel = line[5:]
+                    source_rel = line[5:].lstrip("/")
                     break
             if source_rel is None:
                 continue
