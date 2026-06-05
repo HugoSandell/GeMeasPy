@@ -50,7 +50,7 @@ def with_sgr(text: str, style: Iterable[int] | int | None = None) -> str:
 
 if __name__ == "__main__":
     # Demo / test
-    def print_ansi(text: str, style: Iterable[int] | int | None = None):
+    def _print_ansi(text: str, style: Iterable[int] | int | None = None):
         print("This is " + with_sgr(text, style) + ", right?")
 
     colors = {
@@ -78,15 +78,15 @@ if __name__ == "__main__":
             "Underlined": STYLE_UNDERLINE, 
             "Strikethrough": STYLE_STRIKETHROUGH}
 
-    print_ansi("Plain")
+    _print_ansi("Plain")
     
     for c in colors:
-        print_ansi(c, colors[c])
+        _print_ansi(c, colors[c])
         
     for s in styles:
-        print_ansi(s, styles[s])
+        _print_ansi(s, styles[s])
     
     for i in range(min(len(colors), len(styles))):
         c = list(colors.keys())[i]
         s = list(styles.keys())[i]
-        print_ansi(f"{c} and {s}", (styles[s], colors[c]))
+        _print_ansi(f"{c} and {s}", (styles[s], colors[c]))
