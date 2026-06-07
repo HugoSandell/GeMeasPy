@@ -246,7 +246,8 @@ def wait(start_time: str) -> None:
 def sleep_unless_testing(time_seconds: float) -> None:
     if "USETERRAMETEREMULATOR" not in os.environ:
         time.sleep(time_seconds)
-
+    else:
+        time.sleep(0.001 + time_seconds / 10000)
 
 def timestamp_hex() -> str:
     """Returns current integer timestamp in milliseconds as hex string"""
