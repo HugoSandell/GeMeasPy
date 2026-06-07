@@ -648,6 +648,7 @@ def _generate_and_run_test_suite(
     cr_config_file: str,
     pytest_test_dir: str,
     root_dir: str,
+    sandbox_dirs: list[Path],
 ):
     generator = generator_spec.generator
     generator_args = generator_spec.generator_args
@@ -731,6 +732,9 @@ def _generate_and_run_test_suite(
                         break
                     print(with_sgr(f"  Retrying {abnormal_count} ABNORMAL/TIMEOUT item(s) (attempt {_attempt}/{_max_retries})...", CLR_YELLOW_FG))
                     _reset_abnormal_and_timeout_to_pending(db, exclude_job_ids=preexisting_timeout_job_ids)
+                    for sandbox_dir in sandbox_dirs:
+                        shutil.rmtree(str(sandbox_dir / "gemeaspy"), ignore_errors=True)
+                        _setup_worker_sandbox(sandbox_dir, Path(root_dir))
                     cr_execute(work_db=db, config=config)
                 abnormal_count = _count_abnormal(db, exclude_job_ids=preexisting_timeout_job_ids)
                 if abnormal_count > 0:
@@ -1137,6 +1141,7 @@ def main():
                     CR_CONFIG_FILE,
                     PYTEST_TEST_DIR,
                     ROOT_DIR,
+                    sandbox_dirs,
                 )
     except KeyboardInterrupt:
         print(with_sgr("\nInterrupted.", CLR_YELLOW_FG))
