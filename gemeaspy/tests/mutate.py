@@ -31,7 +31,8 @@ from cosmic_ray.commands.execute import execute as cr_execute
 from cosmic_ray.commands.init import init as cr_init
 from cosmic_ray.config import ConfigDict
 from cosmic_ray.tools.filters import operators_filter, pragma_no_mutate
-from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome, WorkResultStorage
+from cosmic_ray.work_db import MutationSpec, TestOutcome, WorkDB, WorkerOutcome, WorkResultStorage, WorkResult
+import cosmic_ray.distribution.http as _cr_http_mod
 
 import gemeaspy
 from gemeaspy.tests.coverage_utils import is_covered_abs as _is_covered_abs
@@ -1070,6 +1071,28 @@ def main():
             print(f"  {msg}")
         print("Delete or regenerate the stale review file(s) before continuing.")
         sys.exit(1)
+
+    # cosmic_ray's send_request uses aiohttp with no explicit timeout, so it uses aiohttp's 300s default. 
+    # For large test suites the mutation test timeout exceeds 300s, causing the HTTP connection to be aborted before the worker finishes responding.
+    async def _send_request_with_timeout(url, work_item, test_command, timeout):
+        parameters = {
+            "mutations": [
+                {"module_path": str(m.module_path), "operator": m.operator_name, "occurrence": m.occurrence}
+                for m in work_item.mutations
+            ],
+            "test_command": test_command,
+            "timeout": timeout,
+        }
+        http_timeout = aiohttp.ClientTimeout(total=timeout + 120)
+        async with aiohttp.request("POST", url, json=parameters, timeout=http_timeout) as resp:
+            result = await resp.json()
+            return WorkResult(
+                worker_outcome=result["worker_outcome"],
+                output=result["output"],
+                test_outcome=result["test_outcome"],
+                diff=result["diff"],
+            )
+    _cr_http_mod.send_request = _send_request_with_timeout
 
     config: ConfigDict = cosmic_ray.config.load_config(CR_CONFIG_FILE)
     config["distributor"]["name"] = "http"
