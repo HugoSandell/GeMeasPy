@@ -988,11 +988,14 @@ def _check_review_consistency(data_dir: str, root_dir: str, labels: list[str]) -
                             f"(file has {len(source_lines)} lines)"
                         )
                     elif source_lines[line_idx].rstrip() != expected:
-                        discrepancies.append(
-                            f"{label}: line {line_idx + 1}:\n"
-                            f"    expected: {expected!r}\n"
-                            f"    got:      {source_lines[line_idx]!r}"
-                        )
+                        # When a file has no trailing newline, difflib omits the newline terminator from the last removed line
+                        actual = source_lines[line_idx].rstrip()
+                        if not (expected.startswith(actual) and expected[len(actual):].startswith("+")):
+                            discrepancies.append(
+                                f"{label}: line {line_idx + 1}:\n"
+                                f"    expected: {expected!r}\n"
+                                f"    got:      {source_lines[line_idx]!r}"
+                            )
                 src_offset += 1
 
     return discrepancies
