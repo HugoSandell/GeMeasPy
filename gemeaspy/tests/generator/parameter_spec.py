@@ -341,6 +341,8 @@ ACQUISITION_CONSTRAINTS: list[Constraint] = [
     *_constraints_for_invalid_task_parameters(1, 2),
     *_constraints_for_invalid_task_parameters(2, 1),
     *_constraints_for_invalid_task_parameters(2, 2),
+    # config_projects_folder only matters when there are tasks to transfer
+    Constraint(f'config_projects_folder = "{obj2acts(INVALID_FILE)}" => taskfile1_number_of_tasks >= 1 || taskfile2_number_of_tasks >= 1'),
 ]
 
 def _validate_spec():
