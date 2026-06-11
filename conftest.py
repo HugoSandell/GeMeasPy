@@ -104,8 +104,10 @@ def pytest_addoption(parser: pytest.Parser):
                      help="Specify the number of test cases. (random only)")
     parser.addoption("--strength", "-T", dest="strength", default=3, type=int, 
                      help="Specify the test suite interaction strength. (ACTS only)")
-    parser.addoption("--seed", "-S", dest="seed", default=None, type=int, 
+    parser.addoption("--seed", "-S", dest="seed", default=None, type=int,
                      help="Specify the random seed. (random only)")
+    parser.addoption("--n-valid", dest="n_valid", default=None, type=int,
+                     help="Limit the number of valid test cases. Matches the valid/invalid ratio of a paired ACTS suite. (random only)")
 
 
 def _mark_test_case(test_case: TestCase):
@@ -152,7 +154,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
             raise ValueError("Test suite size must be greater than 0")
         if N > max_N:
             raise ValueError(f"Test suite size must not be greater than {max_N}")    
-        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS ,case_count=N, seed=random_seed)
+        n_valid_target = metafunc.config.getoption("n_valid")
+        test_data = test_generation.generate_random_data(param_spec=ACQUISITION_PARAM_SPEC, constraints=ACQUISITION_CONSTRAINTS, case_count=N, seed=random_seed, n_valid=n_valid_target)
     else:
         raise ValueError(f"'{generator_name}' is not a valid test case generator.")
     metafunc.parametrize("test_case", map(_mark_test_case, test_data))

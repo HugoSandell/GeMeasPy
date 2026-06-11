@@ -754,22 +754,19 @@ def _generate_and_run_test_suite(
     print(f"'{generator}' done in {execution_time:.1f} seconds.")
 
 
-def _acts_suite_size(python_path: str, pytest_test_dir: str, root_dir: str, strength: int) -> int:
-    result = subprocess.run(
-        [python_path, "-m", "pytest", pytest_test_dir,
-         f"--rootdir={root_dir}", "--generator=acts", f"--strength={strength}",
-         "--collect-only", "-q", "--no-header", "--maxfail=1"],
-        capture_output=True, text=True,
-    )
-    return sum(1 for line in result.stdout.splitlines() if "::" in line)
+def _acts_suite_info(strength: int) -> tuple[int, int]:
+    """Return (total_size, valid_count) for the ACTS suite at the given strength."""
+    from gemeaspy.tests.generator._generator_acts import generate_covering_array
+    from gemeaspy.tests.generator.parameter_spec import ACQUISITION_PARAM_SPEC, ACQUISITION_CONSTRAINTS
+    data = generate_covering_array(ACQUISITION_PARAM_SPEC, ACQUISITION_CONSTRAINTS, strength=strength)
+    valid_count = sum(1 for c in data if c.invalid_parameter is None)
+    return len(data), valid_count
 
 
-def _find_min_acts_strength_above(
-    python_path: str, pytest_test_dir: str, root_dir: str, min_size: int
-) -> tuple[int, int] | None:
+def _find_min_acts_strength_above(min_size: int) -> tuple[int, int] | None:
     """Return (strength, suite_size) for the smallest acts suite with size > min_size, or None."""
     for strength in range(1, 7):
-        size = _acts_suite_size(python_path, pytest_test_dir, root_dir, strength)
+        size, _ = _acts_suite_info(strength)
         if size > min_size:
             return strength, size
     return None
@@ -1039,7 +1036,7 @@ def main():
         ]
         if args.only != "random":
             print(f"Searching for smallest acts suite above size {args.size}...")
-            found = _find_min_acts_strength_above(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.size)
+            found = _find_min_acts_strength_above(args.size)
             if found is not None:
                 strength, acts_size = found
                 print(f"  Found: strength={strength} yields {acts_size} test cases.")
@@ -1051,13 +1048,13 @@ def main():
         if args.only == "acts":
             generators_to_run = [g for g in generators_to_run if g.generator == "acts"]
     else:
-        acts_size = _acts_suite_size(PYTHON_PATH, PYTEST_TEST_DIR, ROOT_DIR, args.strength)
-        print(f"Acts suite at strength={args.strength}: {acts_size} test cases.")
+        acts_size, acts_valid_count = _acts_suite_info(args.strength)
+        print(f"Acts suite at strength={args.strength}: {acts_size} test cases ({acts_valid_count} valid, {acts_size - acts_valid_count} invalid).")
         generators_to_run = [
             _GeneratorSpec("acts", [f"--strength={args.strength}"], acts_size),
             _GeneratorSpec(
                 generator="random",
-                generator_args=[f"--size={acts_size}", f"--seed={args.seed}"],
+                generator_args=[f"--size={acts_size}", f"--seed={args.seed}", f"--n-valid={acts_valid_count}"],
                 suite_size=acts_size,
                 label_suffix=f"s{args.seed}",
             ),
