@@ -61,7 +61,7 @@ def score_db(
                 incompetent += 1
             if outcome == TestOutcome.SURVIVED:
                 for mutation in work_item.mutations:
-                    fp = (str(mutation.module_path), mutation.operator_name, mutation.occurrence)
+                    fp = (str(mutation.module_path).replace("\\", "/"), mutation.operator_name, mutation.occurrence)
                     if fp in equivalent_fps:
                         equivalent += 1
                     elif covered and not _is_covered(
