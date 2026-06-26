@@ -2,11 +2,10 @@
 
 ## **Ge**ophysical **Meas**urements **Py**thon
 
-This pack contains tools for automated geophysical monitoring. The tools were initialy developed through my studies and are published under Apache 2.0
+This pack contains tools for automated geophysical monitoring. The tools were initialy developed by Aristeidis Nivorlis ([Original repository on GitHub](https://github.com/anivorlis/GeMeasPy)) and are published under Apache 2.0
 
 ### Data collection module
 The module uses a computer (Windows or LINUX) to control the Terrameter LS and acquire data. The computer shall have enough space to hold several datasets for redundancy in case the remote connection breaks.
-
 
 **Setup procedure**
 1. Create the neccesary files
@@ -29,10 +28,13 @@ Otherwise run the following modules:
 `python -m gemeaspy.backup`
 
 ## Mutation analysis    
-`python -m gemeaspy.tests.mutate [generator...]`    
-Where valid inputs for `generator` is `acts` or `random`. If no generator is specified, all available generators will be run.   
+Ensure that the `gemeaspy/settings/config.py` file is present as per the above instructions. 
+```
+python -m gemeaspy.tests.mutate --strength t [--seed s] [--only generator] [--workers N]
+```
+Where valid inputs for `generator` is `acts` or `random`. If no generator is specified, all available generators will be run. `--seed` specifies the seed for the random number generator. `--workers` specifies how many worker threads will be used. The number of worker threads should not exceed the number of physical CPU cores available on the system. By default the number of workers is set to one less than the number of available physical cores, but you may need to set it lower if other processes are active on the system.   
 
-Finally the result can be displayed with   
-`cr-report test_data/cosmicray_<generator>.sqlite`   
-Where `<generator>` is the specific generator you want to see the results for.  
+`gemeaspy/tests/test_main.py` defines the maximum execution time of the acquisition module as `ACQUISITION_TIMEOUT`. This can be changed in the unlikely even that it be needed.
+
+
 See [cosmic-ray documentation](https://cosmic-ray.readthedocs.io/en/latest/tutorials/intro/index.html) for more information.
