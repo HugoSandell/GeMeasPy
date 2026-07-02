@@ -24,8 +24,7 @@ def _resolve_invalid(
     invalid_value,
     starting_params: dict,
 ) -> dict | None:
-    """Return a parameter dict with invalid_param=invalid_value satisfying all constraints.
-    """
+    """Return a parameter dict with invalid_param=invalid_value satisfying all constraints."""
     param_names = list(param_spec)
     params = dict(starting_params)
     params[invalid_param] = invalid_value
@@ -84,38 +83,6 @@ def _generate_base_choice_invalid_cases(
     return results
 
 
-def _generate_sweep_invalid_cases(
-    param_spec: ParameterSpec,
-    constraints: list[Constraint],
-    seen_keys: set[tuple],
-    n_needed: int,
-) -> list[TestCase]:
-    """Generate additional invalid cases by sweeping through valid values of each parameter.
-    """
-    param_names = list(param_spec)
-    max_sweep = max(len(param_spec[p][0]) for p in param_names)
-    results: list[TestCase] = []
-
-    for sweep in range(1, max_sweep):
-        if len(results) >= n_needed:
-            break
-        for invalid_param in param_spec:
-            for invalid_value in param_spec[invalid_param][1]:
-                if len(results) >= n_needed:
-                    break
-                starting = {p: param_spec[p][0][sweep % len(param_spec[p][0])] for p in param_names}
-                params = _resolve_invalid(param_spec, constraints, invalid_param, invalid_value, starting)
-                if params is None:
-                    continue
-                key = tuple(params[p] for p in param_names)
-                if key in seen_keys:
-                    continue
-                results.append(_build_invalid_case(param_spec, param_names, params, invalid_param))
-                seen_keys.add(key)
-
-    return results
-
-
 def _generate_overflow_invalid_cases(
     param_spec: ParameterSpec,
     constraints: list[Constraint],
@@ -123,7 +90,7 @@ def _generate_overflow_invalid_cases(
     n_needed: int,
 ) -> list[TestCase]:
     """Generate additional invalid cases with random starting params.
-    Used when the deterministic sweep cases are exhausted but the requested suite size is not yet reached.
+    Used when more invalid cases are needed beyond base-choice to fill the requested suite size.
     """
     param_names = list(param_spec)
     invalid_pairs = [(p, v) for p in param_names for v in param_spec[p][1]]
@@ -154,9 +121,13 @@ def _generate_overflow_invalid_cases(
 
 RNGSeed: TypeAlias = None | int | str
 def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint], case_count: int, seed: RNGSeed = None, n_valid: int | None = None) -> list[TestCase]:
-    """Generate a random test suite of exactly case_count cases.
+    """Generate a test suite of exactly case_count cases.
+
+    Always starts with one base-choice case per (invalid_param, invalid_value) pair, then fills
+    remaining invalid slots via random overflow (seeded, so seeds produce different suites), then
+    fills valid slots up to n_valid (or all available valid combos if n_valid is None).
+    Pass n_valid=<acts_valid_count> to match the valid/invalid ratio of a paired ACTS suite.
     """
-    # Assign a fixed seed to None to make caching more meaningful
     seed_repr: str = str(seed)
     if seed is None:
         seed = random.getrandbits(64)
@@ -165,9 +136,9 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
     elif isinstance(seed, str):
         seed_repr = seed.encode().hex()
 
-    # Check cache - n_valid is part of the key so suites with different ratios don't collide
+    # n_valid and _bc suffix are part of cache key so suites with different ratios/logic don't collide
     v_tag = f"_v{n_valid}" if n_valid is not None else ""
-    cache_tag = f"n{case_count}{v_tag}_s{seed_repr}"
+    cache_tag = f"n{case_count}{v_tag}_s{seed_repr}_bc"
     cache = _cache.try_load_cache(param_spec, constraints, cache_tag)
     if cache is not None:
         return cache
@@ -178,10 +149,10 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
 
     param_names = list(param_spec)
 
-    # Phase 1: one base-choice test case per unique invalid value (ACTS strength=1 style)
+    # Phase 1: one base-choice test case per unique (invalid_param, invalid_value) pair
     base_invalid = _generate_base_choice_invalid_cases(param_spec, constraints)
 
-    # Deduplicate and build the seen-keys set for O(1) dup checks
+    # Deduplicate and build seen-keys set for O(1) dup checks
     seen_keys: set[tuple] = set()
     deduplicated: list[TestCase] = []
     for case in base_invalid:
@@ -191,24 +162,10 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
             seen_keys.add(key)
     base_invalid = deduplicated
 
+    # Phase 2: valid cases, capped at n_valid (matches ACTS valid count when provided)
     max_case_count_valid = _max_valid_cases(param_spec, constraints)
-    # Cap valid cases at n_valid when provided (matches ratio of the corresponding ACTS suite)
     valid_target = min(n_valid, max_case_count_valid) if n_valid is not None else max_case_count_valid
-
-    # Phase 2 (large suites only): sweep-based invalid cases to extend pairwise coverage.
-    # Only needed when case_count exceeds what base_invalid + target valid cases can fill.
-    # Mirrors how ACTS strength=2 includes invalid values in its pairwise matrix.
-    n_sweep_needed = max(0, case_count - len(base_invalid) - valid_target)
-    sweep_invalid: list[TestCase] = []
-    if n_sweep_needed > 0:
-        sweep_invalid = _generate_sweep_invalid_cases(
-            param_spec, constraints, seen_keys, n_sweep_needed
-        )
-
-    all_invalid = base_invalid + sweep_invalid
-
-    # Phase 3: fill up to valid_target slots with random valid cases
-    n_valid_needed = max(0, min(case_count - len(all_invalid), valid_target))
+    n_valid_needed = max(0, min(case_count - len(base_invalid), valid_target))
     valid_cases: list[TestCase] = []
     generated_valid = 0
     while generated_valid < n_valid_needed:
@@ -226,17 +183,16 @@ def generate_random_data(param_spec: ParameterSpec, constraints: list[Constraint
         seen_keys.add(key)
         generated_valid += 1
 
-    # Phase 4 (overflow only): random invalid cases to exactly reach case_count when the
-    # deterministic phases (sweep + valid) cannot fill the full request.
-    n_overflow = max(0, case_count - len(all_invalid) - len(valid_cases))
+    # Phase 3: random overflow invalid cases to fill the rest of case_count
+    # These vary by seed, giving each seed a distinct set of invalid combinations to explore.
+    n_overflow = max(0, case_count - len(base_invalid) - len(valid_cases))
     overflow_invalid: list[TestCase] = []
     if n_overflow > 0:
         overflow_invalid = _generate_overflow_invalid_cases(
             param_spec, constraints, seen_keys, n_overflow
         )
 
-    test_data = all_invalid + valid_cases + overflow_invalid
-    # Trim to requested size (only needed if overflow couldn't fill the last slots)
+    test_data = base_invalid + valid_cases + overflow_invalid
     test_data = test_data[:case_count]
 
     # Verify uniqueness

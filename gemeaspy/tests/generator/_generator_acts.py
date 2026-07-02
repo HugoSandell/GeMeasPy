@@ -22,11 +22,11 @@ _ACTS_TIMEOUT = 60 * 60 * 2 # 2 hour timeout should be enough unless there's a p
 _ACTS_HEAP_INIT = "1G" # How much heap space to initially allocate to java (Suffix G for gigabytes, M for Megabytes)
 _ACTS_HEAP_MAX = "8G" # How much total heap space to allow java to allocate (Suffix G for gigabytes, M for Megabytes)
 
-def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = []) -> str:
+def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constraint] = [], include_invalid: bool = True) -> str:
     """Generate a temporary ACTS configuration file and return its path"""
     elem_system = Element("System", attrib={"name": "GeMeasPy"})
     elem_parameters = SubElement(elem_system, "Parameters")
-    
+
     for id, param_name in enumerate(parameter_spec):
         param_type = acts_type(parameter_spec[param_name])
         elem_parameter_attrib = {"id": str(id), "name": param_name, "type": param_type.value}
@@ -36,11 +36,12 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
             SubElement(elem_values, "value").text = obj2acts(valid_value)
         SubElement(elem_parameter, "basechoices")
         elem_invalid_values = SubElement(elem_parameter, "invalidValues")
-        for invalid_value in parameter_spec[param_name][1]:
-            SubElement(elem_invalid_values, "invalidValue").text = f"{obj2acts(invalid_value)}"
+        if include_invalid:
+            for invalid_value in parameter_spec[param_name][1]:
+                SubElement(elem_invalid_values, "invalidValue").text = f"{obj2acts(invalid_value)}"
     SubElement(elem_system, "OutputParameters")
     SubElement(elem_system, "Relations")
-    
+
     elem_constraints = SubElement(elem_system, "Constraints")
     for constraint in constraints:
         elem_constraint = SubElement(elem_constraints, "Constraint", attrib={"text": constraint.text})
@@ -51,32 +52,33 @@ def generate_acts_file(parameter_spec: ParameterSpec, constraints: list[Constrai
     fd, path = tempfile.mkstemp(suffix=".xml", prefix="gemeaspytest", text=True)
     ElementTree(elem_system).write(path, xml_declaration=True)
     os.close(fd)
-    
+
     return path
 
 def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constraint] = [], strength: int = 2, validate: bool = True) -> list[TestCase]:
-    """Generate a Covering Array of given strength based on the provided ACTS config file"""
+    """Generate a Covering Array of given strength based on the provided ACTS config file."""
+    from gemeaspy.tests.generator._generator_random import _generate_base_choice_invalid_cases
 
-    # Check cache
-    cache = _cache.try_load_cache(param_spec, constraints, f"t{strength}")
+    # Cache tag includes _bc suffix to distinguish from old format (ACTS-generated invalid cases)
+    cache = _cache.try_load_cache(param_spec, constraints, f"t{strength}_bc")
     if cache is not None:
         return cache
 
     if not os.path.exists(_ACTS_JAR):
         raise FileNotFoundError(f"ACTS was not found at {_ACTS_JAR}")
-    
+
     out_file_dir = tempfile.mkdtemp("gemeaspytest")
     out_file_path = os.path.join(out_file_dir, "acts_output.csv")
-    
+
     def path_escape(path: str) -> str:
         return path.replace("\\", "/")
-    
-    acts_config_path = generate_acts_file(param_spec, constraints)
-    
+
+    acts_config_path = generate_acts_file(param_spec, constraints, include_invalid=False)
+
     acts_arguments = [
-        "java", f"-Xms{_ACTS_HEAP_INIT}", f"-Xmx{_ACTS_HEAP_MAX}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM, 
-        "-Doutput=csv", "-Dchandler=" + _ACTS_CONSTRAINT_HANDLER, "-jar", _ACTS_JAR, 
-        path_escape(acts_config_path), 
+        "java", f"-Xms{_ACTS_HEAP_INIT}", f"-Xmx{_ACTS_HEAP_MAX}", "-Ddoi=" + str(strength), "-Dalgo=" + _ACTS_ALGORITHM,
+        "-Doutput=csv", "-Dchandler=" + _ACTS_CONSTRAINT_HANDLER, "-jar", _ACTS_JAR,
+        path_escape(acts_config_path),
         path_escape(out_file_path)
     ]
 
@@ -97,7 +99,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         raise
     finally:
         os.remove(acts_config_path)
-    
+
     error_hints = ["generation is cancelled", "Exception", "error", "Please modify the file and retry."]
     if any(acts_out.find(search_string) >= 0 for search_string in error_hints):
         e = Exception("ACTS failed but exited normally")
@@ -105,7 +107,7 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
         e.add_note(f"Output: \n{acts_out}")
         _logging.error(f"ACTS appears to have failed: {acts_out}")
         raise e
-    
+
     csv_rows = []
     with open(out_file_path, mode="r") as out_file:
         row = out_file.readline()
@@ -128,37 +130,28 @@ def generate_covering_array(param_spec: ParameterSpec, constraints: list[Constra
                 _logging.error(f"Parameter from ACTS failed to validate: {name} = {value}")
                 raise validation_result
         return value
-    
-    test_data: list[TestCase] = []
+
+    valid_cases: list[TestCase] = []
     for raw_case in list(csv.DictReader(csv_rows)):
         case = param_spec.TestCaseType()
         for parameter_name in raw_case:
             value = acts2obj(raw_case[parameter_name])
-            case.parameters[parameter_name] = validate_parameter_value(
-                parameter_name, value
-            )
-            is_invalid = case.parameters[parameter_name] in param_spec[parameter_name][1]
-            if is_invalid:
-                if case.expect_failure or case.invalid_parameter is not None:
-                    raise Exception(
-                        "ACTS generated test case with multiple invalid parameters"
-                    )
-                case.expect_failure = True
-                case.invalid_parameter = parameter_name
-        test_data.append(case)
-    # Verify against constraints
-    for case in test_data:
-        acts_safe_parameters = dict()
-        for param in case:
-            acts_safe_parameters[param] = obj2acts(case[param])
+            case.parameters[parameter_name] = validate_parameter_value(parameter_name, value)
+        valid_cases.append(case)
+
+    # Verify valid cases against constraints
+    for case in valid_cases:
+        acts_safe_parameters = {param: obj2acts(case[param]) for param in case}
         for constraint in constraints:
             if not constraint.test(case.parameters):
-                rows = []
-                for parameter in constraint.parameters:
-                    rows.append(f'{parameter} = {acts_safe_parameters[parameter]}')
-                _logging.error(f"ACTS output violated constraint.\nParameters:\n{'\n'.join(rows)}\nConstraint: {constraint!r}")
+                rows = [f'{parameter} = {acts_safe_parameters[parameter]}' for parameter in constraint.parameters]
+                _logging.error(f"ACTS output violated constraint.\nParameters:\n{chr(10).join(rows)}\nConstraint: {constraint!r}")
                 raise RuntimeError(f"ACTS output violated constraint. See {_logging.file_path}")
-    
-    _logging.debug(f"ACTS finished. {len(test_data)} cases generated.")
-    _cache.save_cache(test_data, param_spec, constraints, f"t{strength}")
+
+    invalid_cases = _generate_base_choice_invalid_cases(param_spec, constraints)
+
+    test_data = invalid_cases + valid_cases
+
+    _logging.debug(f"ACTS finished. {len(test_data)} cases generated ({len(invalid_cases)} invalid, {len(valid_cases)} valid).")
+    _cache.save_cache(test_data, param_spec, constraints, f"t{strength}_bc")
     return test_data

@@ -1021,6 +1021,8 @@ def main():
         metavar="N",
         help="Seed for random test suite (default: 0)",
     )
+    parser.add_argument("--random-size", dest="random_size", type=int, default=None, metavar="N",
+                        help="Override the random suite size in --strength mode (default: max(acts_size + 150, 200)). Ignored in --size mode.")
     parser.add_argument("--fresh", action="store_true", help="Delete any existing session file and start a fresh mutation run (default: resume from existing session)")
     parser.add_argument("--verify-baseline", dest="baseline", action="store_true", help="Run baseline verification instead of mutation analysis: sends 2 * workers unmodified test passes through the worker pool")
     args = parser.parse_args()
@@ -1050,12 +1052,13 @@ def main():
     else:
         acts_size, acts_valid_count = _acts_suite_info(args.strength)
         print(f"Acts suite at strength={args.strength}: {acts_size} test cases ({acts_valid_count} valid, {acts_size - acts_valid_count} invalid).")
+        random_size = args.random_size if args.random_size is not None else max(acts_size + 150, 200)
         generators_to_run = [
             _GeneratorSpec("acts", [f"--strength={args.strength}"], acts_size),
             _GeneratorSpec(
                 generator="random",
-                generator_args=[f"--size={acts_size}", f"--seed={args.seed}", f"--n-valid={acts_valid_count}"],
-                suite_size=acts_size,
+                generator_args=[f"--size={random_size}", f"--seed={args.seed}", f"--n-valid={acts_valid_count}"],
+                suite_size=random_size,
                 label_suffix=f"s{args.seed}",
             ),
         ]
