@@ -2,6 +2,15 @@
 *.bat
 *.sh
 *.po 
+*.lck
+
+# Build and cache files
+dist
+*.egg-info
+**/__pycache__
+
+# Coverage
+*.coverage
 
 # Git
 .git/
@@ -10,25 +19,28 @@
 .vscode/
 
 # log file
-src/logs.txt
+gemeaspy/logs.txt
+*.log
+**/logs.txt
+log/
+pytest-html
 
 # settings and task list files
-src/settings/connection_settings.json
-src/settings/server_backup_settings.json
-src/settings/monitoring_task_list.txt
+gemeaspy/settings/connection_settings.json
+gemeaspy/settings/server_backup_settings.json
+gemeaspy/settings/monitoring_task_list.txt
 
 # global variables
-src/settings/config.py
+gemeaspy/settings/config.py
 
 # data
-data/
-tmptestdata/
-
-#logs
-logs/
+test_data/
 
 # ruff & uv
 .ruff_cache/
 .venv/
-.python-version
 uv.lock
+
+#ACTS
+acts.log.lck
+LastOpenedFiles.xml
