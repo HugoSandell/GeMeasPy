@@ -7,7 +7,6 @@ from gemeaspy.acquisition import connections, utilities
 from gemeaspy.acquisition import monitoring_terrameter as monitoring
 from gemeaspy.acquisition.error import MissingFileError
 
-from settings.config import LOG_FOLDER
 
 class Instrument(ABC):
     
@@ -22,6 +21,7 @@ class Instrument(ABC):
     @abstractmethod
     def disconnect(self) -> None:
         pass
+
 
 class Terrameter(Instrument):
     def __init__(self) -> None:
@@ -50,15 +50,7 @@ class Terrameter(Instrument):
             raise Exception("No Active Connection")
         self.logfile.write("Starting Monitoring Software\n")
         print("Starting Monitoring Software")
-        try:
-            monitoring.main(self.connection, self.logfile, task_file)
-        except KeyboardInterrupt:
-            # Handle keyboard interrupts gracefully 
-            if self.connection.connected:
-                print("Interrupted")
-                self.connection.send_command_terrameter_software("Q\n")
-                self.connection.send_command_shell("exit")
-                self.disconnect()
+        monitoring.main(self.connection, self.logfile, task_file)
 
     def disconnect(self) -> None:
         if self.connection is None:
@@ -119,7 +111,3 @@ class Terrameter(Instrument):
             elif buffer.find("MISSING") != -1:
                 print("Protocol: MISSING..")
             print("-----------------------")
-
-
-
-

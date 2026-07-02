@@ -25,10 +25,7 @@ def start_terrameter_software(connection: SSHConnection, display=0) -> None:
     elif display == 10:
         print("Starting terrameter software in remote (X11) screen] ")
     connection.send_command_terrameter_software("terrameter\n")
-    if os.getenv("USETERRAMETEREMULATOR") is not None:
-        utilities.progress_bar(1) # Using emulated terrameter; assume near-zero startup time
-    else:
-        utilities.progress_bar(30)
+    utilities.progress_bar(60)
     connection.send_command_terrameter_software("s unattendedmode 1\n")
     clear_buffer(connection, 0)
 
@@ -38,7 +35,7 @@ def terminate_terrameter_software(connection: SSHConnection) -> None:
 
 
 def create_project(connection: SSHConnection) -> None:
-    command = f"touch {TERRAMETER_MONITORING_FOLDER}/new_day"
+    command = "touch /monitoring/new_day"
     connection.send_command_shell(command)
     project_time_stamp = datetime.datetime.now()
     project_name = "{:4d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(
@@ -93,7 +90,7 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
         logfile.write(log_str + "\n")
         print(log_str)
         print("Start Measuring")
-        command = f"touch {TERRAMETER_MONITORING_FOLDER}/task_{0:02d}_started".format(task["id"])
+        command = "touch /monitoring/task_{0:02d}_started".format(task["id"])
         connection.send_command_shell(command)
     else:
         load_settings(connection, task["settings"])
@@ -101,7 +98,7 @@ def measure(connection: SSHConnection, task, logfile: TextIO, new_measurement: b
         log_str = "Measurement resumed at " + utilities.time_stamp_string_from_datetime(measurement_resume_time)
         logfile.write(log_str + "\n")
         print(log_str)
-    connection.send_command_terrameter_software('m\n')
+    connection.send_command_terrameter_software('m\n', time_to_sleep=60)
     clear_buffer(connection, 1)
 
 
@@ -131,6 +128,7 @@ def is_measuring(connection: SSHConnection) -> bool:
     connection.send_command_terrameter_software(is_measuring_command)
     channel_output = connection.read_channel_buffer(1024)
     print(channel_output)
+    # print(measuring)
     found = channel_output.find("measure\t0")
     if found != -1:
         return False
@@ -140,7 +138,7 @@ def is_measuring(connection: SSHConnection) -> bool:
 
 
 def is_new_day(connection: SSHConnection) -> None | bool:
-    command = f"[ -e {TERRAMETER_MONITORING_FOLDER}/new_day ] && echo 'ResumePreviousMeasurement' || echo 'StartNewMeasurement'"
+    command = "[ -e /monitoring/new_day ] && echo 'ResumePreviousMeasurement' || echo 'StartNewMeasurement'"
     stdin, stdout, stderr = connection.send_command_shell(command)
     buffer = stdout.readline().strip()
     if buffer.find("ResumePreviousMeasurement") != -1:
@@ -150,14 +148,14 @@ def is_new_day(connection: SSHConnection) -> None | bool:
 
 
 def save_time_stamp(connection: SSHConnection, time_stamp: datetime.datetime, task_id: int) -> None:
-    command = f'echo "{0:d},{1:d},{2:d},{3:d},{4:d},{5:d},{6:d}" > {TERRAMETER_MONITORING_FOLDER}/datetime.{7:02d}'.format(
+    command = 'echo "{0:d},{1:d},{2:d},{3:d},{4:d},{5:d},{6:d}" > /monitoring/datetime.{7:02d}'.format(
         time_stamp.year, time_stamp.month, time_stamp.day, time_stamp.hour, time_stamp.minute,
         time_stamp.second, time_stamp.microsecond, task_id)
     connection.send_command_shell(command)
 
 
 def read_time_stamp(connection: SSHConnection, task_id: int) -> datetime.datetime:
-    command = f"more {TERRAMETER_MONITORING_FOLDER}/datetime.{0:02d}".format(task_id)
+    command = "more /monitoring/datetime.{0:02d}".format(task_id)
     stdin, stdout, stderr = connection.send_command_shell(command)
     datetime_string = stdout.readline().strip().split(',')
 
@@ -178,9 +176,9 @@ def task_completed(connection: SSHConnection, task_id: int, logfile: TextIO) -> 
     log_str = "Measurement lasted for " + utilities.time_stamp_string_from_timedelta(measurement_duration)
     logfile.write(log_str + "\n")
     print(log_str)
-    command = f"rm {TERRAMETER_MONITORING_FOLDER}/task_{0:02d}_started".format(task_id)
+    command = "rm /monitoring/task_{0:02d}_started".format(task_id)
     connection.send_command_shell(command)
-    command = f"touch {TERRAMETER_MONITORING_FOLDER}/task_{0:02d}_completed".format(task_id)
+    command = "touch /monitoring/task_{0:02d}_completed".format(task_id)
     connection.send_command_shell(command)
     logfile.write("Task #{0:d} Finished!\n".format(task_id))
     print('Task Completed!')
@@ -206,16 +204,16 @@ def is_task_completed(connection: SSHConnection, task_id: int) -> None | bool:
 
 def remove_control_files(connection: SSHConnection, task_list: list[dict[str, Any]]) -> str:
     print("Removing Monitoring Control Files..")
-    command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
+    command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     utilities.sleep_unless_testing(1)
     project = stdout.readline().strip()
     for task in task_list:
-        command = f"rm {TERRAMETER_MONITORING_FOLDER}/task_{0:02d}_completed".format(task["id"])
+        command = "rm /monitoring/task_{0:02d}_completed".format(task["id"])
         connection.send_command_shell(command)
-        command = f"rm {TERRAMETER_MONITORING_FOLDER}/datetime.{0:02d}".format(task["id"])
+        command = "rm /monitoring/datetime.{0:02d}".format(task["id"])
         connection.send_command_shell(command)
-    command = f"rm {TERRAMETER_MONITORING_FOLDER}/new_day"
+    command = "rm /monitoring/new_day"
     connection.send_command_shell(command)
     return project
 
@@ -257,7 +255,7 @@ def transfer_project(connection: SSHConnection) -> None:
         raise Exception("No Active Connection")
     print("Transferring files...")
     # get project name
-    command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
+    command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     project = stdout.readline().strip()
     # create 'zetsum' file
@@ -286,7 +284,7 @@ def transfer_project(connection: SSHConnection) -> None:
 
 def check_transfer(connection: SSHConnection) -> bool:
     print("Check if files have been transfered..")
-    command = f"more {TERRAMETER_MONITORING_FOLDER}/new_day"
+    command = "more /monitoring/new_day"
     stdin, stdout, stderr = connection.send_command_shell(command)
     project = stdout.readline().strip()
     zetsum = "{}/{}/zetsum/zetsum".format(config.LOCAL_PATH_TO_DATA, project)
